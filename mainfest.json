@@ -2,7 +2,7 @@
   "name": "Melony 랜덤 음악 플레이어",
   "short_name": "Melony Player",
   "start_url": "./index.html",
-  "display": "standalone", // 중요!
+  "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
   "icons": [
