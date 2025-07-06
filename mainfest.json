@@ -1,0 +1,20 @@
+{
+  "name": "Melony 랜덤 음악 플레이어",
+  "short_name": "Melony Player",
+  "start_url": "./index.html",
+  "display": "standalone", // 중요!
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
