@@ -5,23 +5,44 @@
   <title>🎵 Melony 랜덤 음악 플레이어</title>
   <style>
     body { font-family: sans-serif; text-align: center; padding: 40px; }
-    audio { width: 300px; margin-top: 20px; }
-    button { margin-top: 20px; padding: 10px 20px; cursor: pointer; } /* cursor: pointer 추가 */
-    #trackTitle { margin-bottom: 10px; } /* 제목과 오디오 플레이어 간 간격 조정 */
+    /* 기본 audio 컨트롤러는 숨겨지므로 이 스타일은 더 이상 직접 필요하지 않을 수 있습니다. */
+    /* audio { width: 300px; margin-top: 20px; } */
+    button { margin-top: 20px; padding: 10px 20px; cursor: pointer; }
+    #trackTitle { margin-bottom: 10px; }
+    
+    /* 커스텀 오디오 컨트롤 스타일 */
+    .custom-controls {
+        margin-top: 20px;
+        display: flex; /* 버튼을 가로로 정렬 */
+        justify-content: center; /* 가운데 정렬 */
+        align-items: center;
+    }
+    .custom-controls button {
+        padding: 12px 25px;
+        font-size: 18px;
+        margin: 0 5px; /* 버튼 사이 간격 */
+        min-width: 120px; /* 버튼 너비 통일 (선택 사항) */
+    }
   </style>
+  
   <link rel="manifest" href="/manifest.json">
+  
 </head>
 <body>
   <h2 id="trackTitle">🎵 Melony 랜덤 음악 플레이어</h2>
-  <audio id="player" controls>
-    <source id="source" src="" type="audio/mpeg">
+  <audio id="player" playsinline>     <source id="source" src="" type="audio/mpeg">
     브라우저가 오디오 태그를 지원하지 않습니다.
   </audio>
   <br>
+
+  <div class="custom-controls">
+      <button id="playPauseButton">재생</button>
+      <button id="nextButton">다음 곡</button>
+  </div>
+
   <button id="toggleAuto">자동재생 OFF</button>
 
   <script>
-// 실제 파일명들을 바탕으로 tracks 배열을 구성합니다.
 const tracks = [
   { id: 1, file: "00C1. Sunday Letters M.mp3", title: "Sunday Letters" },
   { id: 2, file: "00C10. If I Had Said It.mp3", title: "If I Had Said It" },
@@ -58,26 +79,28 @@ const tracks = [
 
     const player = document.getElementById("player");
     const source = document.getElementById("source");
-    const trackTitleDisplay = document.getElementById("trackTitle"); // 변수명 변경
+    const trackTitleDisplay = document.getElementById("trackTitle");
+
+    // 새로운 변수 선언
+    const playPauseButton = document.getElementById("playPauseButton");
+    const nextButton = document.getElementById("nextButton");
 
     // 최근 재생 목록에 추가 (30분 제한 유지)
     function saveRecent(id) {
       const now = Date.now();
       recent.push({ id, time: now });
       recent = recent.filter(r => now - r.time <= recentLimitMinutes * 60 * 1000);
-      console.log("Recent tracks:", recent.map(r => r.id)); // 디버깅용
+      console.log("Recent tracks:", recent.map(r => r.id));
     }
 
     // 재생 가능한 트랙 중 랜덤으로 하나 선택
     function pickRandomTrack() {
-      // 최근 30분 내 재생되지 않은 곡들만 필터링
       const available = tracks.filter(t => !recent.some(r => r.id === t.id));
       
       if (available.length === 0) {
-        // 모든 곡이 최근 30분 내 재생되었다면, 기록 초기화 후 다시 선택
         console.log("All tracks played recently. Resetting recent history.");
         recent = [];
-        return pickRandomTrack(); // 재귀 호출로 다시 랜덤 곡 선택
+        return pickRandomTrack();
       }
       
       const index = Math.floor(Math.random() * available.length);
@@ -86,38 +109,38 @@ const tracks = [
 
     // 트랙 로드 및 재생
     function loadTrack(track) {
-      trackTitleDisplay.innerText = "🎵 " + track.title; // 제목 업데이트
-      source.src = track.file; // encodeURIComponent 제거
-      player.load(); // 오디오 플레이어에 새 소스를 로드
+      trackTitleDisplay.innerText = "🎵 " + track.title;
+      source.src = track.file;
+      player.load();
       
-      // 사용자 상호작용 없이 자동 재생을 시도할 경우 정책에 의해 차단될 수 있음.
-      // 초기 로드 시 `player.play()`는 사용자 제스처 없이 작동하지 않을 수 있음.
+      // 트랙 로드 후 UI 업데이트: player.paused 상태에 따라 버튼 텍스트 설정
+      // play()는 비동기이므로, 호출 후 바로 '일시정지'로 바꾸기보다
+      // 'play' 이벤트 리스너에서 처리하는 것이 더 정확합니다.
+      playPauseButton.innerText = player.paused ? "재생" : "일시정지";
+
+
       if (autoPlay) {
         const playPromise = player.play();
         if (playPromise !== undefined) {
           playPromise.then(() => {
-            // 재생 성공
+            // 재생 성공 - 'play' 이벤트 리스너에서 버튼 텍스트가 업데이트됨
           }).catch(error => {
             // 재생 실패 (예: 사용자 상호작용 없음)
             console.warn("Autoplay was prevented:", error);
-            // 여기에서 사용자에게 재생 버튼을 눌러달라는 메시지를 표시할 수 있습니다.
+            // 자동 재생 실패 시 버튼 텍스트는 '재생'으로 유지되어야 함
+            playPauseButton.innerText = "재생"; 
           });
         }
       }
-      saveRecent(track.id); // 재생된 곡을 최근 목록에 추가
-      console.log("Loaded track:", track.title, "File:", track.file); // 디버깅용
+      saveRecent(track.id);
+      console.log("Loaded track:", track.title, "File:", track.file);
     }
 
     // 페이지 로드 시 초기 트랙 설정
-    // 브라우저의 자동 재생 정책을 우회하기 위해 `player.load()`만 하고
-    // 실제 재생은 사용자가 수동으로 플레이 버튼을 누르도록 유도하는 것이 좋습니다.
-    // 또는 초기 로드 시에는 autoPlay가 false라고 가정하고, 사용자가 버튼을 눌렀을 때만 play()하도록 하는 것도 방법입니다.
-    // 하지만 현재 코드는 `autoPlay` 값에 따라 초기 재생을 시도합니다.
     document.addEventListener("DOMContentLoaded", () => {
       const firstTrack = pickRandomTrack();
       loadTrack(firstTrack);
     });
-
 
     // 현재 재생 중인 곡이 끝나면 다음 랜덤 곡 재생
     player.addEventListener("ended", () => {
@@ -126,13 +149,45 @@ const tracks = [
       loadTrack(nextTrack);
     });
 
-    // 자동재생 토글 버튼 클릭 이벤트
+    // 오디오 플레이어 상태 변경 감지 (재생, 일시정지 등)
+    player.addEventListener('play', () => {
+        playPauseButton.innerText = "일시정지";
+    });
+    player.addEventListener('pause', () => {
+        playPauseButton.innerText = "재생";
+    });
+
+    // --- 새로운 버튼 이벤트 리스너 ---
+
+    // 재생/일시정지 버튼
+    playPauseButton.addEventListener("click", () => {
+        if (player.paused) {
+            const playPromise = player.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    // 성공적으로 재생 시작 - 'play' 이벤트 리스너에서 텍스트 업데이트
+                }).catch(error => {
+                    console.warn("Play attempt failed:", error);
+                });
+            }
+        } else {
+            player.pause();
+            // 'pause' 이벤트 리스너에서 텍스트 업데이트
+        }
+    });
+
+    // 다음 곡 버튼
+    nextButton.addEventListener("click", () => {
+        const nextTrack = pickRandomTrack();
+        loadTrack(nextTrack);
+    });
+
+    // 자동재생 토글
     autoPlayToggle.addEventListener("click", () => {
       autoPlay = !autoPlay;
       autoPlayToggle.innerText = autoPlay ? "자동재생 OFF" : "자동재생 ON";
       console.log("Autoplay is now:", autoPlay ? "ON" : "OFF");
       
-      // 자동 재생이 켜졌고, 현재 플레이어가 멈춰있다면 재생 시도
       if (autoPlay && player.paused) {
         const playPromise = player.play();
         if (playPromise !== undefined) {
@@ -148,14 +203,13 @@ const tracks = [
     // 오디오 로딩 에러 핸들링 (파일을 못 찾거나 재생할 수 없을 때)
     player.addEventListener('error', (e) => {
         console.error("Audio error!", e);
-        // 에러 유형에 따라 추가적인 메시지를 표시할 수 있습니다.
-        // e.target.error.code: 1=MEDIA_ERR_ABORTED, 2=MEDIA_ERR_NETWORK, 3=MEDIA_ERR_DECODE, 4=MEDIA_ERR_SRC_NOT_SUPPORTED
         let errorMessage = "오디오 재생 중 오류가 발생했습니다.";
         if (e.target.error.code === 4) {
             errorMessage = "오디오 파일을 찾을 수 없거나 브라우저가 지원하지 않는 형식입니다.";
         }
         trackTitleDisplay.innerText = "🚨 오류: " + errorMessage;
-        player.pause(); // 재생 중단
+        player.pause();
+        playPauseButton.innerText = "재생"; // 오류 시 재생 버튼으로 되돌림
     });
 
   </script>
