@@ -78,7 +78,7 @@ const tracks = [
 
     function loadTrack(track) {
       title.innerText = "🎵 " + track.title;
-      source.src = encodeURIComponent(track.file);
+      source.src = track.file;
       player.load();
       if (autoPlay) {
         player.play();
