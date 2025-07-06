@@ -19,12 +19,35 @@
   <button id="toggleAuto">자동재생 OFF</button>
 
   <script>
-    const tracks = [
-      { id: 1, file: "track1.mp3", title: "Sunday Letters" },
-      { id: 2, file: "track2.mp3", title: "Midnight Between Us" },
-      { id: 3, file: "track3.mp3", title: "Steps Between the Silence" },
-      // 필요 시 더 추가하세요
-    ];
+const tracks = [
+  { id: 1, file: "00C1. Sunday Letters M.mp3", title: "Sunday Letters" },
+  { id: 2, file: "00C10. If I Had Said It.mp3", title: "If I Had Said It" },
+  { id: 3, file: "00C12. Did You Know I Loved You-M.mp3", title: "Did You Know I Loved You" },
+  { id: 4, file: "00C13. Falling in Between - M.mp3", title: "Falling in Between" },
+  { id: 5, file: "00C14. The Way We Pause – M.mp3", title: "The Way We Pause" },
+  { id: 6, file: "00C15. Shared Mornings.mp3", title: "Shared Mornings" },
+  { id: 7, file: "00C16. We Never Said Goodbye– M.mp3", title: "We Never Said Goodbye" },
+  { id: 8, file: "00C17. Echoes Between Us-M.mp3", title: "Echoes Between Us" },
+  { id: 9, file: "00C18. Close Enought.mp3", title: "Close Enought" },
+  { id: 10, file: "00C19. If I'm in Your Day.mp3", title: "If I'm in Your Day" },
+  { id: 11, file: "00C2. Told with Eyes M.mp3", title: "Told with Eyes" },
+  { id: 12, file: "00C20. Steps Between the Silence-M.mp3", title: "Steps Between the Silence" },
+  { id: 13, file: "00C3. Midnight Between Us-M.mp3", title: "Midnight Between Us" },
+  { id: 14, file: "00C4. Tilted Heartbeat-M.mp3", title: "Tilted Heartbeat" },
+  { id: 15, file: "00C5. Steps That MatchM.mp3", title: "Steps That Match" },
+  { id: 16, file: "00C6. Letters in the Rain-M.mp3", title: "Letters in the Rain" },
+  { id: 17, file: "00C7. Half a Step Behind-M.mp3", title: "Half a Step Behind" },
+  { id: 18, file: "00C8. Almost Something-M.mp3", title: "Almost Something" },
+  { id: 19, file: "00C9. Quiet Like a Song-M.mp3", title: "Quiet Like a Song" },
+  { id: 20, file: "00D1-Only in My Mind.mp3", title: "Only in My Mind" },
+  { id: 21, file: "00D2-What If We Stayed.mp3", title: "What If We Stayed" },
+  { id: 22, file: "00D3-Every Time I Almost Spoke.mp3", title: "Every Time I Almost Spoke" },
+  { id: 23, file: "00D4-Wish I Said Your Name.mp3", title: "Wish I Said Your Name" },
+  { id: 24, file: "00D5-Lines I Never Crossed.mp3", title: "Lines I Never Crossed" },
+  { id: 25, file: "00D6-What You Didn’t Say.mp3", title: "What You Didn’t Say" },
+  { id: 26, file: "00c11. If You Were Me-M.mp3", title: "If You Were Me" }
+];
+
 
     let recent = [];
     const recentLimitMinutes = 30;
@@ -55,7 +78,7 @@
 
     function loadTrack(track) {
       title.innerText = "🎵 " + track.title;
-      source.src = track.file;
+      source.src = encodeURIComponent(track.file);
       player.load();
       if (autoPlay) {
         player.play();
