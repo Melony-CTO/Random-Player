@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>🎵 Melony 랜덤 플레이어</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 40px; }
+    img { width: 250px; border-radius: 10px; margin-bottom: 20px; }
+    audio { width: 300px; margin-top: 20px; }
+    button { margin-top: 20px; padding: 10px 20px; }
+  </style>
+</head>
+<body>
+  <h2 id="trackTitle">🎵 Melony 랜덤 음악 플레이어</h2>
+  <img id="cover" src="" alt="앨범 커버">
+  <br>
+  <audio id="player" controls>
+    <source id="source" src="" type="audio/mpeg">
+    브라우저가 오디오 태그를 지원하지 않습니다.
+  </audio>
+  <br>
+  <button id="toggleAuto">자동재생 OFF</button>
+
+  <script>
+    const tracks = [
+      { id: 1, file: "song1.mp3", title: "파이썬 기본", cover: "cover1.jpg" },
+      { id: 2, file: "song2.mp3", title: "스테이블 디퓨전 이해", cover: "cover2.jpg" },
+      { id: 3, file: "song3.mp3", title: "Whisper 자막 자동화", cover: "cover3.jpg" }
+    ];
+
+    let recent = [];
+    const recentLimitMinutes = 30;
+    const autoPlayToggle = document.getElementById("toggleAuto");
+    let autoPlay = true;
+
+    const player = document.getElementById("player");
+    const source = document.getElementById("source");
+    const title = document.getElementById("trackTitle");
+    const cover = document.getElementById("cover");
+
+    function saveRecent(id) {
+      const now = Date.now();
+      recent.push({ id, time: now });
+      // 최근 30분 이내 재생 기록만 유지
+      recent = recent.filter(r => now - r.time <= recentLimitMinutes * 60 * 1000);
+    }
+
+    function pickRandomTrack() {
+      const available = tracks.filter(t => !recent.some(r => r.id === t.id));
+      if (available.length === 0) {
+        // 다 재생했으면 기록 초기화
+        recent = [];
+        return pickRandomTrack();
+      }
+      const index = Math.floor(Math.random() * available.length);
+      return available[index];
+    }
+
+    function loadTrack(track) {
+      title.innerText = "🎵 " + track.title;
+      cover.src = track.cover;
+      source.src = track.file;
+      player.load();
+      if (autoPlay) {
+        player.play();
+      }
+      saveRecent(track.id);
+    }
+
+    // 초기 로드
+    const firstTrack = pickRandomTrack();
+    loadTrack(firstTrack);
+
+    // 재생 종료 시 새 랜덤 곡
+    player.addEventListener("ended", () => {
+      const nextTrack = pickRandomTrack();
+      loadTrack(nextTrack);
+    });
+
+    // 자동재생 토글
+    autoPlayToggle.addEventListener("click", () => {
+      autoPlay = !autoPlay;
+      autoPlayToggle.innerText = autoPlay ? "자동재생 OFF" : "자동재생 ON";
+    });
+  </script>
+</body>
+</html>
