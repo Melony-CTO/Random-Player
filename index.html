@@ -1,24 +1,26 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>🎵 Melony 랜덤 음악 플레이어</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 40px; }
-    audio { width: 300px; margin-top: 20px; }
-    button { margin-top: 20px; padding: 10px 20px; }
-  </style>
+  <meta charset="UTF-8">
+  <title>🎵 Melony 랜덤 음악 플레이어</title>
+  <style>
+    body { font-family: sans-serif; text-align: center; padding: 40px; }
+    audio { width: 300px; margin-top: 20px; }
+    button { margin-top: 20px; padding: 10px 20px; cursor: pointer; } /* cursor: pointer 추가 */
+    #trackTitle { margin-bottom: 10px; } /* 제목과 오디오 플레이어 간 간격 조정 */
+  </style>
 </head>
 <body>
-  <h2 id="trackTitle">🎵 Melony 랜덤 음악 플레이어</h2>
-  <audio id="player" controls>
-    <source id="source" src="" type="audio/mpeg">
-    브라우저가 오디오 태그를 지원하지 않습니다.
-  </audio>
-  <br>
-  <button id="toggleAuto">자동재생 OFF</button>
+  <h2 id="trackTitle">🎵 Melony 랜덤 음악 플레이어</h2>
+  <audio id="player" controls>
+    <source id="source" src="" type="audio/mpeg">
+    브라우저가 오디오 태그를 지원하지 않습니다.
+  </audio>
+  <br>
+  <button id="toggleAuto">자동재생 OFF</button>
 
-  <script>
+  <script>
+// 실제 파일명들을 바탕으로 tracks 배열을 구성합니다.
 const tracks = [
   { id: 1, file: "00C1. Sunday Letters M.mp3", title: "Sunday Letters" },
   { id: 2, file: "00C10. If I Had Said It.mp3", title: "If I Had Said It" },
@@ -31,7 +33,7 @@ const tracks = [
   { id: 9, file: "00C18. Close Enought.mp3", title: "Close Enought" },
   { id: 10, file: "00C19. If I'm in Your Day.mp3", title: "If I'm in Your Day" },
   { id: 11, file: "00C2. Told with Eyes M.mp3", title: "Told with Eyes" },
-  { id: 12, file: "00C20. Steps Between the Silence-M.mp3", title: "Steps Between the Silence" },
+  { id: 12, file: "00C20. Steps Between the Silence-M.mp3", title: "Steps Between the Silence" }, // 00C20으로 수정
   { id: 13, file: "00C3. Midnight Between Us-M.mp3", title: "Midnight Between Us" },
   { id: 14, file: "00C4. Tilted Heartbeat-M.mp3", title: "Tilted Heartbeat" },
   { id: 15, file: "00C5. Steps That MatchM.mp3", title: "Steps That Match" },
@@ -45,62 +47,116 @@ const tracks = [
   { id: 23, file: "00D4-Wish I Said Your Name.mp3", title: "Wish I Said Your Name" },
   { id: 24, file: "00D5-Lines I Never Crossed.mp3", title: "Lines I Never Crossed" },
   { id: 25, file: "00D6-What You Didn’t Say.mp3", title: "What You Didn’t Say" },
-  { id: 26, file: "00c11. If You Were Me-M.mp3", title: "If You Were Me" }
+  { id: 26, file: "00c11. If You Were Me-M.mp3", title: "If You Were Me" } // 00c11 소문자로 시작함, 그대로 유지
 ];
 
-
     let recent = [];
-    const recentLimitMinutes = 30;
+    const recentLimitMinutes = 30; // 30분 이내 중복 재생 방지
     const autoPlayToggle = document.getElementById("toggleAuto");
-    let autoPlay = true;
+    let autoPlay = true; // 자동 재생 초기 상태
 
     const player = document.getElementById("player");
     const source = document.getElementById("source");
-    const title = document.getElementById("trackTitle");
+    const trackTitleDisplay = document.getElementById("trackTitle"); // 변수명 변경
 
+    // 최근 재생 목록에 추가 (30분 제한 유지)
     function saveRecent(id) {
       const now = Date.now();
       recent.push({ id, time: now });
-      // 최근 30분 이내 재생 기록만 유지
       recent = recent.filter(r => now - r.time <= recentLimitMinutes * 60 * 1000);
+      console.log("Recent tracks:", recent.map(r => r.id)); // 디버깅용
     }
 
+    // 재생 가능한 트랙 중 랜덤으로 하나 선택
     function pickRandomTrack() {
+      // 최근 30분 내 재생되지 않은 곡들만 필터링
       const available = tracks.filter(t => !recent.some(r => r.id === t.id));
+      
       if (available.length === 0) {
-        // 다 재생했으면 기록 초기화
+        // 모든 곡이 최근 30분 내 재생되었다면, 기록 초기화 후 다시 선택
+        console.log("All tracks played recently. Resetting recent history.");
         recent = [];
-        return pickRandomTrack();
+        return pickRandomTrack(); // 재귀 호출로 다시 랜덤 곡 선택
       }
+      
       const index = Math.floor(Math.random() * available.length);
       return available[index];
     }
 
+    // 트랙 로드 및 재생
     function loadTrack(track) {
-      title.innerText = "🎵 " + track.title;
-      source.src = track.file;
-      player.load();
+      trackTitleDisplay.innerText = "🎵 " + track.title; // 제목 업데이트
+      source.src = track.file; // encodeURIComponent 제거
+      player.load(); // 오디오 플레이어에 새 소스를 로드
+      
+      // 사용자 상호작용 없이 자동 재생을 시도할 경우 정책에 의해 차단될 수 있음.
+      // 초기 로드 시 `player.play()`는 사용자 제스처 없이 작동하지 않을 수 있음.
       if (autoPlay) {
-        player.play();
+        const playPromise = player.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            // 재생 성공
+          }).catch(error => {
+            // 재생 실패 (예: 사용자 상호작용 없음)
+            console.warn("Autoplay was prevented:", error);
+            // 여기에서 사용자에게 재생 버튼을 눌러달라는 메시지를 표시할 수 있습니다.
+          });
+        }
       }
-      saveRecent(track.id);
+      saveRecent(track.id); // 재생된 곡을 최근 목록에 추가
+      console.log("Loaded track:", track.title, "File:", track.file); // 디버깅용
     }
 
-    // 초기 로드
-    const firstTrack = pickRandomTrack();
-    loadTrack(firstTrack);
+    // 페이지 로드 시 초기 트랙 설정
+    // 브라우저의 자동 재생 정책을 우회하기 위해 `player.load()`만 하고
+    // 실제 재생은 사용자가 수동으로 플레이 버튼을 누르도록 유도하는 것이 좋습니다.
+    // 또는 초기 로드 시에는 autoPlay가 false라고 가정하고, 사용자가 버튼을 눌렀을 때만 play()하도록 하는 것도 방법입니다.
+    // 하지만 현재 코드는 `autoPlay` 값에 따라 초기 재생을 시도합니다.
+    document.addEventListener("DOMContentLoaded", () => {
+      const firstTrack = pickRandomTrack();
+      loadTrack(firstTrack);
+    });
 
-    // 재생 종료 시 새 랜덤 곡
+
+    // 현재 재생 중인 곡이 끝나면 다음 랜덤 곡 재생
     player.addEventListener("ended", () => {
+      console.log("Track ended. Loading next random track.");
       const nextTrack = pickRandomTrack();
       loadTrack(nextTrack);
     });
 
-    // 자동재생 토글
+    // 자동재생 토글 버튼 클릭 이벤트
     autoPlayToggle.addEventListener("click", () => {
       autoPlay = !autoPlay;
       autoPlayToggle.innerText = autoPlay ? "자동재생 OFF" : "자동재생 ON";
+      console.log("Autoplay is now:", autoPlay ? "ON" : "OFF");
+      
+      // 자동 재생이 켜졌고, 현재 플레이어가 멈춰있다면 재생 시도
+      if (autoPlay && player.paused) {
+        const playPromise = player.play();
+        if (playPromise !== undefined) {
+          playPromise.then(() => {
+            console.log("Attempted to play after autoplay toggle.");
+          }).catch(error => {
+            console.warn("Play attempt after toggle was prevented:", error);
+          });
+        }
+      }
     });
-  </script>
+
+    // 오디오 로딩 에러 핸들링 (파일을 못 찾거나 재생할 수 없을 때)
+    player.addEventListener('error', (e) => {
+        console.error("Audio error!", e);
+        // 에러 유형에 따라 추가적인 메시지를 표시할 수 있습니다.
+        // e.target.error.code: 1=MEDIA_ERR_ABORTED, 2=MEDIA_ERR_NETWORK, 3=MEDIA_ERR_DECODE, 4=MEDIA_ERR_SRC_NOT_SUPPORTED
+        let errorMessage = "오디오 재생 중 오류가 발생했습니다.";
+        if (e.target.error.code === 4) {
+            errorMessage = "오디오 파일을 찾을 수 없거나 브라우저가 지원하지 않는 형식입니다.";
+        }
+        trackTitleDisplay.innerText = "🚨 오류: " + errorMessage;
+        player.pause(); // 재생 중단
+    });
+
+  </script>
 </body>
 </html>
