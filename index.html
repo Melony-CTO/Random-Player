@@ -1,48 +1,58 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>🎵 Melony 랜덤 음악 플레이어</title>
-  <style>
-    body { font-family: sans-serif; text-align: center; padding: 40px; }
-    /* 기본 audio 컨트롤러는 숨겨지므로 이 스타일은 더 이상 직접 필요하지 않을 수 있습니다. */
-    /* audio { width: 300px; margin-top: 20px; } */
-    button { margin-top: 20px; padding: 10px 20px; cursor: pointer; }
-    #trackTitle { margin-bottom: 10px; }
-    
-    /* 커스텀 오디오 컨트롤 스타일 */
+  <meta charset="UTF-8">
+  <title>🎵 Melony 랜덤 음악 플레이어</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 40px;
+    }
+    #trackTitle {
+      margin-bottom: 10px;
+      font-size: 1.5em;
+    }
+
+    .controls-wrapper {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column; /* 수직 배치 */
+      align-items: center; /* 가운데 정렬 */
+      gap: 10px; /* 각 요소 간격 */
+    }
+
     .custom-controls {
-        margin-top: 20px;
-        display: flex; /* 버튼을 가로로 정렬 */
-        justify-content: center; /* 가운데 정렬 */
-        align-items: center;
+      display: flex;
+      gap: 10px;
     }
-    .custom-controls button {
-        padding: 12px 25px;
-        font-size: 18px;
-        margin: 0 5px; /* 버튼 사이 간격 */
-        min-width: 120px; /* 버튼 너비 통일 (선택 사항) */
+
+    .custom-controls button,
+    #toggleAuto {
+      padding: 12px 25px;
+      font-size: 16px;
+      min-width: 120px;
+      cursor: pointer;
     }
-  </style>
-  
+  </style>
   <link rel="manifest" href="/manifest.json">
-  
 </head>
 <body>
-  <h2 id="trackTitle">🎵 Melony 랜덤 음악 플레이어</h2>
-  <audio id="player" playsinline>     <source id="source" src="" type="audio/mpeg">
-    브라우저가 오디오 태그를 지원하지 않습니다.
-  </audio>
-  <br>
+  <h2 id="trackTitle">🎵 Melony 랜덤 음악 플레이어</h2>
+  <audio id="player" playsinline>
+    <source id="source" src="" type="audio/mpeg">
+    브라우저가 오디오 태그를 지원하지 않습니다.
+  </audio>
 
-  <div class="custom-controls">
+  <div class="controls-wrapper">
+    <div class="custom-controls">
       <button id="playPauseButton">재생</button>
       <button id="nextButton">다음 곡</button>
+    </div>
+    <button id="toggleAuto">자동재생 OFF</button>
   </div>
 
-  <button id="toggleAuto">자동재생 OFF</button>
-
-  <script>
+  <script>
 const tracks = [
   { id: 1, file: "00C1. Sunday Letters M.mp3", title: "Sunday Letters" },
   { id: 2, file: "00C10. If I Had Said It.mp3", title: "If I Had Said It" },
@@ -55,7 +65,7 @@ const tracks = [
   { id: 9, file: "00C18. Close Enought.mp3", title: "Close Enought" },
   { id: 10, file: "00C19. If I'm in Your Day.mp3", title: "If I'm in Your Day" },
   { id: 11, file: "00C2. Told with Eyes M.mp3", title: "Told with Eyes" },
-  { id: 12, file: "00C20. Steps Between the Silence-M.mp3", title: "Steps Between the Silence" }, // 00C20으로 수정
+  { id: 12, file: "00C20. Steps Between the Silence-M.mp3", title: "Steps Between the Silence" },
   { id: 13, file: "00C3. Midnight Between Us-M.mp3", title: "Midnight Between Us" },
   { id: 14, file: "00C4. Tilted Heartbeat-M.mp3", title: "Tilted Heartbeat" },
   { id: 15, file: "00C5. Steps That MatchM.mp3", title: "Steps That Match" },
@@ -69,153 +79,104 @@ const tracks = [
   { id: 23, file: "00D4-Wish I Said Your Name.mp3", title: "Wish I Said Your Name" },
   { id: 24, file: "00D5-Lines I Never Crossed.mp3", title: "Lines I Never Crossed" },
   { id: 25, file: "00D6-What You Didn’t Say.mp3", title: "What You Didn’t Say" },
-  { id: 26, file: "00c11. If You Were Me-M.mp3", title: "If You Were Me" } // 00c11 소문자로 시작함, 그대로 유지
+  { id: 26, file: "00c11. If You Were Me-M.mp3", title: "If You Were Me" }
 ];
 
-    let recent = [];
-    const recentLimitMinutes = 30; // 30분 이내 중복 재생 방지
-    const autoPlayToggle = document.getElementById("toggleAuto");
-    let autoPlay = true; // 자동 재생 초기 상태
+let recent = [];
+const recentLimitMinutes = 30;
+let autoPlay = true;
 
-    const player = document.getElementById("player");
-    const source = document.getElementById("source");
-    const trackTitleDisplay = document.getElementById("trackTitle");
+const player = document.getElementById("player");
+const source = document.getElementById("source");
+const trackTitleDisplay = document.getElementById("trackTitle");
+const playPauseButton = document.getElementById("playPauseButton");
+const nextButton = document.getElementById("nextButton");
+const autoPlayToggle = document.getElementById("toggleAuto");
 
-    // 새로운 변수 선언
-    const playPauseButton = document.getElementById("playPauseButton");
-    const nextButton = document.getElementById("nextButton");
+function saveRecent(id) {
+  const now = Date.now();
+  recent.push({ id, time: now });
+  recent = recent.filter(r => now - r.time <= recentLimitMinutes * 60 * 1000);
+}
 
-    // 최근 재생 목록에 추가 (30분 제한 유지)
-    function saveRecent(id) {
-      const now = Date.now();
-      recent.push({ id, time: now });
-      recent = recent.filter(r => now - r.time <= recentLimitMinutes * 60 * 1000);
-      console.log("Recent tracks:", recent.map(r => r.id));
-    }
+function pickRandomTrack() {
+  const available = tracks.filter(t => !recent.some(r => r.id === t.id));
+  if (available.length === 0) {
+    recent = [];
+    return pickRandomTrack();
+  }
+  const index = Math.floor(Math.random() * available.length);
+  return available[index];
+}
 
-    // 재생 가능한 트랙 중 랜덤으로 하나 선택
-    function pickRandomTrack() {
-      const available = tracks.filter(t => !recent.some(r => r.id === t.id));
-      
-      if (available.length === 0) {
-        console.log("All tracks played recently. Resetting recent history.");
-        recent = [];
-        return pickRandomTrack();
-      }
-      
-      const index = Math.floor(Math.random() * available.length);
-      return available[index];
-    }
-
-    // 트랙 로드 및 재생
-    function loadTrack(track) {
-      trackTitleDisplay.innerText = "🎵 " + track.title;
-      source.src = track.file;
-      player.load();
-      
-      // 트랙 로드 후 UI 업데이트: player.paused 상태에 따라 버튼 텍스트 설정
-      // play()는 비동기이므로, 호출 후 바로 '일시정지'로 바꾸기보다
-      // 'play' 이벤트 리스너에서 처리하는 것이 더 정확합니다.
-      playPauseButton.innerText = player.paused ? "재생" : "일시정지";
-
-
-      if (autoPlay) {
-        const playPromise = player.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            // 재생 성공 - 'play' 이벤트 리스너에서 버튼 텍스트가 업데이트됨
-          }).catch(error => {
-            // 재생 실패 (예: 사용자 상호작용 없음)
-            console.warn("Autoplay was prevented:", error);
-            // 자동 재생 실패 시 버튼 텍스트는 '재생'으로 유지되어야 함
-            playPauseButton.innerText = "재생"; 
-          });
-        }
-      }
-      saveRecent(track.id);
-      console.log("Loaded track:", track.title, "File:", track.file);
-    }
-
-    // 페이지 로드 시 초기 트랙 설정
-    document.addEventListener("DOMContentLoaded", () => {
-      const firstTrack = pickRandomTrack();
-      loadTrack(firstTrack);
+function loadTrack(track) {
+  trackTitleDisplay.innerText = "🎵 " + track.title;
+  source.src = track.file;
+  player.load();
+  playPauseButton.innerText = player.paused ? "재생" : "일시정지";
+  if (autoPlay) {
+    player.play().catch(error => {
+      console.warn("Autoplay was prevented:", error);
+      playPauseButton.innerText = "재생";
     });
+  }
+  saveRecent(track.id);
+}
 
-    // 현재 재생 중인 곡이 끝나면 다음 랜덤 곡 재생
-    player.addEventListener("ended", () => {
-      console.log("Track ended. Loading next random track.");
-      const nextTrack = pickRandomTrack();
-      loadTrack(nextTrack);
-    });
+document.addEventListener("DOMContentLoaded", () => {
+  const firstTrack = pickRandomTrack();
+  loadTrack(firstTrack);
+});
 
-    // 오디오 플레이어 상태 변경 감지 (재생, 일시정지 등)
-    player.addEventListener('play', () => {
-        playPauseButton.innerText = "일시정지";
-    });
-    player.addEventListener('pause', () => {
-        playPauseButton.innerText = "재생";
-    });
+player.addEventListener("ended", () => {
+  const nextTrack = pickRandomTrack();
+  loadTrack(nextTrack);
+});
 
-    // --- 새로운 버튼 이벤트 리스너 ---
+player.addEventListener('play', () => {
+  playPauseButton.innerText = "일시정지";
+});
+player.addEventListener('pause', () => {
+  playPauseButton.innerText = "재생";
+});
 
-    // 재생/일시정지 버튼
-    playPauseButton.addEventListener("click", () => {
-        if (player.paused) {
-            const playPromise = player.play();
-            if (playPromise !== undefined) {
-                playPromise.then(() => {
-                    // 성공적으로 재생 시작 - 'play' 이벤트 리스너에서 텍스트 업데이트
-                }).catch(error => {
-                    console.warn("Play attempt failed:", error);
-                });
-            }
-        } else {
-            player.pause();
-            // 'pause' 이벤트 리스너에서 텍스트 업데이트
-        }
-    });
+playPauseButton.addEventListener("click", () => {
+  if (player.paused) {
+    player.play().catch(error => console.warn("Play attempt failed:", error));
+  } else {
+    player.pause();
+  }
+});
 
-    // 다음 곡 버튼
-    nextButton.addEventListener("click", () => {
-        const nextTrack = pickRandomTrack();
-        loadTrack(nextTrack);
-    });
+nextButton.addEventListener("click", () => {
+  const nextTrack = pickRandomTrack();
+  loadTrack(nextTrack);
+});
 
-    // 자동재생 토글
-    autoPlayToggle.addEventListener("click", () => {
-      autoPlay = !autoPlay;
-      autoPlayToggle.innerText = autoPlay ? "자동재생 OFF" : "자동재생 ON";
-      console.log("Autoplay is now:", autoPlay ? "ON" : "OFF");
-      
-      if (autoPlay && player.paused) {
-        const playPromise = player.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            console.log("Attempted to play after autoplay toggle.");
-          }).catch(error => {
-            console.warn("Play attempt after toggle was prevented:", error);
-          });
-        }
-      }
-    });
+autoPlayToggle.addEventListener("click", () => {
+  autoPlay = !autoPlay;
+  autoPlayToggle.innerText = autoPlay ? "자동재생 OFF" : "자동재생 ON";
+  if (autoPlay && player.paused) {
+    player.play().catch(error => console.warn("Autoplay toggle play prevented:", error));
+  }
+});
 
-    // 오디오 로딩 에러 핸들링 (파일을 못 찾거나 재생할 수 없을 때)
-    player.addEventListener('error', (e) => {
-        console.error("Audio error!", e);
-        let errorMessage = "오디오 재생 중 오류가 발생했습니다.";
-        if (e.target.error.code === 4) {
-            errorMessage = "오디오 파일을 찾을 수 없거나 브라우저가 지원하지 않는 형식입니다.";
-        }
-        trackTitleDisplay.innerText = "🚨 오류: " + errorMessage;
-        player.pause();
-        playPauseButton.innerText = "재생"; // 오류 시 재생 버튼으로 되돌림
-    });
-
-  </script>
-<footer style="margin-top: 40px; padding: 15px; background-color: #f7f7f7; border-top: 1px solid #ddd; font-size: 0.9em; color: #555; text-align: center; line-height: 1.5;">
-     ⓒ Melony. All rights reserved. <br>🎵 본 페이지에서 재생되는 모든 음악의 저작권은 <strong>Melony</strong>에게 있으며,<br>
+player.addEventListener('error', (e) => {
+  let errorMessage = "오디오 재생 중 오류가 발생했습니다.";
+  if (e.target.error.code === 4) {
+    errorMessage = "오디오 파일을 찾을 수 없거나 브라우저가 지원하지 않는 형식입니다.";
+  }
+  trackTitleDisplay.innerText = "🚨 오류: " + errorMessage;
+  player.pause();
+  playPauseButton.innerText = "재생";
+});
+  </script>
+<footer style="margin-top:40px;padding:15px;background:#f7f7f7;border-top:1px solid #ddd;font-size:0.9em;color:#555;text-align:center;line-height:1.5;">
+  ⓒ Melony. All rights reserved.<br>
+  🎵 본 페이지에서 재생되는 모든 음악의 저작권은 <strong>Melony</strong>에게 있으며,<br>
   상업적 이용과 무단 복제를 금하며<br>
   개인적인 감상 목적에 한해 자유롭게 이용하실 수 있습니다.
+</footer>
 </body>
 </html>
+
