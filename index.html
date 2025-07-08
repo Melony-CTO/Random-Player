@@ -82,8 +82,8 @@ const tracks = [
   { id: 26, file: "00c11. If You Were Me-M.mp3", title: "If You Were Me" }
 ];
 
-let recent = [];
-const recentLimitMinutes = 30;
+let shuffledTracks = [];
+let currentIndex = 0;
 let autoPlay = true;
 
 const player = document.getElementById("player");
@@ -93,52 +93,48 @@ const playPauseButton = document.getElementById("playPauseButton");
 const nextButton = document.getElementById("nextButton");
 const autoPlayToggle = document.getElementById("toggleAuto");
 
-function saveRecent(id) {
-  const now = Date.now();
-  recent.push({ id, time: now });
-  recent = recent.filter(r => now - r.time <= recentLimitMinutes * 60 * 1000);
-}
-
-function pickRandomTrack() {
-  const available = tracks.filter(t => !recent.some(r => r.id === t.id));
-  if (available.length === 0) {
-    recent = [];
-    return pickRandomTrack();
+function shuffleArray(array) {
+  const copy = array.slice();
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
   }
-  const index = Math.floor(Math.random() * available.length);
-  return available[index];
+  return copy;
 }
 
-function loadTrack(track) {
+function loadTrack(index) {
+  const track = shuffledTracks[index];
+  if (!track) return;
+
   trackTitleDisplay.innerText = "🎵 " + track.title;
   source.src = track.file;
   player.load();
   playPauseButton.innerText = player.paused ? "재생" : "일시정지";
+
   if (autoPlay) {
     player.play().catch(error => {
       console.warn("Autoplay was prevented:", error);
       playPauseButton.innerText = "재생";
     });
   }
-  saveRecent(track.id);
+}
+
+function playNextTrack() {
+  currentIndex++;
+  if (currentIndex >= shuffledTracks.length) {
+    shuffledTracks = shuffleArray(tracks);
+    currentIndex = 0;
+  }
+  loadTrack(currentIndex);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const firstTrack = pickRandomTrack();
-  loadTrack(firstTrack);
+  shuffledTracks = shuffleArray(tracks);
+  currentIndex = 0;
+  loadTrack(currentIndex);
 });
 
-player.addEventListener("ended", () => {
-  const nextTrack = pickRandomTrack();
-  loadTrack(nextTrack);
-});
-
-player.addEventListener('play', () => {
-  playPauseButton.innerText = "일시정지";
-});
-player.addEventListener('pause', () => {
-  playPauseButton.innerText = "재생";
-});
+player.addEventListener("ended", playNextTrack);
 
 playPauseButton.addEventListener("click", () => {
   if (player.paused) {
@@ -148,10 +144,7 @@ playPauseButton.addEventListener("click", () => {
   }
 });
 
-nextButton.addEventListener("click", () => {
-  const nextTrack = pickRandomTrack();
-  loadTrack(nextTrack);
-});
+nextButton.addEventListener("click", playNextTrack);
 
 autoPlayToggle.addEventListener("click", () => {
   autoPlay = !autoPlay;
@@ -159,6 +152,14 @@ autoPlayToggle.addEventListener("click", () => {
   if (autoPlay && player.paused) {
     player.play().catch(error => console.warn("Autoplay toggle play prevented:", error));
   }
+});
+
+player.addEventListener("play", () => {
+  playPauseButton.innerText = "일시정지";
+});
+
+player.addEventListener("pause", () => {
+  playPauseButton.innerText = "재생";
 });
 
 player.addEventListener('error', (e) => {
