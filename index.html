@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>🎵 Melony 랜덤 음악 플레이어</title>
+    <title>🎵 Melony 순차 음악 플레이어</title>
     <style>
         body {
             font-family: sans-serif;
@@ -41,7 +41,7 @@
     </style>
     </head>
 <body>
-    <h2 id="trackTitle">🎵 Melony 랜덤 음악 플레이어</h2>
+    <h2 id="trackTitle">🎵 Melony 순차 음악 플레이어</h2>
     <audio id="player" playsinline>
         <source id="source" src="" type="audio/mpeg">
         브라우저가 오디오 태그를 지원하지 않습니다.
@@ -121,8 +121,7 @@ const tracks = [
     { file: "00F6. Rooms We Never Touched_M.m4a", title: "Rooms We Never Touched" }
 ];
 
-let shuffledTracks = [];
-let currentIndex = 0;
+let currentIndex = 0; // 순차 재생이므로 섞인 배열 대신 원래 tracks 배열의 인덱스 사용
 let autoPlay = true;
 
 const player = document.getElementById("player");
@@ -132,18 +131,18 @@ const playPauseButton = document.getElementById("playPauseButton");
 const nextButton = document.getElementById("nextButton");
 const autoPlayToggle = document.getElementById("toggleAuto");
 
-function shuffleArray(array) {
-    const copy = array.slice();
-    for (let i = copy.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [copy[i], copy[j]] = [copy[j], copy[i]];
-    }
-    return copy;
-}
+// --- 셔플 관련 함수 제거 ---
+// function shuffleArray(array) { ... }
 
 function loadTrack(index) {
-    const track = shuffledTracks[index];
-    if (!track) return;
+    // 순차 재생이므로 tracks 배열을 직접 사용
+    const track = tracks[index]; 
+    if (!track) {
+        // 모든 곡 재생이 끝난 경우 (loop)
+        currentIndex = 0; // 처음부터 다시 시작
+        loadTrack(currentIndex);
+        return;
+    }
 
     trackTitleDisplay.innerText = "🎵 " + track.title;
     source.src = track.file;
@@ -166,17 +165,16 @@ function loadTrack(index) {
 
 function playNextTrack() {
     currentIndex++;
-    if (currentIndex >= shuffledTracks.length) {
-        shuffledTracks = shuffleArray(tracks); // 모든 곡 재생 후 다시 섞기
-        currentIndex = 0;
+    if (currentIndex >= tracks.length) { // tracks 배열의 끝에 도달했는지 확인
+        currentIndex = 0; // 처음부터 다시 시작
     }
     loadTrack(currentIndex);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    shuffledTracks = shuffleArray(tracks); // 페이지 로드 시 한 번 섞기
+    // 셔플 로직 제거, 바로 첫 곡 로드
     currentIndex = 0;
-    loadTrack(currentIndex); // 첫 곡 로드
+    loadTrack(currentIndex); 
 });
 
 player.addEventListener("ended", playNextTrack); // 곡이 끝나면 다음 곡 재생
