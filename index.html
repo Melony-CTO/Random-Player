@@ -1,95 +1,125 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>🎵 Melony 랜덤 음악 플레이어</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      text-align: center;
-      padding: 40px;
-    }
-    #trackTitle {
-      margin-bottom: 10px;
-      font-size: 1.5em;
-    }
+    <meta charset="UTF-8">
+    <title>🎵 Melony 랜덤 음악 플레이어</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            padding: 40px;
+        }
+        #trackTitle {
+            margin-bottom: 10px; /* 기존 하단 여백 */
+            font-size: 1.5em;
+            text-align: center; /* 텍스트 내용 가운데 정렬 */
+            margin: 0 auto 10px auto; /* 블록 요소 가운데 정렬 + 하단 여백 */
+            width: fit-content; /* 내용물 너비만큼만 차지하도록 설정 (margin auto를 위해 필요) */
+        }
 
-    .controls-wrapper {
-      margin-top: 20px;
-      display: flex;
-      flex-direction: column; /* 수직 배치 */
-      align-items: center; /* 가운데 정렬 */
-      gap: 10px; /* 각 요소 간격 */
-    }
+        .controls-wrapper {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column; /* 수직 배치 */
+            align-items: center; /* 컨트롤 래퍼 자체를 가운데 정렬 */
+            gap: 10px; /* 각 요소 간격 */
+        }
 
-    .custom-controls {
-      display: flex;
-      gap: 10px;
-    }
+        .custom-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center; /* 버튼 그룹 내부의 버튼들을 가운데 정렬 */
+        }
 
-    .custom-controls button,
-    #toggleAuto {
-      padding: 12px 25px;
-      font-size: 16px;
-      min-width: 120px;
-      cursor: pointer;
-    }
-  </style>
-  <link rel="manifest" href="/manifest.json">
-</head>
+        .custom-controls button,
+        #toggleAuto {
+            padding: 12px 25px;
+            font-size: 16px;
+            min-width: 120px;
+            cursor: pointer;
+        }
+    </style>
+    </head>
 <body>
-  <h2 id="trackTitle">🎵 Melony 랜덤 음악 플레이어</h2>
-  <audio id="player" playsinline>
-    <source id="source" src="" type="audio/mpeg">
-    브라우저가 오디오 태그를 지원하지 않습니다.
-  </audio>
+    <h2 id="trackTitle">🎵 Melony 랜덤 음악 플레이어</h2>
+    <audio id="player" playsinline>
+        <source id="source" src="" type="audio/mpeg">
+        브라우저가 오디오 태그를 지원하지 않습니다.
+    </audio>
 
-  <div class="controls-wrapper">
-    <div class="custom-controls">
-      <button id="playPauseButton">재생</button>
-      <button id="nextButton">다음 곡</button>
+    <div class="controls-wrapper">
+        <div class="custom-controls">
+            <button id="playPauseButton">재생</button>
+            <button id="nextButton">다음 곡</button>
+        </div>
+        <button id="toggleAuto">자동재생 OFF</button>
     </div>
-    <button id="toggleAuto">자동재생 OFF</button>
-  </div>
 
-  <script>
+    <script>
 const tracks = [
-  { file: "00C1. Sunday Letters M.mp3", title: "Sunday Letters" },
-  { file: "00C1. Sunday Letters_remake.mp3", title: "Sunday Letters (Remake_Ver)" },
-  { file: "00C10. If I Had Said It.mp3", title: "If I Had Said It" },
-  { file: "00C10. If I Had Said It_remake.mp3", title: "If I Had Said It (Remake_Ver)" },
-  { file: "00C12. Did You Know I Loved You-M.mp3", title: "Did You Know I Loved You" },
-  { file: "00C12. Did You Know I Loved You_remake.mp3", title: "Did You Know I Loved You (Remake_Ver)" },
-  { file: "00C13. Falling in Between - M.mp3", title: "Falling in Between" },
-  { file: "00C13. Falling in Between_remake.mp3", title: "Falling in Between (Remake_Ver)" },
-  { file: "00C14. The Way We Pause – M.mp3", title: "The Way We Pause" },
-  { file: "00C14. The Way We Pause_remake.mp3", title: "The Way We Pause (Remake_Ver)" },
-  { file: "00C15. Shared Mornings.mp3", title: "Shared Mornings" },
-  { file: "00C15. Shared Mornings_remake.mp3", title: "Shared Mornings (Remake_Ver)" },
-  { file: "00C16. We Never Said Goodbye– M.mp3", title: "We Never Said Goodbye" },
-  { file: "00C16. We Never Said Goodbye_remake.mp3", title: "We Never Said Goodbye (Remake_Ver)" },
-  { file: "00C17. Echoes Between Us-M.mp3", title: "Echoes Between Us" },
-  { file: "00C18. Close Enought.mp3", title: "Close Enought" },
-  { file: "00C18. Close Enought_remake.mp3", title: "Close Enought (Remake_Ver)" },
-  { file: "00C19. If I'm in Your Day.mp3", title: "If I'm in Your Day" },
-  { file: "00C19. If I'm in Your Day_remake.mp3", title: "If I'm in Your Day (Remake_Ver)" },
-  { file: "00C2. Told with Eyes M.mp3", title: "Told with Eyes" },
-  { file: "00C2. Told with Eyes _remake.mp3", title: "Told with Eyes (Remake_Ver)" },
-  { file: "00C20. Steps Between the Silence-M.mp3", title: "Steps Between the Silence" },
-  { file: "00C20. Steps Between the Silence_remake.mp3", title: "Steps Between the Silence (Remake_Ver)" },
-  { file: "00C3. Midnight Between Us-M.mp3", title: "Midnight Between Us" },
-  { file: "00C3. Midnight Between Us-M_remake.mp3", title: "Midnight Between Us (Remake_Ver)" },
-  { file: "00C4. Tilted Heartbeat-M.mp3", title: "Tilted Heartbeat" },
-  { file: "00C4. Tilted Heartbeat_remake.mp3", title: "Tilted Heartbeat (Remake_Ver)" },
-  { file: "00C5. Steps That MatchM.mp3", title: "Steps That Match" },
-  { file: "00C5. Steps That Match_remake.mp3", title: "Steps That Match (Remake_Ver)" },
-  { file: "00C6. Letters in the Rain-M.mp3", title: "Letters in the Rain" },
-  { file: "00C6. Letters in the Rain_remake.mp3", title: "Letters in the Rain (Remake_Ver)" },
-  { file: "00C7. Half a Step Behind-M.mp3", title: "Half a Step Behind" },
-  { file: "00C7. Half a Step Behind_remake.mp3", title: "Half a Step Behind (Remake_Ver)" },
-  { file: "00C8. Almost Something-M.mp3", title: "Almost Something" },
-  { file: "00C8. Almost Something_remake.mp3", title: "Almost Something (Remake_Ver)" }
-  ];
+    { file: "00C1. Sunday Letters M.mp3", title: "Sunday Letters" },
+    { file: "00C1. Sunday Letters_remake.mp3", title: "Sunday Letters (Remake_Ver)" },
+    { file: "00C10. If I Had Said It.mp3", title: "If I Had Said It" },
+    { file: "00C10. If I Had Said It_remake.mp3", title: "If I Had Said It (Remake_Ver)" },
+    { file: "00C11. If You Were Me-M.mp3", title: "If You Were Me" },
+    { file: "00C12. Did You Know I Loved You-M.mp3", title: "Did You Know I Loved You" },
+    { file: "00C12. Did You Know I Loved You_remake.mp3", title: "Did You Know I Loved You (Remake_Ver)" },
+    { file: "00C13. Falling in Between - M.mp3", title: "Falling in Between" },
+    { file: "00C13. Falling in Between_remake.mp3", title: "Falling in Between (Remake_Ver)" },
+    { file: "00C14. The Way We Pause – M.mp3", title: "The Way We Pause" },
+    { file: "00C14. The Way We Pause_remake.mp3", title: "The Way We Pause (Remake_Ver)" },
+    { file: "00C15. Shared Mornings.mp3", title: "Shared Mornings" },
+    { file: "00C15. Shared Mornings_remake.mp3", title: "Shared Mornings (Remake_Ver)" },
+    { file: "00C16. We Never Said Goodbye– M.mp3", title: "We Never Said Goodbye" },
+    { file: "00C16. We Never Said Goodbye_remake.mp3", title: "We Never Said Goodbye (Remake_Ver)" },
+    { file: "00C17. Echoes Between Us-M.mp3", title: "Echoes Between Us" },
+    { file: "00C18. Close Enought.mp3", title: "Close Enough" },
+    { file: "00C18. Close Enought_remake.mp3", title: "Close Enough (Remake_Ver)" },
+    { file: "00C19. If I'm in Your Day.mp3", title: "If I'm in Your Day" },
+    { file: "00C19. If I'm in Your Day_remake.mp3", title: "If I'm in Your Day (Remake_Ver)" },
+    { file: "00C2. Told with Eyes M.mp3", title: "Told with Eyes" },
+    { file: "00C2. Told with Eyes _remake.mp3", title: "Told with Eyes (Remake_Ver)" },
+    { file: "00C20. Steps Between the Silence-M.mp3", title: "Steps Between the Silence" },
+    { file: "00C20. Steps Between the Silence_remake.mp3", title: "Steps Between the Silence (Remake_Ver)" },
+    { file: "00C3. Midnight Between Us-M.mp3", title: "Midnight Between Us" },
+    { file: "00C3. Midnight Between Us-M_remake.mp3", title: "Midnight Between Us (Remake_Ver)" },
+    { file: "00C4. Tilted Heartbeat-M.mp3", title: "Tilted Heartbeat" },
+    { file: "00C4. Tilted Heartbeat_remake.mp3", title: "Tilted Heartbeat (Remake_Ver)" },
+    { file: "00C5. Steps That MatchM.mp3", title: "Steps That Match" },
+    { file: "00C5. Steps That Match_remake.mp3", title: "Steps That Match (Remake_Ver)" },
+    { file: "00C6. Letters in the Rain-M.mp3", title: "Letters in the Rain" },
+    { file: "00C6. Letters in the Rain_remake.mp3", title: "Letters in the Rain (Remake_Ver)" },
+    { file: "00C7. Half a Step Behind-M.mp3", title: "Half a Step Behind" },
+    { file: "00C7. Half a Step Behind_remake.mp3", title: "Half a Step Behind (Remake_Ver)" },
+    { file: "00C8. Almost Something-M.mp3", title: "Almost Something" },
+    { file: "00C8. Almost Something_remake.mp3", title: "Almost Something (Remake_Ver)" },
+    { file: "00C9. Quiet Like a Song-M.mp3", title: "Quiet Like a Song" },
+    { file: "00C9. Quiet Like a Song_remake.mp3", title: "Quiet Like a Song (Remake_Ver)" },
+    { file: "00D1-Only in My Mind.mp3", title: "Only in My Mind" },
+    { file: "00D1. Only in My Mind_remake.mp3", title: "Only in My Mind (Remake_Ver)" },
+    { file: "00D2-What If We Stayed.mp3", title: "What If We Stayed" },
+    { file: "00D2. What If We Stayed_remake.mp3", title: "What If We Stayed (Remake_Ver)" },
+    { file: "00D3-Every Time I Almost Spoke.mp3", title: "Every Time I Almost Spoke" },
+    { file: "00D3. Every Time I Almost Spoke_remake.mp3", title: "Every Time I Almost Spoke (Remake_Ver)" },
+    { file: "00D4-Wish I Said Your Name.mp3", title: "Wish I Said Your Name" },
+    { file: "00D4. Wish I Said Your Name_remake.mp3", title: "Wish I Said Your Name (Remake_Ver)" },
+    { file: "00D5-Lines I Never Crossed.mp3", title: "Lines I Never Crossed" },
+    { file: "00D5. Lines I Never Crossed_remake.mp3", title: "Lines I Never Crossed (Remake_Ver)" },
+    { file: "00D6-What You Didn’t Say.mp3", title: "What You Didn't Say" },
+    { file: "00D6. What You Didn’t Say_reamke.mp3", title: "What You Didn't Say (Remake_Ver)" },
+    { file: "00E1. Somewhere You Still Wait for Me_M.m4a", title: "Somewhere You Still Wait for Me" },
+    { file: "00E2. Before the Rain Forgets_M.m4a", title: "Before the Rain Forgets" },
+    { file: "00E3. The Rain Remembers My Name_M.m4a", title: "The Rain Remembers My Name" },
+    { file: "00E4. The Silence That Tasted Like Rain_M.m4a", title: "The Silence That Tasted Like Rain" },
+    { file: "00E5. When the Rain Forgot to Fall_M.m4a", title: "When the Rain Forgot to Fall" },
+    { file: "00E6. How We Fell Apart Without Falling Out_M.m4a", title: "How We Fell Apart Without Falling Out" },
+    { file: "00F1. Her Rules, Her Rhythm.m4a", title: "Her Rules, Her Rhythm" },
+    { file: "00F2. The Sway Between Her Heartbeats_M.m4a", title: "The Sway Between Her Heartbeats" },
+    { file: "00F3. Second Glance.m4a", title: "Second Glance" },
+    { file: "00F4. The Sky Remembers You Softly_M.m4a", title: "The Sky Remembers You Softly" },
+    { file: "00F5. Cigarette Waltz_M.m4a", title: "Cigarette Waltz" },
+    { file: "00F6. Rooms We Never Touched_M.m4a", title: "Rooms We Never Touched" }
+];
 
 let shuffledTracks = [];
 let currentIndex = 0;
@@ -103,90 +133,96 @@ const nextButton = document.getElementById("nextButton");
 const autoPlayToggle = document.getElementById("toggleAuto");
 
 function shuffleArray(array) {
-  const copy = array.slice();
-  for (let i = copy.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [copy[i], copy[j]] = [copy[j], copy[i]];
-  }
-  return copy;
+    const copy = array.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
 }
 
 function loadTrack(index) {
-  const track = shuffledTracks[index];
-  if (!track) return;
+    const track = shuffledTracks[index];
+    if (!track) return;
 
-  trackTitleDisplay.innerText = "🎵 " + track.title;
-  source.src = track.file;
-  player.load();
-  playPauseButton.innerText = player.paused ? "재생" : "일시정지";
+    trackTitleDisplay.innerText = "🎵 " + track.title;
+    source.src = track.file;
+    // M4A 파일 타입 명시 (선택 사항, 브라우저가 자동으로 인식하는 경우가 많음)
+    // if (track.file.endsWith('.m4a')) {
+    //     source.type = 'audio/mp4';
+    // } else {
+    //     source.type = 'audio/mpeg';
+    // }
+    player.load();
+    playPauseButton.innerText = player.paused ? "재생" : "일시정지";
 
-  if (autoPlay) {
-    player.play().catch(error => {
-      console.warn("Autoplay was prevented:", error);
-      playPauseButton.innerText = "재생";
-    });
-  }
+    if (autoPlay) {
+        player.play().catch(error => {
+            console.warn("Autoplay was prevented:", error);
+            playPauseButton.innerText = "재생"; // 자동 재생 실패 시 재생 버튼으로 표시
+        });
+    }
 }
 
 function playNextTrack() {
-  currentIndex++;
-  if (currentIndex >= shuffledTracks.length) {
-    shuffledTracks = shuffleArray(tracks);
-    currentIndex = 0;
-  }
-  loadTrack(currentIndex);
+    currentIndex++;
+    if (currentIndex >= shuffledTracks.length) {
+        shuffledTracks = shuffleArray(tracks); // 모든 곡 재생 후 다시 섞기
+        currentIndex = 0;
+    }
+    loadTrack(currentIndex);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  shuffledTracks = shuffleArray(tracks);
-  currentIndex = 0;
-  loadTrack(currentIndex);
+    shuffledTracks = shuffleArray(tracks); // 페이지 로드 시 한 번 섞기
+    currentIndex = 0;
+    loadTrack(currentIndex); // 첫 곡 로드
 });
 
-player.addEventListener("ended", playNextTrack);
+player.addEventListener("ended", playNextTrack); // 곡이 끝나면 다음 곡 재생
 
 playPauseButton.addEventListener("click", () => {
-  if (player.paused) {
-    player.play().catch(error => console.warn("Play attempt failed:", error));
-  } else {
-    player.pause();
-  }
+    if (player.paused) {
+        player.play().catch(error => console.warn("Play attempt failed:", error));
+    } else {
+        player.pause();
+    }
 });
 
-nextButton.addEventListener("click", playNextTrack);
+nextButton.addEventListener("click", playNextTrack); // 다음 곡 버튼 클릭 시
 
 autoPlayToggle.addEventListener("click", () => {
-  autoPlay = !autoPlay;
-  autoPlayToggle.innerText = autoPlay ? "자동재생 OFF" : "자동재생 ON";
-  if (autoPlay && player.paused) {
-    player.play().catch(error => console.warn("Autoplay toggle play prevented:", error));
-  }
+    autoPlay = !autoPlay;
+    autoPlayToggle.innerText = autoPlay ? "자동재생 OFF" : "자동재생 ON";
+    if (autoPlay && player.paused) {
+        player.play().catch(error => console.warn("Autoplay toggle play prevented:", error));
+    }
 });
 
 player.addEventListener("play", () => {
-  playPauseButton.innerText = "일시정지";
+    playPauseButton.innerText = "일시정지";
 });
 
 player.addEventListener("pause", () => {
-  playPauseButton.innerText = "재생";
+    playPauseButton.innerText = "재생";
 });
 
 player.addEventListener('error', (e) => {
-  let errorMessage = "오디오 재생 중 오류가 발생했습니다.";
-  if (e.target.error.code === 4) {
-    errorMessage = "오디오 파일을 찾을 수 없거나 브라우저가 지원하지 않는 형식입니다.";
-  }
-  trackTitleDisplay.innerText = "🚨 오류: " + errorMessage;
-  player.pause();
-  playPauseButton.innerText = "재생";
+    let errorMessage = "오디오 재생 중 오류가 발생했습니다.";
+    if (e.target.error.code === 4) {
+        errorMessage = "오디오 파일을 찾을 수 없거나 브라우저가 지원하지 않는 형식입니다.";
+    }
+    trackTitleDisplay.innerText = "🚨 오류: " + errorMessage;
+    player.pause();
+    playPauseButton.innerText = "재생";
+    console.error("Audio error:", e.target.error); // 개발자 도구에 더 상세한 에러 출력
 });
-  </script>
+    </script>
 <footer style="margin-top:40px;padding:15px;background:#f7f7f7;border-top:1px solid #ddd;font-size:0.9em;color:#555;text-align:center;line-height:1.5;">
-  ⓒ Melony. All rights reserved.<br>
-  🎵 본 페이지에서 재생되는 모든 음악의 저작권은 <strong>Melony</strong>에게 있으며,<br>
-  상업적 이용과 무단 복제를 금하며<br>
-  개인적인 감상 목적에 한해 자유롭게 이용하실 수 있습니다.
+    ⓒ Melony. All rights reserved.<br>
+    🎵 본 페이지에서 재생되는 모든 음악의 저작권은 <strong>Melony</strong>에게 있으며,<br>
+    상업적 이용과 무단 복제를 금하며<br>
+    개인적인 감상 목적에 한해 자유롭게 이용하실 수 있습니다.
 </footer>
 </body>
 </html>
-
