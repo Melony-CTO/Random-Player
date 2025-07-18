@@ -1,225 +1,1104 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>🎵 Melony 순차 음악 플레이어</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            text-align: center;
-            padding: 40px;
-        }
-        #trackTitle {
-            margin-bottom: 10px; /* 기존 하단 여백 */
-            font-size: 1.5em;
-            text-align: center; /* 텍스트 내용 가운데 정렬 */
-            margin: 0 auto 10px auto; /* 블록 요소 가운데 정렬 + 하단 여백 */
-            width: fit-content; /* 내용물 너비만큼만 차지하도록 설정 (margin auto를 위해 필요) */
-        }
-
-        .controls-wrapper {
-            margin-top: 20px;
-            display: flex;
-            flex-direction: column; /* 수직 배치 */
-            align-items: center; /* 컨트롤 래퍼 자체를 가운데 정렬 */
-            gap: 10px; /* 각 요소 간격 */
-        }
-
-        .custom-controls {
-            display: flex;
-            gap: 10px;
-            justify-content: center; /* 버튼 그룹 내부의 버튼들을 가운데 정렬 */
-        }
-
-        .custom-controls button,
-        #toggleAuto {
-            padding: 12px 25px;
-            font-size: 16px;
-            min-width: 120px;
-            cursor: pointer;
-        }
-    </style>
-    </head>
-<body>
-    <h2 id="trackTitle">🎵 Melony 순차 음악 플레이어</h2>
-    <audio id="player" playsinline>
-        <source id="source" src="" type="audio/mpeg">
-        브라우저가 오디오 태그를 지원하지 않습니다.
-    </audio>
-
-    <div class="controls-wrapper">
-        <div class="custom-controls">
-            <button id="playPauseButton">재생</button>
-            <button id="nextButton">다음 곡</button>
-        </div>
-        <button id="toggleAuto">자동재생 OFF</button>
-    </div>
-
-    <script>
-const tracks = [
-    { file: "00C1. Sunday Letters_remake.mp3", title: "Sunday Letters (Remake_Ver)" },
-    { file: "00C10. If I Had Said It.mp3", title: "If I Had Said It" },
-    { file: "00C10. If I Had Said It_remake.mp3", title: "If I Had Said It (Remake_Ver)" },
-    { file: "00C11. If You Were Me-M.mp3", title: "If You Were Me" },
-    { file: "00C12. Did You Know I Loved You-M.mp3", title: "Did You Know I Loved You" },
-    { file: "00C12. Did You Know I Loved You_remake.mp3", title: "Did You Know I Loved You (Remake_Ver)" },
-    { file: "00C13. Falling in Between - M.mp3", title: "Falling in Between" },
-    { file: "00C13. Falling in Between_remake.mp3", title: "Falling in Between (Remake_Ver)" },
-    { file: "00C14. The Way We Pause – M.mp3", title: "The Way We Pause" },
-    { file: "00C14. The Way We Pause_remake.mp3", title: "The Way We Pause (Remake_Ver)" },
-    { file: "00C15. Shared Mornings.mp3", title: "Shared Mornings" },
-    { file: "00C15. Shared Mornings_remake.mp3", title: "Shared Mornings (Remake_Ver)" },
-    { file: "00C16. We Never Said Goodbye– M.mp3", title: "We Never Said Goodbye" },
-    { file: "00C16. We Never Said Goodbye_remake.mp3", title: "We Never Said Goodbye (Remake_Ver)" },
-    { file: "00C17. Echoes Between Us-M.mp3", title: "Echoes Between Us" },
-    { file: "00C18. Close Enought.mp3", title: "Close Enough" },
-    { file: "00C18. Close Enought_remake.mp3", title: "Close Enough (Remake_Ver)" },
-    { file: "00C19. If I'm in Your Day.mp3", title: "If I'm in Your Day" },
-    { file: "00C19. If I'm in Your Day_remake.mp3", title: "If I'm in Your Day (Remake_Ver)" },
-    { file: "00C2. Told with Eyes M.mp3", title: "Told with Eyes" },
-    { file: "00C2. Told with Eyes _remake.mp3", title: "Told with Eyes (Remake_Ver)" },
-    { file: "00C20. Steps Between the Silence-M.mp3", title: "Steps Between the Silence" },
-    { file: "00C20. Steps Between the Silence_remake.mp3", title: "Steps Between the Silence (Remake_Ver)" },
-    { file: "00C3. Midnight Between Us-M.mp3", title: "Midnight Between Us" },
-    { file: "00C3. Midnight Between Us-M_remake.mp3", title: "Midnight Between Us (Remake_Ver)" },
-    { file: "00C4. Tilted Heartbeat-M.mp3", title: "Tilted Heartbeat" },
-    { file: "00C4. Tilted Heartbeat_remake.mp3", title: "Tilted Heartbeat (Remake_Ver)" },
-    { file: "00C5. Steps That MatchM.mp3", title: "Steps That Match" },
-    { file: "00C5. Steps That Match_remake.mp3", title: "Steps That Match (Remake_Ver)" },
-    { file: "00C6. Letters in the Rain-M.mp3", title: "Letters in the Rain" },
-    { file: "00C6. Letters in the Rain_remake.mp3", title: "Letters in the Rain (Remake_Ver)" },
-    { file: "00C7. Half a Step Behind-M.mp3", title: "Half a Step Behind" },
-    { file: "00C7. Half a Step Behind_remake.mp3", title: "Half a Step Behind (Remake_Ver)" },
-    { file: "00C8. Almost Something-M.mp3", title: "Almost Something" },
-    { file: "00C8. Almost Something_remake.mp3", title: "Almost Something (Remake_Ver)" },
-    { file: "00C9. Quiet Like a Song-M.mp3", title: "Quiet Like a Song" },
-    { file: "00C9. Quiet Like a Song_remake.mp3", title: "Quiet Like a Song (Remake_Ver)" },
-    { file: "00D1-Only in My Mind.mp3", title: "Only in My Mind" },
-    { file: "00D1. Only in My Mind_remake.mp3", title: "Only in My Mind (Remake_Ver)" },
-    { file: "00D2-What If We Stayed.mp3", title: "What If We Stayed" },
-    { file: "00D2. What If We Stayed_remake.mp3", title: "What If We Stayed (Remake_Ver)" },
-    { file: "00D3-Every Time I Almost Spoke.mp3", title: "Every Time I Almost Spoke" },
-    { file: "00D3. Every Time I Almost Spoke_remake.mp3", title: "Every Time I Almost Spoke (Remake_Ver)" },
-    { file: "00D4-Wish I Said Your Name.mp3", title: "Wish I Said Your Name" },
-    { file: "00D4. Wish I Said Your Name_remake.mp3", title: "Wish I Said Your Name (Remake_Ver)" },
-    { file: "00D5-Lines I Never Crossed.mp3", title: "Lines I Never Crossed" },
-    { file: "00D5. Lines I Never Crossed_remake.mp3", title: "Lines I Never Crossed (Remake_Ver)" },
-    { file: "00D6-What You Didn’t Say.mp3", title: "What You Didn't Say" },
-    { file: "00D6. What You Didn’t Say_reamke.mp3", title: "What You Didn't Say (Remake_Ver)" },
-    { file: "00E1. Somewhere You Still Wait for Me_M.m4a", title: "Somewhere You Still Wait for Me" },
-    { file: "00E2. Before the Rain Forgets_M.m4a", title: "Before the Rain Forgets" },
-    { file: "00E3. The Rain Remembers My Name_M.m4a", title: "The Rain Remembers My Name" },
-    { file: "00E4. The Silence That Tasted Like Rain_M.m4a", title: "The Silence That Tasted Like Rain" },
-    { file: "00E5. When the Rain Forgot to Fall_M.m4a", title: "When the Rain Forgot to Fall" },
-    { file: "00E6. How We Fell Apart Without Falling Out_M.m4a", title: "How We Fell Apart Without Falling Out" },
-    { file: "00F1. Her Rules, Her Rhythm.m4a", title: "Her Rules, Her Rhythm" },
-    { file: "00F2. The Sway Between Her Heartbeats_M.m4a", title: "The Sway Between Her Heartbeats" },
-    { file: "00F3. Second Glance.m4a", title: "Second Glance" },
-    { file: "00F4. The Sky Remembers You Softly_M.m4a", title: "The Sky Remembers You Softly" },
-    { file: "00F5. Cigarette Waltz_M.m4a", title: "Cigarette Waltz" },
-    { file: "00F6. Rooms We Never Touched_M.m4a", title: "Rooms We Never Touched" }
-];
-
-let currentIndex = 0; // 순차 재생이므로 섞인 배열 대신 원래 tracks 배열의 인덱스 사용
-let autoPlay = true;
-
-const player = document.getElementById("player");
-const source = document.getElementById("source");
-const trackTitleDisplay = document.getElementById("trackTitle");
-const playPauseButton = document.getElementById("playPauseButton");
-const nextButton = document.getElementById("nextButton");
-const autoPlayToggle = document.getElementById("toggleAuto");
-
-// --- 셔플 관련 함수 제거 ---
-// function shuffleArray(array) { ... }
-
-function loadTrack(index) {
-    // 순차 재생이므로 tracks 배열을 직접 사용
-    const track = tracks[index]; 
-    if (!track) {
-        // 모든 곡 재생이 끝난 경우 (loop)
-        currentIndex = 0; // 처음부터 다시 시작
-        loadTrack(currentIndex);
-        return;
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Melony Random Player</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: #f4effb;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
     }
 
-    trackTitleDisplay.innerText = "🎵 " + track.title;
-    source.src = track.file;
-    // M4A 파일 타입 명시 (선택 사항, 브라우저가 자동으로 인식하는 경우가 많음)
-    // if (track.file.endsWith('.m4a')) {
-    //     source.type = 'audio/mp4';
-    // } else {
-    //     source.type = 'audio/mpeg';
-    // }
-    player.load();
-    playPauseButton.innerText = player.paused ? "재생" : "일시정지";
+    .container {
+      width: 100%;
+      max-width: 400px;
+      background-color: #f4effb;
+      padding: 15px 10px;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      justify-content: flex-start;
+      gap: 20px;
+    }
 
-    if (autoPlay) {
-        player.play().catch(error => {
-            console.warn("Autoplay was prevented:", error);
-            playPauseButton.innerText = "재생"; // 자동 재생 실패 시 재생 버튼으로 표시
+    .player-header {
+      width: 100%;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .player-title {
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.95);
+      color: #666;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-size: 16px;
+      font-weight: 500;
+      backdrop-filter: blur(5px);
+      border: 1px solid rgba(0,0,0,0.1);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    .thumbnail-container {
+      position: relative;
+      width: 65%;
+      aspect-ratio: 1 / 1;
+    }
+
+    .thumbnail {
+      width: 100%;
+      height: 100%;
+      border-radius: 20px;
+      background-size: 100%;
+      background-position: center;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      transition: background-size 0.3s ease;
+      overflow: hidden;
+      position: relative;
+      background-repeat: no-repeat;
+    }
+
+ 
+   
+    .song-info {
+      text-align: center;
+      margin: 0;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .progress-container {
+      width: 90%;
+      margin: 0;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      border-radius: 5px;
+      background: #e0e0e0;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(to right, #9b83f1, #5c6de0);
+      border-radius: 5px;
+      width: 0%;
+      transition: width 0.1s ease;
+    }
+
+    .time-display {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: #666;
+      margin-top: 8px;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0;
+      gap: 30px;
+    }
+
+    .control-button {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+      color: #5c6de0;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: none;
+    }
+
+    .control-button:hover {
+      background: rgba(255, 255, 255, 1);
+      transform: scale(1.1);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+    }
+
+    .control-button:active {
+      transform: scale(0.95);
+    }
+
+    .play-button {
+      width: 70px;
+      height: 70px;
+      font-size: 28px;
+      background: linear-gradient(135deg, #9b83f1, #5c6de0);
+      color: white;
+    }
+
+    .play-button:hover {
+      background: linear-gradient(135deg, #8a72e0, #4a5bc7);
+    }
+
+    .category-switch {
+      display: flex;
+      justify-content: space-around;
+      width: 90%;
+      margin: 0;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 20px;
+      padding: 5px;
+    }
+
+    .category {
+      flex: 1;
+      text-align: center;
+      padding: 12px 0;
+      font-weight: bold;
+      font-size: 16px;
+      color: #444;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border-radius: 15px;
+    }
+
+    .category.active {
+      background: rgba(92, 109, 224, 0.15);
+      color: #5c6de0;
+    }
+
+    .bg-sound-section {
+      width: 90%;
+      margin: 0;
+    }
+
+    .bg-sound-slider {
+      width: 100%;
+      margin: 10px 0;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .bg-sound-slider input {
+      flex: 1;
+      height: 6px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      outline: none;
+      -webkit-appearance: none;
+    }
+
+    .bg-sound-slider input::-webkit-slider-thumb {
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      background: #5c6de0;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .bg-sound-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 0;
+    }
+
+    .bg-button {
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 15px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 14px 8px;
+      color: #333;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      border: 2px solid transparent;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .bg-button:hover {
+      background: rgba(255, 255, 255, 1);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .bg-button.active {
+      background: rgba(92, 109, 224, 0.9);
+      border-color: #5c6de0;
+      color: white;
+      font-weight: bold;
+      box-shadow: 0 4px 15px rgba(92, 109, 224, 0.3);
+    }
+
+    footer {
+      font-size: 11px;
+      color: #999;
+      margin: 0;
+      text-align: center;
+    }
+
+    .volume-display {
+      font-size: 14px;
+      color: #666;
+      min-width: 40px;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .shuffle-button {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(92, 109, 224, 0.5);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 18px;
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .shuffle-button:hover {
+      background: rgba(92, 109, 224, 1);
+      transform: scale(1.1);
+    }
+
+    .volume-icon {
+      font-size: 18px;
+      color: #5c6de0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="shuffle-button" id="shuffleButton" onclick="toggleShuffle()">🔀</div>
+    
+    <div class="player-header">
+      <div class="player-title">Melony Pop Player</div>
+    </div>
+    
+    <div class="thumbnail-container">
+      <div class="thumbnail" id="thumbnail"></div>
+    </div>
+    
+    <div class="song-info">
+      <div class="title" id="title">Loading...</div>
+    </div>
+    
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <div class="time-display">
+        <span id="currentTime">0:00</span>
+        <span id="duration">0:00</span>
+      </div>
+    </div>
+    
+    <div class="controls">
+      <button class="control-button" onclick="previousTrack()">⏮</button>
+      <button class="control-button play-button" id="playButton" onclick="togglePlay()">▶</button>
+      <button class="control-button" onclick="nextTrack()">⏭</button>
+    </div>
+    
+    <div class="category-switch">
+      <div class="category active" onclick="switchCategory('POP')">POP</div>
+      <div class="category" onclick="switchCategory('Coming Soon...l')">Coming Soon...</div>
+    </div>
+    
+    <div class="bg-sound-section">
+      <div class="bg-sound-slider">
+        <span class="volume-icon">🔊</span>
+        <input type="range" min="0" max="100" value="50" id="bgVolumeSlider" oninput="adjustBgVolume(this.value)">
+        <div class="volume-display" id="volumeDisplay">50%</div>
+      </div>
+      <div class="bg-sound-grid">
+        <div class="bg-button" onclick="toggleBgSound('rain')">Rain</div>
+        <div class="bg-button" onclick="toggleBgSound('Bird')">Bird</div>
+        <div class="bg-button" onclick="toggleBgSound('Forest')">Forest</div>
+        <div class="bg-button" onclick="toggleBgSound('Crickets')">Crickets</div>
+        <div class="bg-button" onclick="toggleBgSound('Amazon')">Amazon</div>
+        <div class="bg-button" onclick="toggleBgSound('Ocean')">Ocean</div>
+        <div class="bg-button" onclick="toggleBgSound('Crackle')">Crackle</div>
+        <div class="bg-button" onclick="toggleBgSound('Mixed')">Mixed</div>
+      </div>
+    </div>
+    
+    <footer>© Melony. All rights reserved.</br>
+ Special thanks to Hyundeok, whose inspiration made this possible.</footer>
+    
+    <!-- 오디오 요소들 -->
+    <audio id="player" preload="auto" autoplay>
+      Your browser does not support the audio element.
+    </audio>
+    
+    <!-- 효과음 오디오 요소들 -->
+    <audio id="effect-rain" src="effect_Rain_Free.m4a" loop preload="metadata"></audio>
+    <audio id="effect-Bird" src="effect_Bird.m4a" loop preload="metadata"></audio>
+    <audio id="effect-Forest" src="effect_Forest Water_Free.m4a" loop preload="metadata"></audio>
+    <audio id="effect-Ocean" src="effect_Ocean.m4a" loop preload="metadata"></audio>
+    <audio id="effect-Crackle" src="effect_Crackle.m4a" loop preload="metadata"></audio>
+    <audio id="effect-Mixed" src="effect_totalMixed.m4a" loop preload="metadata"></audio>
+    <audio id="effect-Amazon" src="effect_Amazonia Jungle_Free.m4a" loop preload="metadata"></audio>
+    <audio id="effect-Crickets" src="effect_Crickets.m4a" loop preload="metadata"></audio>
+  </div>
+
+  <script>
+    console.log('🎵 스크립트 시작!');
+// 제목 정제 함수 정의
+function cleanTitle(rawTitle) {
+  return rawTitle
+    .replace(/^[0-9A-Z]+\.\s*/i, '')       // 앞 넘버링 제거
+    .replace(/[_-]M(?![a-zA-Z])/gi, '')    // _M 또는 -M 제거 (뒤에 영어 없으면)
+    .replace(/\s*\([^)]*\)\s*$/, '')       // 괄호로 끝나는 장르정보 제거
+    .trim();
+}
+
+    // 가장 기본적인 테스트 트랙
+    const tracks = [
+  {
+    "title": "00F3. Second Glance",
+    "audio": "00F3. Second Glance.m4a",
+    "cover": "00F3. Second Glance.jpeg"
+  },
+  {
+    "title": "00F4. The Sky Remembers You Softly_M",
+    "audio": "00F4. The Sky Remembers You Softly_M.m4a",
+    "cover": "00F4. The Sky Remembers You Softly_M.jpeg"
+  },
+  {
+    "title": "00F5. Cigarette Waltz_M",
+    "audio": "00F5. Cigarette Waltz_M.m4a",
+    "cover": "00F5. Cigarette Waltz_M.jpeg"
+  },
+  {
+    "title": "00F6. Rooms We Never Touched_M",
+    "audio": "00F6. Rooms We Never Touched_M.m4a",
+    "cover": "00F6. Rooms We Never Touched_M.jpeg"
+  },
+  {
+    "title": "After the Words Fell Silent(jpop,6th,duet)_M",
+    "audio": "After the Words Fell Silent(jpop,6th,duet)_M.m4a",
+    "cover": "After the Words Fell Silent(jpop,6th,duet)_M.jpeg"
+  },
+  {
+    "title": "Fading Lights in a Silent Room(chill, lofi)_M",
+    "audio": "Fading Lights in a Silent Room(chill, lofi)_M.m4a",
+    "cover": "Fading Lights in a Silent Room(chill, lofi)_M.jpeg"
+  },
+  {
+    "title": "I wrote your name in corners ",
+    "audio": "I wrote your name in corners.m4a",
+    "cover": "I wrote your name in corners.jpeg"
+  },
+  {
+    "title": "I wrote your name in corners_Remaster Ver",
+    "audio": "I wrote your name in corners_Remaster Ver.m4a",
+    "cover": "I wrote your name in corners_Remaster Ver.jpeg"
+  },
+  {
+    "title": "No One Notices the Falling Leaves",
+    "audio": "No One Notices the Falling Leaves.m4a",
+    "cover": "No One Notices the Falling Leaves.jpeg"
+  },
+  {
+    "title": "No One Notices When I Disappear",
+    "audio": "No One Notices When I Disappear.m4a",
+    "cover": "No One Notices When I Disappear.jpeg"
+  },
+  {
+    "title": "She Walks Where the Silence Lives",
+    "audio": "She Walks Where the Silence Lives.m4a",
+    "cover": "She Walks Where the Silence Lives.jpeg"
+  },
+  {
+    "title": "Someday I’ll Catch the Wind That Keeps Escaping Me(redhot)_M",
+    "audio": "Someday I’ll Catch the Wind That Keeps Escaping Me(redhot)_M.m4a",
+    "cover": "Someday I’ll Catch the Wind That Keeps Escaping Me(redhot)_M.jpeg"
+  },
+  {
+    "title": "We Didn’t Say Goodbye, We Just Left(chill, lofi)_M",
+    "audio": "We Didn’t Say Goodbye, We Just Left(chill, lofi)_M.m4a",
+    "cover": "We Didn’t Say Goodbye, We Just Left(chill, lofi)_M.jpeg"
+  },
+  {
+    "title": "Where the Moments Almost Stayed(jpop,6th)_M",
+    "audio": "Where the Moments Almost Stayed(jpop,6th)_M.m4a",
+    "cover": "Where the Moments Almost Stayed(jpop,6th)_M.jpeg"
+  },
+  {
+    "title": "Where the Night Carries Your Name",
+    "audio": "Where the Night Carries Your Name.m4a",
+    "cover": "Where the Night Carries Your Name.jpeg"
+  },
+  {
+    "title": "Whispers Along the Coastline",
+    "audio": "Whispers Along the Coastline.m4a",
+    "cover": "Whispers Along the Coastline.jpeg"
+  },
+  {
+    "title": "00C1. Sunday LettersM",
+    "audio": "00C1. Sunday LettersM.m4a",
+    "cover": "00C1. Sunday LettersM.jpeg"
+  },
+  {
+    "title": "00C2. Told with Eyes _remake",
+    "audio": "00C2. Told with Eyes _remake.mp3",
+    "cover": "00C2. Told with Eyes _remake.jpeg"
+  },
+  {
+    "title": "00C4. Tilted Heartbeat_remake",
+    "audio": "00C4. Tilted Heartbeat_remake.mp3",
+    "cover": "00C4. Tilted Heartbeat_remake.jpeg"
+  },
+  {
+    "title": "00C5. Steps That Match_remake",
+    "audio": "00C5. Steps That Match_remake.mp3",
+    "cover": "00C5. Steps That Match_remake.jpeg"
+  },
+  {
+    "title": "00C5. Steps That Match-M",
+    "audio": "00C5. Steps That Match-M.m4a",
+    "cover": "00C5. Steps That Match-M.jpeg"
+  },
+  {
+    "title": "00C6. Letters in the Rain_remake",
+    "audio": "00C6. Letters in the Rain_remake.mp3",
+    "cover": "00C6. Letters in the Rain_remake.jpeg"
+  },
+  {
+    "title": "00C6. Letters in the Rain-M",
+    "audio": "00C6. Letters in the Rain-M.m4a",
+    "cover": "00C6. Letters in the Rain-M.jpeg"
+  },
+  {
+    "title": "00C7. Half a Step Behind_remake",
+    "audio": "00C7. Half a Step Behind_remake.mp3",
+    "cover": "00C7. Half a Step Behind_remake.jpeg"
+  },
+  {
+    "title": "00C7. Half a Step Behind-M",
+    "audio": "00C7. Half a Step Behind-M.m4a",
+    "cover": "00C7. Half a Step Behind-M.jpeg"
+  },
+  {
+    "title": "00C8. Almost Something_remake",
+    "audio": "00C8. Almost Something_remake.mp3",
+    "cover": "00C8. Almost Something_remake.jpeg"
+  },
+  {
+    "title": "00C9. Quiet Like a Song_remake",
+    "audio": "00C9. Quiet Like a Song_remake.mp3",
+    "cover": "00C9. Quiet Like a Song_remake.jpeg"
+  },
+  {
+    "title": "00C9. Quiet Like a Song-M",
+    "audio": "00C9. Quiet Like a Song-M.m4a",
+    "cover": "00C9. Quiet Like a Song-M.jpeg"
+  },
+  {
+    "title": "00C10. If I Had Said it",
+    "audio": "00C10. If I Had Said it.m4a",
+    "cover": "00C10. If I Had Said it.jpeg"
+  },
+  {
+    "title": "00C10. If I Had Said it_remake",
+    "audio": "00C10. If I Had Said it_remake.mp3",
+    "cover": "00C10. If I Had Said it_remake.jpeg"
+  },
+  {
+    "title": "00C11. If You Were Me-M",
+    "audio": "00C11. If You Were Me-M.m4a",
+    "cover": "00C11. If You Were Me-M.jpeg"
+  },
+  {
+    "title": "00C12. Did You Know I Loved You_remake",
+    "audio": "00C12. Did You Know I Loved You_remake.mp3",
+    "cover": "00C12. Did You Know I Loved You_remake.jpeg"
+  },
+  {
+    "title": "00C12. Did You Know I Loved You-M",
+    "audio": "00C12. Did You Know I Loved You-M.m4a",
+    "cover": "00C12. Did You Know I Loved You-M.jpeg"
+  },
+  {
+    "title": "00C13. Falling in Between - M",
+    "audio": "00C13. Falling in Between - M.m4a",
+    "cover": "00C13. Falling in Between - M.jpeg"
+  },
+  {
+    "title": "00C13. Falling in Between_remake",
+    "audio": "00C13. Falling in Between_remake.mp3",
+    "cover": "00C13. Falling in Between_remake.jpeg"
+  },
+  {
+    "title": "00C14. The Way We Pause – M",
+    "audio": "00C14. The Way We Pause – M.m4a",
+    "cover": "00C14. The Way We Pause – M.jpeg"
+  },
+  {
+    "title": "00C14. The Way We Pause_remake",
+    "audio": "00C14. The Way We Pause_remake.mp3",
+    "cover": "00C14. The Way We Pause_remake.jpeg"
+  },
+  {
+    "title": "00C15. Shared Mornings",
+    "audio": "00C15. Shared Mornings.m4a",
+    "cover": "00C15. Shared Mornings.jpeg"
+  },
+  {
+    "title": "00C15. Shared Mornings_remake",
+    "audio": "00C15. Shared Mornings_remake.mp3",
+    "cover": "00C15. Shared Mornings_remake.jpeg"
+  },
+  {
+    "title": "00C16. We Never Said Goodbye– M",
+    "audio": "00C16. We Never Said Goodbye– M.m4a",
+    "cover": "00C16. We Never Said Goodbye– M.jpeg"
+  },
+  {
+    "title": "00C16. We Never Said Goodbye_remake",
+    "audio": "00C16. We Never Said Goodbye_remake.mp3",
+    "cover": "00C16. We Never Said Goodbye_remake.jpeg"
+  },
+  {
+    "title": "00C17. Echoes Between Us-M",
+    "audio": "00C17. Echoes Between Us-M.m4a",
+    "cover": "00C17. Echoes Between Us-M.jpeg"
+  },
+  {
+    "title": "00C18. Close Enought",
+    "audio": "00C18. Close Enought.m4a",
+    "cover": "00C18. Close Enought.jpeg"
+  },
+  {
+    "title": "00C18. Close Enought_remake",
+    "audio": "00C18. Close Enought_remake.mp3",
+    "cover": "00C18. Close Enought_remake.jpeg"
+  },
+  {
+    "title": "00C19. If I'm in Your Day",
+    "audio": "00C19. If I'm in Your Day.m4a",
+    "cover": "00C19. If I'm in Your Day.jpeg"
+  },
+  {
+    "title": "00C19. If I'm in Your Day_remake",
+    "audio": "00C19. If I'm in Your Day_remake.mp3",
+    "cover": "00C19. If I'm in Your Day_remake.jpeg"
+  },
+  {
+    "title": "00C20. Steps Between the Silence_remake",
+    "audio": "00C20. Steps Between the Silence_remake.mp3",
+    "cover": "00C20. Steps Between the Silence_remake.jpeg"
+  },
+  {
+    "title": "00C20. Steps Between the Silence-M",
+    "audio": "00C20. Steps Between the Silence-M.m4a",
+    "cover": "00C20. Steps Between the Silence-M.jpeg"
+  },
+  {
+    "title": "00D1. Only in My Mind_M",
+    "audio": "00D1. Only in My Mind_M.m4a",
+    "cover": "00D1. Only in My Mind_M.jpeg"
+  },
+  {
+    "title": "00D1. Only in My Mind_remake",
+    "audio": "00D1. Only in My Mind_remake.mp3",
+    "cover": "00D1. Only in My Mind_remake.jpeg"
+  },
+  {
+    "title": "00D2. What If We Stayed_remake",
+    "audio": "00D2. What If We Stayed_remake.mp3",
+    "cover": "00D2. What If We Stayed_remake.jpeg"
+  },
+  {
+    "title": "00D3. Every Time I Almost Spoke_M",
+    "audio": "00D3. Every Time I Almost Spoke_M.m4a",
+    "cover": "00D3. Every Time I Almost Spoke_M.jpeg"
+  },
+  {
+    "title": "00D3. Every Time I Almost Spoke_remake",
+    "audio": "00D3. Every Time I Almost Spoke_remake.mp3",
+    "cover": "00D3. Every Time I Almost Spoke_remake.jpeg"
+  },
+  {
+    "title": "00D4. Wish I Said Your Name_M",
+    "audio": "00D4. Wish I Said Your Name_M.m4a",
+    "cover": "00D4. Wish I Said Your Name_M.jpeg"
+  },
+  {
+    "title": "00D4. Wish I Said Your Name_remake",
+    "audio": "00D4. Wish I Said Your Name_remake.mp3",
+    "cover": "00D4. Wish I Said Your Name_remake.jpeg"
+  },
+  {
+    "title": "00D5. Lines I Never Crossed_M",
+    "audio": "00D5. Lines I Never Crossed_M.m4a",
+    "cover": "00D5. Lines I Never Crossed_M.jpeg"
+  },
+  {
+    "title": "00D5. Lines I Never Crossed_remake",
+    "audio": "00D5. Lines I Never Crossed_remake.mp3",
+    "cover": "00D5. Lines I Never Crossed_remake.jpeg"
+  },
+  {
+    "title": "00D6. What You Didn’t Say_M",
+    "audio": "00D6. What You Didn’t Say_M.m4a",
+    "cover": "00D6. What You Didn’t Say_M.jpeg"
+  },
+  {
+    "title": "00D6. What You Didn’t Say_remake",
+    "audio": "00D6. What You Didn’t Say_remake.mp3",
+    "cover": "00D6. What You Didn’t Say_remake.jpeg"
+  },
+  {
+    "title": "00E1. Somewhere You Still Wait for Me_M",
+    "audio": "00E1. Somewhere You Still Wait for Me_M.m4a",
+    "cover": "00E1. Somewhere You Still Wait for Me_M.jpeg"
+  },
+  {
+    "title": "00E2. Before the Rain Forgets_M",
+    "audio": "00E2. Before the Rain Forgets_M.m4a",
+    "cover": "00E2. Before the Rain Forgets_M.jpeg"
+  },
+  {
+    "title": "00E3. The Rain Remembers My Name_M",
+    "audio": "00E3. The Rain Remembers My Name_M.m4a",
+    "cover": "00E3. The Rain Remembers My Name_M.jpeg"
+  },
+  {
+    "title": "00E4. The Silence That Tasted Like Rain_M",
+    "audio": "00E4. The Silence That Tasted Like Rain_M.m4a",
+    "cover": "00E4. The Silence That Tasted Like Rain_M.jpeg"
+  },
+  {
+    "title": "00E5. When the Rain Forgot to Fall_M",
+    "audio": "00E5. When the Rain Forgot to Fall_M.m4a",
+    "cover": "00E5. When the Rain Forgot to Fall_M.jpeg"
+  },
+  {
+    "title": "00E6. How We Fell Apart Without Falling Out_M",
+    "audio": "00E6. How We Fell Apart Without Falling Out_M.m4a",
+    "cover": "00E6. How We Fell Apart Without Falling Out_M.jpeg"
+  },
+  {
+    "title": "00F1. Her Rules, Her Rhythm",
+    "audio": "00F1. Her Rules, Her Rhythm.m4a",
+    "cover": "00F1. Her Rules, Her Rhythm.jpeg"
+  },
+  {
+    "title": "00F2. The Sway Between Her Heartbeats_M",
+    "audio": "00F2. The Sway Between Her Heartbeats_M.m4a",
+    "cover": "00F2. The Sway Between Her Heartbeats_M.jpeg"
+  }
+];
+    
+    console.log('트랙 배열 생성 완료:', tracks);
+    
+    // DOM 요소 확인
+    console.log('DOM 요소 확인 중...');
+    const audio = document.getElementById('player');
+    const playButton = document.getElementById('playButton');
+    const title = document.getElementById('title');
+    const thumbnail = document.getElementById('thumbnail');
+    
+    console.log('audio 요소:', audio);
+    console.log('playButton 요소:', playButton);
+    console.log('title 요소:', title);
+    console.log('thumbnail 요소:', thumbnail);
+    
+    // 전역 변수
+    let isPlaying = false;
+let isShuffle = true;
+
+function shuffleArray(array) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+    let currentTrackIndex = 0;
+    let currentBgSound = null;
+    let shuffledTracks = [...tracks];
+    let bgVolume = 0.3;
+    function fadeIn(audioElement, duration = 1000) {
+      return new Promise((resolve) => {
+        audioElement.volume = 0;
+        audioElement.play();
+        
+        const fadeStep = 0.05;
+        const fadeInterval = duration / (bgVolume / fadeStep);
+        
+        const fade = setInterval(() => {
+          if (audioElement.volume < bgVolume) {
+            audioElement.volume = Math.min(audioElement.volume + fadeStep, bgVolume);
+          } else {
+            clearInterval(fade);
+            resolve();
+          }
+        }, fadeInterval);
+      });
+    }
+    
+    function fadeOut(audioElement, duration = 1000) {
+      return new Promise((resolve) => {
+        const startVolume = audioElement.volume;
+        const fadeStep = 0.1;
+        const fadeInterval = duration / (startVolume / fadeStep);
+        
+        const fade = setInterval(() => {
+          if (audioElement.volume > 0) {
+            audioElement.volume = Math.max(audioElement.volume - fadeStep, 0);
+          } else {
+            clearInterval(fade);
+            audioElement.pause();
+            audioElement.currentTime = 0;
+            resolve();
+          }
+        }, fadeInterval);
+      });
+    }
+    
+    // 가장 간단한 초기화
+    function initializePlayer() {
+      console.log('=== 초기화 시작 ===');
+      
+      if (!tracks || tracks.length === 0) {
+        console.error('❌ 트랙이 없음!');
+        title.textContent = 'No Tracks';
+        return;
+      }
+      
+      console.log('✅ 트랙 수:', tracks.length);
+      
+      // 첫 번째 트랙 로드
+      const track = shuffledTracks[0];
+      console.log('첫 번째 트랙:', track);
+      
+      if (!track) {
+        console.error('❌ 첫 번째 트랙이 없음!');
+        title.textContent = 'Track Error';
+        return;
+      }
+      
+      // UI 업데이트
+   title.textContent = cleanTitle(track.title);
+      audio.src = track.audio;
+      thumbnail.style.backgroundImage = `url('${track.cover}')`;
+      
+      console.log('✅ 초기화 완료');
+      console.log('오디오 소스:', audio.src);
+
+    }
+    
+    // 가장 간단한 재생 함수
+    function togglePlay() {
+      console.log('=== 재생 버튼 클릭 ===');
+      console.log('현재 isPlaying:', isPlaying);
+      console.log('오디오 소스:', audio.src);
+      
+      if (!audio.src) {
+        console.error('❌ 오디오 소스가 없음!');
+        alert('오디오 소스가 설정되지 않았습니다.');
+        return;
+      }
+      
+      if (isPlaying) {
+        console.log('일시정지 시도...');
+        audio.pause();
+        playButton.textContent = '▶';
+        isPlaying = false;
+        
+        // 커버 이미지 줌인 애니메이션 정지
+        thumbnail.classList.remove('playing');
+        thumbnail.style.backgroundSize = '100%'; // 줌인 리셋
+        
+        console.log('✅ 일시정지 완료');
+      } else {
+        console.log('재생 시도...');
+        audio.volume = 0.8;
+        audio.muted = false;
+        
+        audio.play()
+          .then(() => {
+            console.log('✅ 재생 성공!');
+            playButton.textContent = '⏸';
+            isPlaying = true;
+            
+            // 커버 이미지 줌인 애니메이션 시작
+            thumbnail.classList.add('playing');
+          })
+          .catch(error => {
+            console.error('❌ 재생 실패:', error);
+            console.error('에러 상세:', error.name, error.message);
+            alert('재생 실패: ' + error.message + '\n파일이 존재하는지 확인하세요.');
+          });
+      }
+    }
+    
+    // 간단한 효과음 테스트 (페이드인/아웃 적용)
+    function toggleBgSound(soundType) {
+      console.log('=== 효과음 테스트 ===');
+      console.log('효과음 타입:', soundType);
+      
+      const effectAudio = document.getElementById('effect-' + soundType);
+      console.log('효과음 요소:', effectAudio);
+      
+      if (!effectAudio) {
+        console.error('❌ 효과음 요소를 찾을 수 없음:', 'effect-' + soundType);
+        return;
+      }
+      
+      console.log('효과음 소스:', effectAudio.src);
+      
+      // 현재 재생 중인 효과음이 있으면 페이드아웃
+      if (currentBgSound) {
+        const currentAudio = document.getElementById('effect-' + currentBgSound);
+        if (currentAudio && !currentAudio.paused) {
+          console.log('기존 효과음 페이드아웃 중...');
+          fadeOut(currentAudio, 500); // 0.5초 페이드아웃
+        }
+        
+        // 모든 버튼 비활성화
+        document.querySelectorAll('.bg-button').forEach(btn => {
+          btn.classList.remove('active');
+        });
+      }
+      
+      // 같은 효과음이면 정지
+      if (currentBgSound === soundType) {
+        console.log('효과음 정지...');
+        currentBgSound = null;
+        return;
+      }
+      
+      // 새 효과음 페이드인으로 재생
+      console.log('효과음 페이드인 재생 시도...');
+      
+      fadeIn(effectAudio, 800) // 0.8초 페이드인
+        .then(() => {
+          console.log('✅ 효과음 페이드인 재생 성공!');
+          currentBgSound = soundType;
+          
+          // 클릭된 버튼 활성화
+          const clickedButton = document.querySelector(`[onclick="toggleBgSound('${soundType}')"]`);
+          if (clickedButton) {
+            clickedButton.classList.add('active');
+          }
+        })
+        .catch(error => {
+          console.error('❌ 효과음 재생 실패:', error);
+          alert('효과음 재생 실패: ' + error.message);
         });
     }
-}
-
-function playNextTrack() {
-    currentIndex++;
-    if (currentIndex >= tracks.length) { // tracks 배열의 끝에 도달했는지 확인
-        currentIndex = 0; // 처음부터 다시 시작
+    
+    // 기본 함수들
+    function previousTrack() {
+      console.log('=== 이전 트랙 ===');
+      let newIndex = currentTrackIndex - 1;
+      if (newIndex < 0) {
+        newIndex = shuffledTracks.length - 1;
+      }
+      console.log('이전 트랙 인덱스:', newIndex);
+      loadTrack(newIndex);
     }
-    loadTrack(currentIndex);
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-    // 셔플 로직 제거, 바로 첫 곡 로드
-    currentIndex = 0;
-    loadTrack(currentIndex); 
-});
-
-player.addEventListener("ended", playNextTrack); // 곡이 끝나면 다음 곡 재생
-
-playPauseButton.addEventListener("click", () => {
-    if (player.paused) {
-        player.play().catch(error => console.warn("Play attempt failed:", error));
-    } else {
-        player.pause();
+    
+    function nextTrack() {
+      console.log('=== 다음 트랙 ===');
+      let newIndex = currentTrackIndex + 1;
+      if (newIndex >= shuffledTracks.length) {
+        newIndex = 0;
+      }
+      console.log('다음 트랙 인덱스:', newIndex);
+      loadTrack(newIndex);
     }
-});
-
-nextButton.addEventListener("click", playNextTrack); // 다음 곡 버튼 클릭 시
-
-autoPlayToggle.addEventListener("click", () => {
-    autoPlay = !autoPlay;
-    autoPlayToggle.innerText = autoPlay ? "자동재생 OFF" : "자동재생 ON";
-    if (autoPlay && player.paused) {
-        player.play().catch(error => console.warn("Autoplay toggle play prevented:", error));
+    
+    function loadTrack(index) {
+      console.log('=== 트랙 로드 ===');
+      console.log('로드할 인덱스:', index);
+      
+      if (index < 0 || index >= shuffledTracks.length) {
+        console.error('❌ 잘못된 인덱스');
+        return;
+      }
+      
+      const track = shuffledTracks[index];
+      console.log('로드할 트랙:', track);
+      
+      // 오디오 설정
+      audio.src = track.audio;
+      audio.volume = 0.8;
+      audio.muted = false;
+      
+      // UI 업데이트
+  title.textContent = cleanTitle(track.title);
+      thumbnail.style.backgroundImage = `url('${track.cover}')`;
+      thumbnail.style.backgroundSize = '100%'; // 새 트랙 로드 시 줌인 리셋
+      
+      // 썸네일 줌인 애니메이션 시작
+      if (isPlaying) {
+        thumbnail.classList.add('playing');
+      } else {
+        thumbnail.classList.remove('playing');
+      }
+      
+      currentTrackIndex = index;
+      console.log('✅ 트랙 로드 완료');
+      
+      // 재생 중이었다면 새 트랙도 재생
+      if (isPlaying) {
+        setTimeout(() => {
+          audio.play().catch(error => {
+            console.error('새 트랙 재생 실패:', error);
+          });
+        }, 100);
+      }
     }
-});
-
-player.addEventListener("play", () => {
-    playPauseButton.innerText = "일시정지";
-});
-
-player.addEventListener("pause", () => {
-    playPauseButton.innerText = "재생";
-});
-
-player.addEventListener('error', (e) => {
-    let errorMessage = "오디오 재생 중 오류가 발생했습니다.";
-    if (e.target.error.code === 4) {
-        errorMessage = "오디오 파일을 찾을 수 없거나 브라우저가 지원하지 않는 형식입니다.";
+    
+    function toggleShuffle() {
+      console.log('셔플 토글');
     }
-    trackTitleDisplay.innerText = "🚨 오류: " + errorMessage;
-    player.pause();
-    playPauseButton.innerText = "재생";
-    console.error("Audio error:", e.target.error); // 개발자 도구에 더 상세한 에러 출력
-});
-    </script>
-<footer style="margin-top:40px;padding:15px;background:#f7f7f7;border-top:1px solid #ddd;font-size:0.9em;color:#555;text-align:center;line-height:1.5;">
-    ⓒ Melony. All rights reserved.<br>
-    🎵 본 페이지에서 재생되는 모든 음악의 저작권은 <strong>Melony</strong>에게 있으며,<br>
-    상업적 이용과 무단 복제를 금하며<br>
-    개인적인 감상 목적에 한해 자유롭게 이용하실 수 있습니다.
-</footer>
+    
+    function adjustBgVolume(value) {
+      console.log('=== 볼륨 조절 ===');
+      console.log('볼륨 값:', value);
+      
+      const bgVolume = value / 100;
+      document.getElementById('volumeDisplay').textContent = value + '%';
+      
+      // 현재 재생 중인 효과음 볼륨 조절
+      if (currentBgSound) {
+        const effectAudio = document.getElementById('effect-' + currentBgSound);
+        if (effectAudio) {
+          effectAudio.volume = bgVolume;
+          console.log('효과음 볼륨 변경:', bgVolume);
+        }
+      }
+    }
+    
+    function switchCategory(category) {
+      console.log('=== 카테고리 전환 ===');
+      console.log('카테고리:', category);
+      
+      // 모든 카테고리 버튼 비활성화
+      document.querySelectorAll('.category').forEach(cat => {
+        cat.classList.remove('active');
+      });
+      
+      // 클릭된 카테고리 버튼 활성화
+      const clickedCategory = document.querySelector(`[onclick="switchCategory('${category}')"]`);
+      if (clickedCategory) {
+        clickedCategory.classList.add('active');
+      }
+    }
+    
+    // 페이지 로드 완료 시
+    window.addEventListener('load', () => {
+      console.log('=== 페이지 로드 완료 ===');
+      
+      // DOM 요소 재확인
+      if (!document.getElementById('player')) {
+        console.error('❌ audio 요소를 찾을 수 없음!');
+        return;
+      }
+      
+      if (!document.getElementById('title')) {
+        console.error('❌ title 요소를 찾을 수 없음!');
+        return;
+      }
+      
+      console.log('✅ DOM 요소 확인 완료');
+      
+      // 플레이어 초기화 - shuffledTracks 설정 추가
+      shuffledTracks = [...tracks];
+      console.log('shuffledTracks 설정:', shuffledTracks);
+      
+      initializePlayer();
+      
+      // 오디오 이벤트 리스너 추가
+      const progressBar = document.getElementById('progressBar');
+      const progressFill = document.getElementById('progressFill');
+      const currentTimeDisplay = document.getElementById('currentTime');
+      const durationDisplay = document.getElementById('duration');
+      
+      // 메타데이터 로드 시 총 시간 표시
+      audio.addEventListener('loadedmetadata', () => {
+        const duration = formatTime(audio.duration);
+        durationDisplay.textContent = duration;
+        console.log('오디오 길이:', duration);
+      });
+      
+      // 재생 시간 업데이트
+      audio.addEventListener('timeupdate', () => {
+        if (audio.duration) {
+          const progress = (audio.currentTime / audio.duration) * 100;
+          progressFill.style.width = progress + '%';
+          currentTimeDisplay.textContent = formatTime(audio.currentTime);
+
+          // 재생 중일 때만 줌인 효과 적용
+          if (isPlaying) {
+            const zoomLevel = 100 + (progress * 0.15); // 100%에서 115%까지
+            thumbnail.style.backgroundSize = zoomLevel + '%';
+
+          }
+
+        }
+      });
+      
+      // 재생 완료 시 다음 곡
+      audio.addEventListener('ended', () => {
+        console.log('곡 재생 완료, 다음 곡으로...');
+        nextTrack();
+      });
+      
+      // 진행바 클릭으로 구간 이동
+      progressBar.addEventListener('click', (e) => {
+        const rect = progressBar.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        audio.currentTime = percent * audio.duration;
+        console.log('진행바 클릭, 이동:', formatTime(audio.currentTime));
+      });
+    });
+    
+    // 시간 포맷 함수
+    function formatTime(seconds) {
+      if (isNaN(seconds)) return '0:00';
+      const minutes = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    }
+    
+    console.log('🎵 스크립트 로드 완료!');
+  </script>
 </body>
 </html>
