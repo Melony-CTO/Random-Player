@@ -315,6 +315,21 @@
       font-size: 18px;
       color: #5c6de0;
     }
+@keyframes pulseZoom {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.thumbnail.start-zoom {
+  animation: pulseZoom 1.2s ease-out;
+}
   </style>
 </head>
 <body>
@@ -873,6 +888,10 @@ function shuffleArray(array) {
             
             // 커버 이미지 줌인 애니메이션 시작
             thumbnail.classList.add('playing');
+    thumbnail.classList.add('start-zoom');
+    setTimeout(() => {
+      thumbnail.classList.remove('start-zoom');
+    }, 1000);
           })
           .catch(error => {
             console.error('❌ 재생 실패:', error);
@@ -985,6 +1004,11 @@ function shuffleArray(array) {
       // 썸네일 줌인 애니메이션 시작
       if (isPlaying) {
         thumbnail.classList.add('playing');
+  // ✅ 추가: 강조 애니메이션 실행
+  thumbnail.classList.add('start-zoom');
+  setTimeout(() => {
+    thumbnail.classList.remove('start-zoom');
+  }, 1000);
       } else {
         thumbnail.classList.remove('playing');
       }
@@ -1093,7 +1117,7 @@ function shuffleArray(array) {
 
           // 재생 중일 때만 줌인 효과 적용
           if (isPlaying) {
-            const zoomLevel = 100 + (progress * 0.15); // 100%에서 115%까지
+            const zoomLevel = 100 + (progress * 0.3); // 100%에서 130%까지
             thumbnail.style.backgroundSize = zoomLevel + '%';
 
           }
