@@ -750,13 +750,14 @@ function shuffleArray(array) {
     let currentTrackIndex = 0;
     let currentBgSound = null;
     let shuffledTracks = [...tracks];
-    let bgVolume = 0.3;
+    let bgVolume = 0.5;
     function fadeIn(audioElement, duration = 1000) {
       return new Promise((resolve) => {
         audioElement.volume = 0;
         audioElement.play();
         
         const fadeStep = 0.05;
+        const targetVolume = bgVolume; // 현재 bgVolume 사용
         const fadeInterval = duration / (bgVolume / fadeStep);
         
         const fade = setInterval(() => {
@@ -904,7 +905,8 @@ function shuffleArray(array) {
       
       // 새 효과음 페이드인으로 재생
       console.log('효과음 페이드인 재생 시도...');
-      
+
+      effectAudio.volume = bgVolume; // 페이드인 전에 목표 볼륨 설정
       fadeIn(effectAudio, 800) // 0.8초 페이드인
         .then(() => {
           console.log('✅ 효과음 페이드인 재생 성공!');
@@ -993,7 +995,7 @@ function shuffleArray(array) {
       console.log('=== 볼륨 조절 ===');
       console.log('볼륨 값:', value);
       
-      const bgVolume = value / 100;
+      bgVolume = value / 100; // 전역 변수 업데이트
       document.getElementById('volumeDisplay').textContent = value + '%';
       
       // 현재 재생 중인 효과음 볼륨 조절
