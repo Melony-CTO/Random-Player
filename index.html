@@ -475,14 +475,14 @@
     
     <div class="bg-sound-section">
       <div class="bg-sound-grid">
-        <div class="bg-button" onclick="toggleBgSound('rain')">Rain</div>
+        <div class="bg-button" onclick="toggleBgSound('Rain')">Rain</div>
         <div class="bg-button" onclick="toggleBgSound('Bird')">Bird</div>
-        <div class="bg-button" onclick="toggleBgSound('Forest')">Forest</div>
-        <div class="bg-button" onclick="toggleBgSound('Crickets')">Crickets</div>
-        <div class="bg-button" onclick="toggleBgSound('Amazon')">Amazon</div>
+        <div class="bg-button" onclick="toggleBgSound('Forest Water_Free')">Forest</div>
+        <div class="bg-button" onclick="toggleBgSound('Neighborhood_free')">Neighbor</div>
+        <div class="bg-button" onclick="toggleBgSound('Amazonia Jungle_Free')">Amazon</div>
         <div class="bg-button" onclick="toggleBgSound('Ocean')">Ocean</div>
         <div class="bg-button" onclick="toggleBgSound('Crackle')">Crackle</div>
-        <div class="bg-button" onclick="toggleBgSound('Mixed')">Mixed</div>
+        <div class="bg-button" onclick="toggleBgSound('Rain_Free')">Rain2</div>
       </div>
     </div>
     
@@ -552,29 +552,38 @@
         .then(function(data) {
           console.log('📁 API 응답:', data);
           
-if (!data || typeof data !== 'object') {
-  throw new Error('폴더 데이터가 없습니다');
-}
+          if (!data || typeof data !== 'object') {
+            throw new Error('폴더 데이터가 없습니다');
+          }
 
-// data를 folders 형태로 변환
-const folders = data;
-          
-          // 모든 폴더의 음악을 합치기
+          // ✅ 수정된 부분: API 응답 직접 처리
           allTracks = [];
-          for (var folderName in data.folders) {
-            var files = data.folders[folderName];
-            console.log('📂 ' + folderName + ' 폴더: ' + files.length + '개 파일');
-            
-            for (var i = 0; i < files.length; i++) {
-              var file = files[i];
-              if (file.type === 'audio') {
-                allTracks.push({
-                  title: file.name,
-                  folder: folderName,
-                  url: WORKERS_API_URL + '/file/' + folderName + '/' + encodeURIComponent(file.name),
-                  cover: WORKERS_API_URL + '/file/' + folderName + '/' + encodeURIComponent(file.name.replace(/\.(m4a|mp3)$/i, '.jpeg'))
-                });
-              }
+          
+          // pop 폴더 처리
+          if (data.pop && Array.isArray(data.pop)) {
+            console.log('📂 pop 폴더: ' + data.pop.length + '개 파일');
+            for (var i = 0; i < data.pop.length; i++) {
+              var track = data.pop[i];
+              allTracks.push({
+                title: track.title,
+                folder: 'pop',
+                url: WORKERS_API_URL + track.audio,
+                cover: WORKERS_API_URL + track.image
+              });
+            }
+          }
+          
+          // lofi-inst 폴더 처리
+          if (data['lofi-inst'] && Array.isArray(data['lofi-inst'])) {
+            console.log('📂 lofi-inst 폴더: ' + data['lofi-inst'].length + '개 파일');
+            for (var i = 0; i < data['lofi-inst'].length; i++) {
+              var track = data['lofi-inst'][i];
+              allTracks.push({
+                title: track.title,
+                folder: 'lofi-inst',
+                url: WORKERS_API_URL + track.audio,
+                cover: WORKERS_API_URL + track.image
+              });
             }
           }
           
