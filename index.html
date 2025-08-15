@@ -497,6 +497,7 @@
   <script>
     // Workers API 설정
     var WORKERS_API_URL = atob('aHR0cHM6Ly9tZWxvbnktbXVzaWMtYXBpLnplcHBsaW5uMjUud29ya2Vycy5kZXY=');
+    
     var isPlaying = false;
     var isShuffle = true;
     var currentTrackIndex = 0;
@@ -551,9 +552,12 @@
         .then(function(data) {
           console.log('📁 API 응답:', data);
           
-          if (!data.folders) {
-            throw new Error('폴더 데이터가 없습니다');
-          }
+if (!data || typeof data !== 'object') {
+  throw new Error('폴더 데이터가 없습니다');
+}
+
+// data를 folders 형태로 변환
+const folders = data;
           
           // 모든 폴더의 음악을 합치기
           allTracks = [];
