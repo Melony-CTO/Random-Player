@@ -1,4 +1,4 @@
-<!DOCTYPE html>  
+<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -73,7 +73,6 @@
       background-size: 115%;
     }
 
-    /* 터치 제스처 영역 표시 */
     .touch-zones {
       position: absolute;
       top: 0;
@@ -116,7 +115,6 @@
       pointer-events: auto;
     }
 
-    /* 볼륨 표시 오버레이 */
     .volume-overlay {
       position: absolute;
       top: 50%;
@@ -329,22 +327,15 @@
     }
 
     @keyframes pulseZoom {
-      0% {
-        transform: scale(1);
-      }
-      30% {
-        transform: scale(1.1);
-      }
-      100% {
-        transform: scale(1);
-      }
+      0% { transform: scale(1); }
+      30% { transform: scale(1.1); }
+      100% { transform: scale(1); }
     }
 
     .thumbnail.start-zoom {
       animation: pulseZoom 1.2s ease-out;
     }
 
-    /* 로딩 인디케이터 */
     .loading {
       display: inline-block;
       width: 20px;
@@ -361,7 +352,6 @@
       100% { transform: rotate(360deg); }
     }
 
-    /* 실시간 오디오 비주얼라이저 */
     .audio-visualizer {
       position: absolute;
       bottom: 0;
@@ -403,7 +393,6 @@
     
     <div class="thumbnail-container">
       <div class="thumbnail" id="thumbnail">
-        <!-- 터치 제스처 영역 -->
         <div class="touch-zones">
           <div class="touch-zone left" id="leftTouchZone">
             <span>🔊 효과음</span>
@@ -412,10 +401,8 @@
             <span>🎵 음악</span>
           </div>
         </div>
-        <!-- 볼륨 표시 오버레이 -->
         <div class="volume-overlay" id="volumeOverlay">🔊 50%</div>
         
-        <!-- 실시간 오디오 비주얼라이저 (40개 바) -->
         <div class="audio-visualizer" id="audioVisualizer">
           <div class="visualizer-bar"></div>
           <div class="visualizer-bar"></div>
@@ -499,59 +486,34 @@
       </div>
     </div>
     
-    <footer>© Melony. All rights reserved.</br>
+    <footer>© Melony. All rights reserved.<br>
  Special thanks to Hyundeok, whose inspiration made this possible.</footer>
     
-    <!-- 오디오 요소들 -->
     <audio id="player" preload="auto">
       Your browser does not support the audio element.
     </audio>
-    
-    <!-- 효과음 오디오 요소들 - 로컬 테스트용 주석 처리 -->
-    <!--
-    <audio id="effect-rain" src="effect_Rain_Free.m4a" loop preload="metadata"></audio>
-    <audio id="effect-Bird" src="effect_Bird.m4a" loop preload="metadata"></audio>
-    <audio id="effect-Forest" src="effect_Forest Water_Free.m4a" loop preload="metadata"></audio>
-    <audio id="effect-Ocean" src="effect_Ocean.m4a" loop preload="metadata"></audio>
-    <audio id="effect-Crackle" src="effect_Crackle.m4a" loop preload="metadata"></audio>
-    <audio id="effect-Mixed" src="effect_totalMixed.m4a" loop preload="metadata"></audio>
-    <audio id="effect-Amazon" src="effect_Amazonia Jungle_Free.m4a" loop preload="metadata"></audio>
-    <audio id="effect-Crickets" src="effect_Crickets.m4a" loop preload="metadata"></audio>
-    -->
   </div>
 
   <script>
-    console.log('🎵 Melony Player 시작!');
-
     // Workers API 설정
-    const WORKERS_API_URL = 'https://melony-music-api.zepplinn25.workers.dev';
-    
-    // 전역 변수
-    let isPlaying = false;
-    let isShuffle = true;
-    let currentTrackIndex = 0;
-    let currentBgSound = null;
-    let allTracks = [];
-    let shuffledTracks = [];
-    let currentCategory = 'pop';
-    let musicVolume = 0.8;
-    let effectVolume = 0.5;
-    
-    // 오디오 분석용 변수들
-    let audioContext;
-    let analyser;
-    let dataArray;
-    let source;
-    let animationId;
-    
-    // DOM 요소
-    const audio = document.getElementById('player');
-    const playButton = document.getElementById('playButton');
-    const title = document.getElementById('title');
-    const thumbnail = document.getElementById('thumbnail');
-    const volumeOverlay = document.getElementById('volumeOverlay');
-    const leftTouchZone = document.getElementById('leftTouchZone');
-    const rightTouchZone = document.getElementById('rightTouchZone');
+    var WORKERS_API_URL = 'https://melony-music-api.zepplinn25.workers.dev';
+    var isPlaying = false;
+    var isShuffle = true;
+    var currentTrackIndex = 0;
+    var currentBgSound = null;
+    var allTracks = [];
+    var shuffledTracks = [];
+    var currentCategory = 'pop';
+    var musicVolume = 0.8;
+    var effectVolume = 0.5;
+    var audioContext;
+    var analyser;
+    var dataArray;
+    var source;
+    var animationId;
+
+    // DOM 요소 (페이지 로드 후 초기화)
+    var audio, playButton, title, thumbnail, volumeOverlay, leftTouchZone, rightTouchZone;
 
     // 제목 정제 함수
     function cleanTitle(rawTitle) {
@@ -562,100 +524,106 @@
         .trim();
     }
 
-    // Workers API에서 음악 파일 목록 가져오기
-    async function fetchMusicFromAPI() {
-      try {
-        console.log('🌐 API에서 음악 목록 가져오는 중...');
-        title.innerHTML = '<div class="loading"></div>Loading...';
-        
-        const response = await fetch(`${WORKERS_API_URL}/list`);
-        if (!response.ok) {
-          throw new Error(`API 오류: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('📁 API 응답:', data);
-        
-        if (!data.folders) {
-          throw new Error('폴더 데이터가 없습니다');
-        }
-        
-        // 모든 폴더의 음악을 합치기
-        allTracks = [];
-        for (const [folderName, files] of Object.entries(data.folders)) {
-          console.log(`📂 ${folderName} 폴더: ${files.length}개 파일`);
-          
-          files.forEach(file => {
-            if (file.type === 'audio') {
-              allTracks.push({
-                title: file.name,
-                folder: folderName,
-                url: `${WORKERS_API_URL}/file/${folderName}/${encodeURIComponent(file.name)}`,
-                cover: `${WORKERS_API_URL}/file/${folderName}/${encodeURIComponent(file.name.replace(/\.(m4a|mp3)$/i, '.jpeg'))}`
-              });
-            }
-          });
-        }
-        
-        console.log(`🎵 총 ${allTracks.length}개 트랙 로드 완료`);
-        
-        if (allTracks.length === 0) {
-          throw new Error('음악 파일이 없습니다');
-        }
-        
-        // 셔플된 트랙 생성
-        shuffledTracks = shuffleArray(allTracks);
-        
-        // 첫 번째 트랙 로드
-        loadTrack(0);
-        
-      } catch (error) {
-        console.error('❌ API 오류:', error);
-        title.textContent = 'API 연결 오류';
-        alert('음악을 불러오는데 실패했습니다: ' + error.message);
-      }
-    }
-
     // 배열 셔플 함수
     function shuffleArray(array) {
-      const shuffled = [...array];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+      var shuffled = array.slice();
+      for (var i = shuffled.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = shuffled[i];
+        shuffled[i] = shuffled[j];
+        shuffled[j] = temp;
       }
       return shuffled;
     }
 
-    // 트랙 로드 함수
+    // API에서 음악 목록 가져오기
+    function fetchMusicFromAPI() {
+      console.log('🌐 API에서 음악 목록 가져오는 중...');
+      title.innerHTML = '<div class="loading"></div>Loading...';
+      
+      fetch(WORKERS_API_URL + '/list')
+        .then(function(response) {
+          if (!response.ok) {
+            throw new Error('API 오류: ' + response.status);
+          }
+          return response.json();
+        })
+        .then(function(data) {
+          console.log('📁 API 응답:', data);
+          
+          if (!data.folders) {
+            throw new Error('폴더 데이터가 없습니다');
+          }
+          
+          // 모든 폴더의 음악을 합치기
+          allTracks = [];
+          for (var folderName in data.folders) {
+            var files = data.folders[folderName];
+            console.log('📂 ' + folderName + ' 폴더: ' + files.length + '개 파일');
+            
+            for (var i = 0; i < files.length; i++) {
+              var file = files[i];
+              if (file.type === 'audio') {
+                allTracks.push({
+                  title: file.name,
+                  folder: folderName,
+                  url: WORKERS_API_URL + '/file/' + folderName + '/' + encodeURIComponent(file.name),
+                  cover: WORKERS_API_URL + '/file/' + folderName + '/' + encodeURIComponent(file.name.replace(/\.(m4a|mp3)$/i, '.jpeg'))
+                });
+              }
+            }
+          }
+          
+          console.log('🎵 총 ' + allTracks.length + '개 트랙 로드 완료');
+          
+          if (allTracks.length === 0) {
+            throw new Error('음악 파일이 없습니다');
+          }
+          
+          // 셔플된 트랙 생성
+          shuffledTracks = shuffleArray(allTracks);
+          
+          // 첫 번째 트랙 로드
+          loadTrack(0);
+          
+          // 로딩 완료 메시지
+          setTimeout(function() {
+            console.log('✅ Melony Player 로드 완료! 총 ' + allTracks.length + '곡');
+          }, 500);
+        })
+        .catch(function(error) {
+          console.error('❌ API 오류:', error);
+          title.textContent = 'API 연결 실패';
+          
+          // 사용자에게 친화적인 오류 메시지
+          setTimeout(function() {
+            alert('🔌 Workers API에 연결할 수 없습니다.\n\n다음을 확인해주세요:\n1. 인터넷 연결 상태\n2. Workers API 서버 상태\n3. API URL이 올바른지 확인\n\n현재 API: ' + WORKERS_API_URL);
+          }, 1000);
+        });
+    }
+
+    // 트랙 로드
     function loadTrack(index) {
-      if (index < 0 || index >= shuffledTracks.length) {
-        console.error('❌ 잘못된 인덱스');
-        return;
-      }
+      if (index < 0 || index >= shuffledTracks.length) return;
       
-      const track = shuffledTracks[index];
-      console.log('🎵 트랙 로드:', track);
+      var track = shuffledTracks[index];
       
-      // 오디오 설정
       audio.src = track.url;
       audio.volume = musicVolume;
       
-      // UI 업데이트 - 카테고리에 따라 제목 표시 결정
       if (track.folder === 'pop') {
         title.textContent = cleanTitle(track.title);
       } else {
-        title.textContent = ''; // lofi-inst는 제목 숨김
+        title.textContent = '';
       }
       
-      // 썸네일 설정
-      thumbnail.style.backgroundImage = `url('${track.cover}')`;
+      thumbnail.style.backgroundImage = "url('" + track.cover + "')";
       thumbnail.style.backgroundSize = '100%';
       
-      // 재생 중이면 썸네일 애니메이션
       if (isPlaying) {
         thumbnail.classList.add('playing');
         thumbnail.classList.add('start-zoom');
-        setTimeout(() => {
+        setTimeout(function() {
           thumbnail.classList.remove('start-zoom');
         }, 1000);
       } else {
@@ -664,22 +632,18 @@
       
       currentTrackIndex = index;
       
-      // 재생 중이었다면 새 트랙도 재생
       if (isPlaying) {
-        setTimeout(() => {
-          audio.play().catch(error => {
-            console.error('새 트랙 재생 실패:', error);
+        setTimeout(function() {
+          audio.play().catch(function(error) {
+            console.log('재생 실패:', error);
           });
         }, 100);
       }
     }
 
-    // 재생/일시정지 토글
+    // 재생/정지 토글
     function togglePlay() {
-      if (!audio.src) {
-        console.error('❌ 오디오 소스가 없음!');
-        return;
-      }
+      if (!audio.src) return;
       
       if (isPlaying) {
         audio.pause();
@@ -690,36 +654,32 @@
         stopVisualizer();
       } else {
         audio.play()
-          .then(() => {
+          .then(function() {
             playButton.textContent = '⏸';
             isPlaying = true;
             thumbnail.classList.add('playing');
             thumbnail.classList.add('start-zoom');
-            setTimeout(() => {
+            setTimeout(function() {
               thumbnail.classList.remove('start-zoom');
             }, 1000);
             startVisualizer();
           })
-          .catch(error => {
-            console.error('❌ 재생 실패:', error);
+          .catch(function(error) {
+            console.log('재생 실패:', error);
           });
       }
     }
 
-    // 이전/다음 트랙
+    // 이전/다음 곡
     function previousTrack() {
-      let newIndex = currentTrackIndex - 1;
-      if (newIndex < 0) {
-        newIndex = shuffledTracks.length - 1;
-      }
+      var newIndex = currentTrackIndex - 1;
+      if (newIndex < 0) newIndex = shuffledTracks.length - 1;
       loadTrack(newIndex);
     }
 
     function nextTrack() {
-      let newIndex = currentTrackIndex + 1;
-      if (newIndex >= shuffledTracks.length) {
-        newIndex = 0;
-      }
+      var newIndex = currentTrackIndex + 1;
+      if (newIndex >= shuffledTracks.length) newIndex = 0;
       loadTrack(newIndex);
     }
 
@@ -728,10 +688,8 @@
       isShuffle = !isShuffle;
       if (isShuffle) {
         shuffledTracks = shuffleArray(allTracks);
-        console.log('🔀 셔플 ON');
       } else {
-        shuffledTracks = [...allTracks];
-        console.log('➡️ 셔플 OFF');
+        shuffledTracks = allTracks.slice();
       }
       loadTrack(0);
     }
@@ -740,19 +698,22 @@
     function switchCategory(categoryName) {
       currentCategory = categoryName.toLowerCase();
       
-      // 모든 카테고리 버튼 비활성화
-      document.querySelectorAll('.category').forEach(cat => {
-        cat.classList.remove('active');
-      });
+      var categories = document.querySelectorAll('.category');
+      for (var i = 0; i < categories.length; i++) {
+        categories[i].classList.remove('active');
+      }
       
-      // 클릭된 카테고리 버튼 활성화
-      const clickedCategory = document.querySelector(`[onclick="switchCategory('${categoryName}')"]`);
+      var clickedCategory = document.querySelector("[onclick=\"switchCategory('" + categoryName + "')\"]");
       if (clickedCategory) {
         clickedCategory.classList.add('active');
       }
       
-      // 해당 카테고리의 트랙만 필터링
-      const filteredTracks = allTracks.filter(track => track.folder === currentCategory);
+      var filteredTracks = [];
+      for (var i = 0; i < allTracks.length; i++) {
+        if (allTracks[i].folder === currentCategory) {
+          filteredTracks.push(allTracks[i]);
+        }
+      }
       
       if (filteredTracks.length > 0) {
         shuffledTracks = isShuffle ? shuffleArray(filteredTracks) : filteredTracks;
@@ -760,357 +721,209 @@
       }
     }
 
-    // 터치 제스처 볼륨 조절
-    function setupTouchGestures() {
-      let isAdjustingVolume = false;
-      let initialY = 0;
-      let currentZone = null;
-
-      // 터치 시작
-      function handleTouchStart(e, zone) {
-        e.preventDefault();
-        isAdjustingVolume = true;
-        initialY = e.touches[0].clientY;
-        currentZone = zone;
+    // 효과음 토글 (실제 연동)
+    function toggleBgSound(soundType) {
+      console.log('🔊 효과음 토글:', soundType);
+      
+      // 효과음 파일이 실제로 존재하는 경우만 작동
+      var effectAudio = document.getElementById('effect-' + soundType);
+      if (!effectAudio) {
+        // 동적으로 효과음 오디오 엘리먼트 생성
+        effectAudio = document.createElement('audio');
+        effectAudio.id = 'effect-' + soundType;
+        effectAudio.loop = true;
+        effectAudio.preload = 'metadata';
+        effectAudio.src = WORKERS_API_URL + '/file/effects/effect_' + soundType + '.m4a';
+        document.body.appendChild(effectAudio);
+      }
+      
+      // 현재 재생 중인 효과음이 있으면 정지
+      if (currentBgSound && currentBgSound !== soundType) {
+        var currentAudio = document.getElementById('effect-' + currentBgSound);
+        if (currentAudio) {
+          currentAudio.pause();
+          currentAudio.currentTime = 0;
+        }
         
-        // 터치 영역 표시
-        if (zone === 'left') {
-          leftTouchZone.classList.add('active');
-        } else {
-          rightTouchZone.classList.add('active');
+        // 모든 버튼 비활성화
+        var buttons = document.querySelectorAll('.bg-button');
+        for (var i = 0; i < buttons.length; i++) {
+          buttons[i].classList.remove('active');
         }
       }
-
-      // 터치 이동
-      function handleTouchMove(e) {
-        if (!isAdjustingVolume || !currentZone) return;
+      
+      // 같은 효과음이면 정지
+      if (currentBgSound === soundType) {
+        effectAudio.pause();
+        effectAudio.currentTime = 0;
+        currentBgSound = null;
         
-        e.preventDefault();
-        const currentY = e.touches[0].clientY;
-        const deltaY = initialY - currentY; // 위로 올리면 양수
-        const sensitivity = 0.005;
-        
-        if (currentZone === 'left') {
-          // 효과음 볼륨 조절
-          effectVolume = Math.max(0, Math.min(1, effectVolume + (deltaY * sensitivity)));
-          showVolumeOverlay(`🔊 ${Math.round(effectVolume * 100)}%`);
+        var clickedButton = document.querySelector("[onclick=\"toggleBgSound('" + soundType + "')\"]");
+        if (clickedButton) {
+          clickedButton.classList.remove('active');
+        }
+        return;
+      }
+      
+      // 새 효과음 재생
+      effectAudio.volume = effectVolume;
+      effectAudio.play()
+        .then(function() {
+          currentBgSound = soundType;
+          console.log('✅ 효과음 재생:', soundType);
           
-          // 현재 재생 중인 효과음 볼륨 업데이트
-          if (currentBgSound) {
-            const effectAudio = document.getElementById('effect-' + currentBgSound);
-            if (effectAudio) {
-              effectAudio.volume = effectVolume;
-            }
+          // 클릭된 버튼 활성화
+          var clickedButton = document.querySelector("[onclick=\"toggleBgSound('" + soundType + "')\"]");
+          if (clickedButton) {
+            clickedButton.classList.add('active');
           }
-        } else {
-          // 음악 볼륨 조절
-          musicVolume = Math.max(0, Math.min(1, musicVolume + (deltaY * sensitivity)));
-          showVolumeOverlay(`🎵 ${Math.round(musicVolume * 100)}%`);
-          audio.volume = musicVolume;
-        }
-        
-        initialY = currentY;
-      }
-
-      // 터치 종료
-      function handleTouchEnd() {
-        isAdjustingVolume = false;
-        currentZone = null;
-        
-        // 터치 영역 숨김
-        leftTouchZone.classList.remove('active');
-        rightTouchZone.classList.remove('active');
-        
-        // 볼륨 오버레이 숨김
-        setTimeout(() => {
-          volumeOverlay.classList.remove('show');
-        }, 1000);
-      }
-
-      // 이벤트 리스너 등록
-      leftTouchZone.addEventListener('touchstart', (e) => handleTouchStart(e, 'left'));
-      rightTouchZone.addEventListener('touchstart', (e) => handleTouchStart(e, 'right'));
-      
-      document.addEventListener('touchmove', handleTouchMove);
-      document.addEventListener('touchend', handleTouchEnd);
-      
-      // 마우스 이벤트도 지원
-      leftTouchZone.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        isAdjustingVolume = true;
-        initialY = e.clientY;
-        currentZone = 'left';
-        leftTouchZone.classList.add('active');
-      });
-      
-      rightTouchZone.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        isAdjustingVolume = true;
-        initialY = e.clientY;
-        currentZone = 'right';
-        rightTouchZone.classList.add('active');
-      });
-      
-      document.addEventListener('mousemove', (e) => {
-        if (!isAdjustingVolume || !currentZone) return;
-        
-        const currentY = e.clientY;
-        const deltaY = initialY - currentY;
-        const sensitivity = 0.01;
-        
-        if (currentZone === 'left') {
-          effectVolume = Math.max(0, Math.min(1, effectVolume + (deltaY * sensitivity)));
-          showVolumeOverlay(`🔊 ${Math.round(effectVolume * 100)}%`);
-          
-          if (currentBgSound) {
-            const effectAudio = document.getElementById('effect-' + currentBgSound);
-            if (effectAudio) {
-              effectAudio.volume = effectVolume;
-            }
-          }
-        } else {
-          musicVolume = Math.max(0, Math.min(1, musicVolume + (deltaY * sensitivity)));
-          showVolumeOverlay(`🎵 ${Math.round(musicVolume * 100)}%`);
-          audio.volume = musicVolume;
-        }
-        
-        initialY = currentY;
-      });
-      
-      document.addEventListener('mouseup', () => {
-        isAdjustingVolume = false;
-        currentZone = null;
-        leftTouchZone.classList.remove('active');
-        rightTouchZone.classList.remove('active');
-        
-        setTimeout(() => {
-          volumeOverlay.classList.remove('show');
-        }, 1000);
-      });
+        })
+        .catch(function(error) {
+          console.error('❌ 효과음 재생 실패:', error);
+          alert('효과음을 재생할 수 없습니다: ' + soundType);
+        });
     }
 
-    // 볼륨 오버레이 표시
+    // 볼륨 오버레이
     function showVolumeOverlay(text) {
       volumeOverlay.textContent = text;
       volumeOverlay.classList.add('show');
     }
 
-    // 페이드 인/아웃 함수
-    function fadeIn(audioElement, duration = 1000) {
-      return new Promise((resolve) => {
-        audioElement.volume = 0;
-        audioElement.play();
-        
-        const fadeStep = 0.05;
-        const targetVolume = effectVolume;
-        const fadeInterval = duration / (effectVolume / fadeStep);
-        
-        const fade = setInterval(() => {
-          if (audioElement.volume < effectVolume) {
-            audioElement.volume = Math.min(audioElement.volume + fadeStep, effectVolume);
-          } else {
-            clearInterval(fade);
-            resolve();
-          }
-        }, fadeInterval);
-      });
-    }
-    
-    function fadeOut(audioElement, duration = 1000) {
-      return new Promise((resolve) => {
-        const startVolume = audioElement.volume;
-        const fadeStep = 0.1;
-        const fadeInterval = duration / (startVolume / fadeStep);
-        
-        const fade = setInterval(() => {
-          if (audioElement.volume > 0) {
-            audioElement.volume = Math.max(audioElement.volume - fadeStep, 0);
-          } else {
-            clearInterval(fade);
-            audioElement.pause();
-            audioElement.currentTime = 0;
-            resolve();
-          }
-        }, fadeInterval);
-      });
-    }
-
-    // 효과음 토글 (현재 비활성화)
-    function toggleBgSound(soundType) {
-      console.log('효과음 버튼 클릭:', soundType);
-      alert('효과음 기능은 로컬 테스트에서 비활성화되어 있습니다.');
-    }
-
-    // 시간 포맷 함수
+    // 시간 포맷
     function formatTime(seconds) {
       if (isNaN(seconds)) return '0:00';
-      const minutes = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      return `${minutes}:${secs.toString().padStart(2, '0')}`;
+      var minutes = Math.floor(seconds / 60);
+      var secs = Math.floor(seconds % 60);
+      return minutes + ':' + (secs < 10 ? '0' : '') + secs;
     }
 
-    // Web Audio API 초기화
-    function initAudioContext() {
+    // 실제 오디오 분석 비주얼라이저 (Web Audio API)
+    function startVisualizer() {
       try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 1024;
-        analyser.smoothingTimeConstant = 0.3;
-        
-        const bufferLength = analyser.frequencyBinCount;
-        dataArray = new Uint8Array(bufferLength);
-        
-        console.log('🎛️ Audio Context 초기화 완료');
-      } catch (error) {
-        console.error('Audio Context 초기화 실패:', error);
-      }
-    }
-
-    // 대체 비주얼라이저 (Web Audio 없이)
-    function startFallbackVisualizer() {
-      const audioVisualizer = document.getElementById('audioVisualizer');
-      audioVisualizer.classList.add('playing');
-      
-      const bars = document.querySelectorAll('.visualizer-bar');
-      let animationFrame;
-      
-      function animateBars() {
-        bars.forEach((bar, index) => {
-          const height = 3 + Math.random() * 25;
-          bar.style.height = height + 'px';
-          bar.style.opacity = '1.0';
-        });
-        
-        if (isPlaying) {
-          animationFrame = setTimeout(animateBars, 100);
-        }
-      }
-      
-      animateBars();
-    }
-
-    // 실제 음악 분석 비주얼라이저
-    function startRealVisualizer() {
-      try {
+        // Web Audio API 초기화
         if (!audioContext) {
-          initAudioContext();
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 1024;
+          analyser.smoothingTimeConstant = 0.3;
+          dataArray = new Uint8Array(analyser.frequencyBinCount);
         }
 
         if (audioContext.state === 'suspended') {
           audioContext.resume();
         }
 
-        const musicPlayer = document.getElementById('player');
-        
-        // 소스가 없고 musicPlayer가 연결되지 않았을 때만 새로 생성
-        if (!source && musicPlayer.src && !musicPlayer._audioSourceConnected) {
+        // 오디오 소스 연결
+        if (!source && audio.src && !audio._audioSourceConnected) {
           try {
-            source = audioContext.createMediaElementSource(musicPlayer);
-            musicPlayer._audioSourceConnected = true;
-            
+            source = audioContext.createMediaElementSource(audio);
+            audio._audioSourceConnected = true;
             source.connect(analyser);
             analyser.connect(audioContext.destination);
-            console.log('🎛️ Audio Source 연결 완료');
+            console.log('🎛️ Audio Context 연결 완료');
           } catch (error) {
-            console.error('Audio Source 연결 실패:', error);
+            console.log('Audio Context 연결 실패, 기본 애니메이션 사용');
             startFallbackVisualizer();
             return;
           }
-        } else if (source && musicPlayer._audioSourceConnected) {
-          console.log('🎛️ 기존 Audio Source 재사용');
-        } else {
-          console.log('🎛️ Audio Source 연결 불가, 기본 애니메이션 사용');
-          startFallbackVisualizer();
-          return;
         }
 
-        const bufferLength = analyser.frequencyBinCount;
-        dataArray = new Uint8Array(bufferLength);
-
-        const audioVisualizer = document.getElementById('audioVisualizer');
+        var audioVisualizer = document.getElementById('audioVisualizer');
         audioVisualizer.classList.add('playing');
         updateRealVisualizer();
         
-        console.log('🎵 실제 오디오 분석 시작');
       } catch (error) {
-        console.error('실제 분석 실패, 기본 애니메이션 사용:', error);
+        console.log('Web Audio API 사용 불가, 기본 애니메이션 사용');
         startFallbackVisualizer();
       }
     }
 
-    // 실제 오디오 데이터 기반 업데이트 - 40개 바에 맞춰 조정
+    // 실제 오디오 데이터 기반 비주얼라이저 업데이트
     function updateRealVisualizer() {
       if (!analyser || !dataArray || !isPlaying) return;
       
       analyser.getByteFrequencyData(dataArray);
-      const bars = document.querySelectorAll('.visualizer-bar');
+      var bars = document.querySelectorAll('.visualizer-bar');
       
       // 전체 오디오 활동도 체크
-      let totalActivity = 0;
-      for (let i = 0; i < dataArray.length; i++) {
+      var totalActivity = 0;
+      for (var i = 0; i < dataArray.length; i++) {
         totalActivity += dataArray[i];
       }
-      const avgActivity = totalActivity / dataArray.length;
+      var avgActivity = totalActivity / dataArray.length;
       
-      bars.forEach((bar, index) => {
-        let value = 0;
+      for (var barIndex = 0; barIndex < bars.length; barIndex++) {
+        var value = 0;
         
-        if (avgActivity > 2) { // 실제 음악이 재생 중일 때만
-          // 더 넓은 주파수 범위 사용 (10%-72%)
-          const startFreq = Math.floor(dataArray.length * 0.10);
-          const endFreq = Math.floor(dataArray.length * 0.72);
-          const usableRange = endFreq - startFreq;
+        if (avgActivity > 2) {
+          // 주파수 범위 할당
+          var startFreq = Math.floor(dataArray.length * 0.10);
+          var endFreq = Math.floor(dataArray.length * 0.72);
+          var usableRange = endFreq - startFreq;
           
-          // 각 바마다 주파수 할당 - 겹치게 해서 더 활발하게
-          const overlap = 1.3; // 30% 겹침
-          const barWidth = (usableRange / bars.length) * overlap;
-          const myStartFreq = startFreq + Math.floor(index * (usableRange / bars.length));
-          const myEndFreq = Math.min(myStartFreq + Math.floor(barWidth), dataArray.length - 1);
+          var overlap = 1.3;
+          var barWidth = (usableRange / bars.length) * overlap;
+          var myStartFreq = startFreq + Math.floor(barIndex * (usableRange / bars.length));
+          var myEndFreq = Math.min(myStartFreq + Math.floor(barWidth), dataArray.length - 1);
           
-          // 해당 범위에서 최대값 찾기 (더 역동적)
-          let maxVal = 0;
-          let sum = 0;
-          let count = 0;
+          // 해당 범위에서 최대값 찾기
+          var maxVal = 0;
+          var sum = 0;
+          var count = 0;
           
-          for (let i = myStartFreq; i <= myEndFreq && i < dataArray.length; i++) {
-            const val = dataArray[i];
+          for (var i = myStartFreq; i <= myEndFreq && i < dataArray.length; i++) {
+            var val = dataArray[i];
             maxVal = Math.max(maxVal, val);
             sum += val;
             count++;
           }
           
-          const avgVal = count > 0 ? sum / count : 0;
-          
-          // 최대값 위주로 계산 (80% 최대값 + 15% 평균값)
+          var avgVal = count > 0 ? sum / count : 0;
           value = (maxVal * 0.80) + (avgVal * 0.15);
-          
-          // 전체적으로 민감도 향상
           value *= 1.1;
           
-          // 오른쪽 바들(마지막 10개) 강력한 증폭
-          if (index >= 30) {
-            value *= 1.5; // 1.5배 추가 증폭
-          }
-          // 중간 오른쪽 바들도 증폭
-          else if (index >= 25) {
-            value *= 1.2; // 1.2배 증폭
+          // 오른쪽 바들 증폭
+          if (barIndex >= 30) {
+            value *= 1.5;
+          } else if (barIndex >= 25) {
+            value *= 1.2;
           }
         }
         
         // 높이 계산
-        const height = Math.max(2, Math.min(30, (value / 255) * 28 + 2));
-        bar.style.height = height + 'px';
-        bar.style.opacity = '1.0';
-      });
+        var height = Math.max(2, Math.min(30, (value / 255) * 28 + 2));
+        bars[barIndex].style.height = height + 'px';
+      }
       
       if (isPlaying) {
         animationId = requestAnimationFrame(updateRealVisualizer);
       }
     }
 
-    // 비주얼라이저 정지
+    // 기본 애니메이션 비주얼라이저 (Web Audio API 실패시)
+    function startFallbackVisualizer() {
+      var audioVisualizer = document.getElementById('audioVisualizer');
+      audioVisualizer.classList.add('playing');
+      
+      var bars = document.querySelectorAll('.visualizer-bar');
+      
+      function animateBars() {
+        for (var i = 0; i < bars.length; i++) {
+          var height = 3 + Math.random() * 25;
+          bars[i].style.height = height + 'px';
+        }
+        
+        if (isPlaying) {
+          setTimeout(animateBars, 100);
+        }
+      }
+      
+      animateBars();
+    }
+
     function stopVisualizer() {
-      const audioVisualizer = document.getElementById('audioVisualizer');
+      var audioVisualizer = document.getElementById('audioVisualizer');
       audioVisualizer.classList.remove('playing');
       
       if (animationId) {
@@ -1118,85 +931,189 @@
         animationId = null;
       }
       
-      const bars = document.querySelectorAll('.visualizer-bar');
-      bars.forEach(bar => {
-        bar.style.height = '2px';
-        bar.style.opacity = '1.0';
-      });
-    }
-
-    // 비주얼라이저 시작 함수 (음악 재생 시 호출)
-    function startVisualizer() {
-      // Web Audio API를 사용한 실제 분석 시도
-      startRealVisualizer();
-    }
-
-    // 비주얼라이저 초기화 함수
-    function initVisualizer() {
-      initAudioContext();
-      
-      // 음악 플레이어 변수 초기화
-      const musicPlayer = document.getElementById('player');
-      if (musicPlayer) {
-        musicPlayer._audioSourceConnected = false;
+      var bars = document.querySelectorAll('.visualizer-bar');
+      for (var i = 0; i < bars.length; i++) {
+        bars[i].style.height = '2px';
       }
     }
 
-    // 초기화 및 이벤트 리스너 설정
-    window.addEventListener('load', () => {
-      console.log('=== 페이지 로드 완료 ===');
+    // 터치 제스처 설정
+    function setupTouchGestures() {
+      var isAdjustingVolume = false;
+      var initialY = 0;
+      var currentZone = null;
+
+      function handleTouchStart(e, zone) {
+        e.preventDefault();
+        isAdjustingVolume = true;
+        initialY = e.touches[0].clientY;
+        currentZone = zone;
+        
+        if (zone === 'left') {
+          leftTouchZone.classList.add('active');
+        } else {
+          rightTouchZone.classList.add('active');
+        }
+      }
+
+      function handleTouchMove(e) {
+        if (!isAdjustingVolume || !currentZone) return;
+        
+        e.preventDefault();
+        var currentY = e.touches[0].clientY;
+        var deltaY = initialY - currentY;
+        var sensitivity = 0.005;
+        
+        if (currentZone === 'left') {
+          effectVolume = Math.max(0, Math.min(1, effectVolume + (deltaY * sensitivity)));
+          showVolumeOverlay('🔊 ' + Math.round(effectVolume * 100) + '%');
+          
+          // 현재 재생 중인 효과음 볼륨 업데이트
+          if (currentBgSound) {
+            var effectAudio = document.getElementById('effect-' + currentBgSound);
+            if (effectAudio) {
+              effectAudio.volume = effectVolume;
+            }
+          }
+        } else {
+          musicVolume = Math.max(0, Math.min(1, musicVolume + (deltaY * sensitivity)));
+          showVolumeOverlay('🎵 ' + Math.round(musicVolume * 100) + '%');
+          audio.volume = musicVolume;
+        }
+        
+        initialY = currentY;
+      }
+
+      function handleTouchEnd() {
+        isAdjustingVolume = false;
+        currentZone = null;
+        leftTouchZone.classList.remove('active');
+        rightTouchZone.classList.remove('active');
+        
+        setTimeout(function() {
+          volumeOverlay.classList.remove('show');
+        }, 1000);
+      }
+
+      leftTouchZone.addEventListener('touchstart', function(e) {
+        handleTouchStart(e, 'left');
+      });
+      rightTouchZone.addEventListener('touchstart', function(e) {
+        handleTouchStart(e, 'right');
+      });
       
-      // Workers API에서 음악 목록 가져오기
+      document.addEventListener('touchmove', handleTouchMove);
+      document.addEventListener('touchend', handleTouchEnd);
+
+      // 마우스 이벤트
+      leftTouchZone.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        isAdjustingVolume = true;
+        initialY = e.clientY;
+        currentZone = 'left';
+        leftTouchZone.classList.add('active');
+      });
+      
+      rightTouchZone.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        isAdjustingVolume = true;
+        initialY = e.clientY;
+        currentZone = 'right';
+        rightTouchZone.classList.add('active');
+      });
+      
+      document.addEventListener('mousemove', function(e) {
+        if (!isAdjustingVolume || !currentZone) return;
+        
+        var currentY = e.clientY;
+        var deltaY = initialY - currentY;
+        var sensitivity = 0.01;
+        
+        if (currentZone === 'left') {
+          effectVolume = Math.max(0, Math.min(1, effectVolume + (deltaY * sensitivity)));
+          showVolumeOverlay('🔊 ' + Math.round(effectVolume * 100) + '%');
+          
+          // 현재 재생 중인 효과음 볼륨 업데이트
+          if (currentBgSound) {
+            var effectAudio = document.getElementById('effect-' + currentBgSound);
+            if (effectAudio) {
+              effectAudio.volume = effectVolume;
+            }
+          }
+        } else {
+          musicVolume = Math.max(0, Math.min(1, musicVolume + (deltaY * sensitivity)));
+          showVolumeOverlay('🎵 ' + Math.round(musicVolume * 100) + '%');
+          audio.volume = musicVolume;
+        }
+        
+        initialY = currentY;
+      });
+      
+      document.addEventListener('mouseup', function() {
+        isAdjustingVolume = false;
+        currentZone = null;
+        leftTouchZone.classList.remove('active');
+        rightTouchZone.classList.remove('active');
+        
+        setTimeout(function() {
+          volumeOverlay.classList.remove('show');
+        }, 1000);
+      });
+    }
+
+    // 페이지 로드시 초기화
+    window.addEventListener('load', function() {
+      console.log('=== Melony Player 시작 ===');
+      
+      // DOM 요소 할당
+      audio = document.getElementById('player');
+      playButton = document.getElementById('playButton');
+      title = document.getElementById('title');
+      thumbnail = document.getElementById('thumbnail');
+      volumeOverlay = document.getElementById('volumeOverlay');
+      leftTouchZone = document.getElementById('leftTouchZone');
+      rightTouchZone = document.getElementById('rightTouchZone');
+      
+      // Workers API에서 실제 음악 데이터 로드
       fetchMusicFromAPI();
       
       // 터치 제스처 설정
       setupTouchGestures();
       
-      // 오디오 이벤트 리스너
-      const progressBar = document.getElementById('progressBar');
-      const progressFill = document.getElementById('progressFill');
-      const currentTimeDisplay = document.getElementById('currentTime');
-      const durationDisplay = document.getElementById('duration');
+      // 오디오 이벤트
+      var progressBar = document.getElementById('progressBar');
+      var progressFill = document.getElementById('progressFill');
+      var currentTimeDisplay = document.getElementById('currentTime');
+      var durationDisplay = document.getElementById('duration');
       
-      // 메타데이터 로드 시 총 시간 표시
-      audio.addEventListener('loadedmetadata', () => {
-        const duration = formatTime(audio.duration);
-        durationDisplay.textContent = duration;
+      audio.addEventListener('loadedmetadata', function() {
+        durationDisplay.textContent = formatTime(audio.duration);
       });
       
-      // 재생 시간 업데이트
-      audio.addEventListener('timeupdate', () => {
+      audio.addEventListener('timeupdate', function() {
         if (audio.duration) {
-          const progress = (audio.currentTime / audio.duration) * 100;
+          var progress = (audio.currentTime / audio.duration) * 100;
           progressFill.style.width = progress + '%';
           currentTimeDisplay.textContent = formatTime(audio.currentTime);
 
-          // 재생 중일 때만 줌인 효과 적용
           if (isPlaying) {
-            const zoomLevel = 100 + (progress * 0.3);
+            var zoomLevel = 100 + (progress * 0.3);
             thumbnail.style.backgroundSize = zoomLevel + '%';
           }
         }
       });
       
-      // 재생 완료 시 다음 곡
-      audio.addEventListener('ended', () => {
+      audio.addEventListener('ended', function() {
         stopVisualizer();
         nextTrack();
       });
       
-      // 진행바 클릭으로 구간 이동
-      progressBar.addEventListener('click', (e) => {
-        const rect = progressBar.getBoundingClientRect();
-        const percent = (e.clientX - rect.left) / rect.width;
+      progressBar.addEventListener('click', function(e) {
+        var rect = progressBar.getBoundingClientRect();
+        var percent = (e.clientX - rect.left) / rect.width;
         audio.currentTime = percent * audio.duration;
       });
-      
-      // 비주얼라이저 초기화
-      initVisualizer();
     });
-    
-    console.log('🎵 Melony Player 스크립트 로드 완료!');
   </script>
 </body>
 </html>
