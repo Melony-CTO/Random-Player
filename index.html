@@ -519,6 +519,11 @@
     var effectVolume = 0.5;
     var useRandomCover = true;
     var randomCovers = [];
+    // 외부 공개 R2 커버 경로(원하면 설정). 예: 'https://pub-xxxx.r2.dev/covers/'
+    var COVERS_BASE_URL = 'https://pub-dec06eaeb30e42b996c877614c6f549.r2.dev/covers/';
+    var COVER_MANIFEST = 'covers.json'; // 배열 형태의 파일명 목록을 담은 매니페스트 (선택)
+    var SUPPORTED_COVER_EXTS = ['jpeg','jpg','png','gif','webp'];
+
     var audioContext;
     var analyser;
     var dataArray;
@@ -538,25 +543,70 @@
     }
 
     // 썸네일 이미지 로드 및 404 대비
-    function setThumbnailCover(url) {
+    function setThumbnailCover(urlOrUrls) {
       if (!thumbnail) return;
+      var candidates = Array.isArray(urlOrUrls) ? urlOrUrls.slice() : [urlOrUrls];
+
+      // 현재 후보의 확장자를 교체하여 대체 후보 생성 (jpeg/jpg/png/gif/webp)
+      // 중복 제거를 위해 Set 사용
+      try {
+        var augmented = new Set();
+        for (var c = 0; c < candidates.length; c++) {
+          augmented.add(candidates[c]);
+          var u = candidates[c];
+          if (typeof u === 'string') {
+            var qIndex = u.indexOf('?');
+            var basePath = qIndex >= 0 ? u.slice(0, qIndex) : u;
+            var query = qIndex >= 0 ? u.slice(qIndex) : '';
+            var m = basePath.match(/\.([A-Za-z0-9]+)$/);
+            if (m && SUPPORTED_COVER_EXTS.indexOf(m[1].toLowerCase()) >= 0) {
+              var withoutExt = basePath.slice(0, -m[1].length - 1);
+              for (var e = 0; e < SUPPORTED_COVER_EXTS.length; e++) {
+                var alt = withoutExt + SUPPORTED_COVER_EXTS[e] + query;
+                augmented.add(alt);
+              }
+            }
+          }
+        }
+        candidates = Array.from(augmented);
+      } catch (e) {}
+
       var img = new Image();
       img.crossOrigin = 'anonymous';
+
+      function tryNext() {
+        if (candidates.length === 0) {
+          // 기본 배경 (이미지 누락 시)
+          thumbnail.style.backgroundImage = '';
+          thumbnail.style.backgroundColor = '#cbd5e1';
+          return;
+        }
+        var next = candidates.shift();
+        if (!next) { tryNext(); return; }
+        img.src = next;
+      }
+
       img.onload = function() {
-        thumbnail.style.backgroundImage = "url('" + url + "')";
+        thumbnail.style.backgroundImage = "url('" + img.src + "')";
       };
       img.onerror = function() {
-        // 기본 배경 (이미지 누락 시)
-        thumbnail.style.backgroundImage = '';
-        thumbnail.style.backgroundColor = '#cbd5e1';
+        tryNext();
       };
-      img.src = url;
+
+      tryNext();
     }
 
     function pickRandomCoverUrl(fallbackUrl) {
-      if (useRandomCover && Array.isArray(randomCovers) && randomCovers.length > 0) {
-        var idx = Math.floor(Math.random() * randomCovers.length);
-        return randomCovers[idx];
+      if (useRandomCover) {
+        // COVERS_BASE_URL이 설정되면 그쪽에서 직접 랜덤
+        if (COVERS_BASE_URL && (!randomCovers || randomCovers.length === 0)) {
+          // 파일명이 규칙적이라면 여기서 생성 가능: 예) lofi-00001.jpeg ~ lofi-00100.jpeg
+          // 단, 안전하게는 매니페스트 사용을 권장. 매니페스트가 없으면 fallback 사용.
+        }
+        if (Array.isArray(randomCovers) && randomCovers.length > 0) {
+          var idx = Math.floor(Math.random() * randomCovers.length);
+          return randomCovers[idx];
+        }
       }
       return fallbackUrl;
     }
@@ -621,6 +671,28 @@
                 cover: WORKERS_API_URL + track.image
               });
             }
+          }
+
+          // covers 매니페스트(COVERS_BASE_URL/covers.json)가 있으면 불러오기
+          if ((!data.covers || !Array.isArray(data.covers)) && COVERS_BASE_URL) {
+            try {
+              var manifestUrl = COVERS_BASE_URL.replace(/\/$/, '/') + COVER_MANIFEST;
+              fetch(manifestUrl)
+                .then(function(r){ if(!r.ok) throw new Error('covers manifest not found'); return r.json(); })
+                .then(function(list){
+                  if (Array.isArray(list)) {
+                    randomCovers = [];
+                    for (var k = 0; k < list.length; k++) {
+                      var fname = list[k];
+                      if (typeof fname === 'string' && fname) {
+                        randomCovers.push(COVERS_BASE_URL.replace(/\/$/, '/') + fname);
+                      }
+                    }
+                    console.log('🖼️ 랜덤 커버(매니페스트) 수집:', randomCovers.length);
+                  }
+                })
+                .catch(function(){ /* optional */ });
+            } catch (e) { /* noop */ }
           }
 
           // covers 폴더 수집 (선택적)
