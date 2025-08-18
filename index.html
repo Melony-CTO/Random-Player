@@ -585,7 +585,7 @@
             if (m && SUPPORTED_COVER_EXTS.indexOf(m[1].toLowerCase()) >= 0) {
               var withoutExt = basePath.slice(0, -m[1].length - 1);
               for (var e = 0; e < SUPPORTED_COVER_EXTS.length; e++) {
-                var alt = withoutExt + SUPPORTED_COVER_EXTS[e] + query;
+                var alt = withoutExt + '.' + SUPPORTED_COVER_EXTS[e] + query;
                 augmented.add(alt);
               }
             }
@@ -663,11 +663,17 @@
       tasks = tasks.slice(0, 15);
       tasks.forEach(function(url){
         try {
-          fetch(encodeURI(url), { method: 'HEAD', mode: 'cors' })
+          // R2 퍼블릭은 CORS 401 가능성이 높으므로 Workers 프록시 경로로 변환
+          var proxied = url;
+          if (COVERS_BASE_URL && url.indexOf(COVERS_BASE_URL) === 0) {
+            var tail = url.slice(COVERS_BASE_URL.length);
+            proxied = resolveUrl(WORKERS_API_URL, '/file/covers/' + tail);
+          }
+          fetch(encodeURI(proxied), { method: 'HEAD', mode: 'cors' })
             .then(function(res){
               if (res && res.ok) {
                 if (!Array.isArray(randomCovers)) randomCovers = [];
-                if (randomCovers.indexOf(url) < 0) randomCovers.push(url);
+                if (randomCovers.indexOf(proxied) < 0) randomCovers.push(proxied);
               }
             })
             .catch(function(){});
@@ -851,16 +857,13 @@
       
       // 커버를 covers 폴더에서 랜덤 선택(없으면 트랙 커버 사용)
       var coverUrl = pickRandomCoverUrl(track.cover);
-      // 절대 경로 보정 및 인코딩
+      // 절대 경로 보정: covers는 반드시 Workers /file/covers/ 경로를 우선 사용(CORS 안전)
       if (coverUrl) {
-        if (coverUrl.indexOf('http') !== 0) {
-          if (coverUrl.indexOf('/file/') === 0) {
-            coverUrl = resolveUrl(WORKERS_API_URL, coverUrl);
-          } else if (COVERS_BASE_URL) {
-            coverUrl = resolveUrl(COVERS_BASE_URL, coverUrl);
-          } else {
-            coverUrl = resolveUrl(WORKERS_API_URL, coverUrl);
-          }
+        if (coverUrl.indexOf('/file/covers/') === 0) {
+          coverUrl = resolveUrl(WORKERS_API_URL, coverUrl);
+        } else if (coverUrl.indexOf('http') !== 0) {
+          // 상대 경로는 /file/covers/로 간주
+          coverUrl = resolveUrl(WORKERS_API_URL, '/file/covers/' + coverUrl.replace(/^\//, ''));
         }
       }
       setThumbnailCover(coverUrl);
