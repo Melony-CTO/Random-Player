@@ -632,6 +632,41 @@
       return fallbackUrl;
     }
 
+    // Workers API에서 covers 목록을 별도 엔드포인트로 가져오기 (선택 구현)
+    function loadCoversFromWorker() {
+      if (!WORKERS_API_URL) return Promise.resolve(false);
+      return fetch(WORKERS_API_URL + '/covers')
+        .then(function(r){ if(!r.ok) throw new Error('covers endpoint not available'); return r.json(); })
+        .then(function(list){
+          if (!Array.isArray(list)) return false;
+          var out = [];
+          for (var i = 0; i < list.length; i++) {
+            var item = list[i];
+            var p = (typeof item === 'string') ? item : (item && item.image);
+            if (!p) continue;
+            if (p.indexOf('http') === 0) {
+              out.push(p);
+            } else if (p.indexOf('/file/') === 0) {
+              out.push(WORKERS_API_URL + p);
+            } else if (COVERS_BASE_URL) {
+              out.push(COVERS_BASE_URL.replace(/\/$/, '/') + p.replace(/^\//, ''));
+            }
+          }
+          if (out.length > 0) {
+            randomCovers = out;
+            try {
+              // 현재 썸네일도 즉시 갱신
+              var current = pickRandomCoverUrl('');
+              if (current) setThumbnailCover(current);
+            } catch (e) {}
+            console.log('🖼️ 랜덤 커버(Workers /covers) 수집:', randomCovers.length);
+            return true;
+          }
+          return false;
+        })
+        .catch(function(){ return false; });
+    }
+
     // 배열 셔플 함수
     function shuffleArray(array) {
       var shuffled = array.slice();
@@ -1266,6 +1301,8 @@
       
       // Workers API에서 실제 음악 데이터 로드
       fetchMusicFromAPI();
+      // 커버 목록도 Workers에서 제공할 수 있으면 활용
+      loadCoversFromWorker();
       
       // 터치 제스처 설정
       setupTouchGestures();
