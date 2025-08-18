@@ -517,6 +517,8 @@
     var currentCategory = 'pop';
     var musicVolume = 0.8;
     var effectVolume = 0.5;
+    var useRandomCover = true;
+    var randomCovers = [];
     var audioContext;
     var analyser;
     var dataArray;
@@ -549,6 +551,14 @@
         thumbnail.style.backgroundColor = '#cbd5e1';
       };
       img.src = url;
+    }
+
+    function pickRandomCoverUrl(fallbackUrl) {
+      if (useRandomCover && Array.isArray(randomCovers) && randomCovers.length > 0) {
+        var idx = Math.floor(Math.random() * randomCovers.length);
+        return randomCovers[idx];
+      }
+      return fallbackUrl;
     }
 
     // 배열 셔플 함수
@@ -612,6 +622,18 @@
               });
             }
           }
+
+          // covers 폴더 수집 (선택적)
+          if (data.covers && Array.isArray(data.covers)) {
+            randomCovers = [];
+            for (var j = 0; j < data.covers.length; j++) {
+              var cv = data.covers[j];
+              // API가 { image: '/file/covers/xxx.jpg' } 형태를 준다고 가정
+              var coverUrl = typeof cv === 'string' ? (WORKERS_API_URL + cv) : (WORKERS_API_URL + (cv.image || ''));
+              if (coverUrl) randomCovers.push(coverUrl);
+            }
+            console.log('🖼️ 랜덤 커버 수집:', randomCovers.length);
+          }
           
           console.log('🎵 총 ' + allTracks.length + '개 트랙 로드 완료');
           
@@ -656,7 +678,9 @@
         title.textContent = '';
       }
       
-      setThumbnailCover(track.cover);
+      // 커버를 covers 폴더에서 랜덤 선택(없으면 트랙 커버 사용)
+      var coverUrl = pickRandomCoverUrl(track.cover);
+      setThumbnailCover(coverUrl);
       thumbnail.style.backgroundSize = '100%';
       
       if (isPlaying) {
