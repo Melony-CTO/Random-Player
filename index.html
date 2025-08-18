@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>점검중</title>
+  <title>Melony Random Player</title>
   <style>
     body {
       margin: 0;
@@ -388,7 +388,7 @@
     <div class="shuffle-button" id="shuffleButton" onclick="toggleShuffle()">🔀</div>
     
     <div class="player-header">
-      <div class="player-title">점검중..!</div>
+      <div class="player-title">Melony Music Player</div>
     </div>
     
     <div class="thumbnail-container">
@@ -489,7 +489,7 @@
     <footer>© Melony. All rights reserved.<br>
  Special thanks to Hyundeok, whose inspiration made this possible.</footer>
     
-    <audio id="player" preload="auto">
+    <audio id="player" preload="auto" crossorigin="anonymous">
       Your browser does not support the audio element.
     </audio>
   </div>
@@ -523,6 +523,22 @@
         .replace(/[_-]M(?![a-zA-Z])/gi, '')
         .replace(/\s*\([^)]*\)\s*$/, '')
         .trim();
+    }
+
+    // 썸네일 이미지 로드 및 404 대비
+    function setThumbnailCover(url) {
+      if (!thumbnail) return;
+      var img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = function() {
+        thumbnail.style.backgroundImage = "url('" + url + "')";
+      };
+      img.onerror = function() {
+        // 기본 배경 (이미지 누락 시)
+        thumbnail.style.backgroundImage = '';
+        thumbnail.style.backgroundColor = '#cbd5e1';
+      };
+      img.src = url;
     }
 
     // 배열 셔플 함수
@@ -630,7 +646,7 @@
         title.textContent = '';
       }
       
-      thumbnail.style.backgroundImage = "url('" + track.cover + "')";
+      setThumbnailCover(track.cover);
       thumbnail.style.backgroundSize = '100%';
       
       if (isPlaying) {
@@ -795,6 +811,26 @@
           console.error('❌ 효과음 재생 실패:', error);
           alert('효과음을 재생할 수 없습니다: ' + soundType);
         });
+    }
+
+    // 효과음 프리워밍 (첫 사용자 제스처 이후 캐시 워밍)
+    function warmUpEffectSounds() {
+      try {
+        var soundTypes = ['Rain','Bird','Forest Water_Free','Neighborhood_free','Amazonia Jungle_Free','Ocean','Crackle','Rain_Free'];
+        for (var i = 0; i < soundTypes.length; i++) {
+          var url = WORKERS_API_URL + '/file/effects/effect_' + soundTypes[i] + '.m4a';
+          // 초기 256KB만 프리페치하여 지연 감소
+          fetch(url, {
+            method: 'GET',
+            mode: 'cors',
+            headers: { 'Range': 'bytes=0-262143' },
+            cache: 'force-cache',
+            keepalive: true
+          }).catch(function(){});
+        }
+      } catch (e) {
+        // noop
+      }
     }
 
     // 볼륨 오버레이
@@ -1080,6 +1116,8 @@
       
       // DOM 요소 할당
       audio = document.getElementById('player');
+      // 교차 출처 미디어를 Web Audio에 연결하기 위한 설정 (src 지정 이전)
+      audio.crossOrigin = 'anonymous';
       playButton = document.getElementById('playButton');
       title = document.getElementById('title');
       thumbnail = document.getElementById('thumbnail');
@@ -1092,6 +1130,9 @@
       
       // 터치 제스처 설정
       setupTouchGestures();
+
+      // 첫 사용자 입력 시 효과음 프리워밍 (한 번만 실행)
+      document.addEventListener('pointerdown', function() { warmUpEffectSounds(); }, { once: true });
       
       // 오디오 이벤트
       var progressBar = document.getElementById('progressBar');
