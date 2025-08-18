@@ -67,6 +67,7 @@
       transition: background-size 0.6s ease;
       overflow: hidden;
       position: relative;
+      transform-origin: center center;
     }
 
     /* 재생 상태를 표시하는 클래스 (스타일은 slow-zoom 등과 조합) */
@@ -349,15 +350,20 @@
       animation: pulseZoom 1.2s ease-out;
     }
 
-    /* 느린 무한 줌 인/아웃 (100% -> 102% -> 100%, 각 30초) */
-    @keyframes slowZoom {
+    /* 느린 무한 줌 인/아웃 (100% -> 102% -> 100%, 각 30초) - background-size 기반 */
+    @keyframes slowZoomBg {
       0% { background-size: 100%; }
-      50% { background-size: 102%; }
+      50% { background-size: 104%; }
       100% { background-size: 100%; }
     }
 
     .thumbnail.slow-zoom {
-      animation: slowZoom 60s ease-in-out infinite;
+      animation: slowZoomBg 30s ease-in-out infinite;
+    }
+
+    /* 시작 펄스와 슬로우줌을 동시에 적용하기 위한 결합 규칙 */
+    .thumbnail.start-zoom.slow-zoom {
+      animation: pulseZoom 1.2s ease-out, slowZoomBg 60s ease-in-out infinite;
     }
 
     .loading {
@@ -514,7 +520,7 @@
  Special thanks to Hyundeok, whose inspiration made this possible.</footer>
     <div class="visit-stats" id="visitStats">today 0 | total 0</div>
     
-    <audio id="player" preload="auto" crossorigin="anonymous">
+    <audio id="player" preload="metadata" crossorigin="anonymous">
       Your browser does not support the audio element.
     </audio>
   </div>
@@ -536,6 +542,7 @@
     var randomCovers = [];
     // 외부 공개 R2 커버 경로(원하면 설정). 예: 'https://pub-xxxx.r2.dev/covers/'
     var COVERS_BASE_URL = 'https://pub-dec06eaeb30e42b996c877614c6f549.r2.dev/covers/';
+    var USE_COVER_MANIFEST = false; // covers.json 사용 여부 (기본 비활성화)
     var COVER_MANIFEST = 'covers.json'; // 배열 형태의 파일명 목록을 담은 매니페스트 (선택)
     var SUPPORTED_COVER_EXTS = ['jpeg','jpg','png','gif','webp'];
 
@@ -732,7 +739,21 @@
     function fetchMusicFromAPI() {
       console.log('🌐 API에서 음악 목록 가져오는 중...');
       title.innerHTML = '<div class="loading"></div>Loading...';
-      
+
+      // 로컬 캐시 우선 표시 (1시간)
+      var cacheKey = 'melony_track_list_cache_v1';
+      var cacheTtlMs = 60 * 60 * 1000;
+      try {
+        var cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          var parsed = JSON.parse(cached);
+          if (parsed && parsed.expiresAt && parsed.data && Date.now() < parsed.expiresAt) {
+            console.log('📦 캐시된 목록 사용');
+            applyTrackList(parsed.data);
+          }
+        }
+      } catch (e) {}
+
       fetch(WORKERS_API_URL + '/list')
         .then(function(response) {
           if (!response.ok) {
@@ -741,93 +762,8 @@
           return response.json();
         })
         .then(function(data) {
-          console.log('📁 API 응답:', data);
-          
-          if (!data || typeof data !== 'object') {
-            throw new Error('폴더 데이터가 없습니다');
-          }
-
-          // ✅ 수정된 부분: API 응답 직접 처리
-          allTracks = [];
-          
-          // pop 폴더 처리
-          if (data.pop && Array.isArray(data.pop)) {
-            console.log('📂 pop 폴더: ' + data.pop.length + '개 파일');
-            for (var i = 0; i < data.pop.length; i++) {
-              var track = data.pop[i];
-              allTracks.push({
-                title: track.title,
-                folder: 'pop',
-                url: WORKERS_API_URL + track.audio,
-                cover: WORKERS_API_URL + track.image
-              });
-            }
-          }
-          
-          // lofi-inst 폴더 처리
-          if (data['lofi-inst'] && Array.isArray(data['lofi-inst'])) {
-            console.log('📂 lofi-inst 폴더: ' + data['lofi-inst'].length + '개 파일');
-            for (var i = 0; i < data['lofi-inst'].length; i++) {
-              var track = data['lofi-inst'][i];
-              allTracks.push({
-                title: track.title,
-                folder: 'lofi-inst',
-                url: WORKERS_API_URL + track.audio,
-                cover: WORKERS_API_URL + track.image
-              });
-            }
-          }
-
-          // covers 매니페스트(COVERS_BASE_URL/covers.json)가 있으면 불러오기
-          if ((!data.covers || !Array.isArray(data.covers)) && COVERS_BASE_URL) {
-            try {
-              var manifestUrl = COVERS_BASE_URL.replace(/\/$/, '/') + COVER_MANIFEST;
-              fetch(manifestUrl)
-                .then(function(r){ if(!r.ok) throw new Error('covers manifest not found'); return r.json(); })
-                .then(function(list){
-                  if (Array.isArray(list)) {
-                    randomCovers = [];
-                    for (var k = 0; k < list.length; k++) {
-                      var fname = list[k];
-                      if (typeof fname === 'string' && fname) {
-                        randomCovers.push(COVERS_BASE_URL.replace(/\/$/, '/') + fname);
-                      }
-                    }
-                    console.log('🖼️ 랜덤 커버(매니페스트) 수집:', randomCovers.length);
-                  }
-                })
-                .catch(function(){ /* optional */ });
-            } catch (e) { /* noop */ }
-          }
-
-          // covers 폴더 수집 (선택적)
-          if (data.covers && Array.isArray(data.covers)) {
-            randomCovers = [];
-            for (var j = 0; j < data.covers.length; j++) {
-              var cv = data.covers[j];
-              // API가 { image: '/file/covers/xxx.jpg' } 형태를 준다고 가정
-              var coverUrl = typeof cv === 'string' ? (WORKERS_API_URL + cv) : (WORKERS_API_URL + (cv.image || ''));
-              if (coverUrl) randomCovers.push(coverUrl);
-            }
-            console.log('🖼️ 랜덤 커버 수집:', randomCovers.length);
-          }
-          
-          console.log('🎵 총 ' + allTracks.length + '개 트랙 로드 완료');
-          
-          if (allTracks.length === 0) {
-            throw new Error('음악 파일이 없습니다');
-          }
-          
-          // 셔플된 트랙 생성
-          shuffledTracks = shuffleArray(allTracks);
-          
-          // 첫 번째 트랙 로드
-          loadTrack(0);
-          
-          // 로딩 완료 메시지
-          setTimeout(function() {
-            console.log('✅ Melony Player 로드 완료! 총 ' + allTracks.length + '곡');
-          }, 500);
+          try { localStorage.setItem(cacheKey, JSON.stringify({ data: data, expiresAt: Date.now() + cacheTtlMs })); } catch (e) {}
+          applyTrackList(data);
         })
         .catch(function(error) {
           console.error('❌ API 오류:', error);
@@ -838,6 +774,58 @@
             alert('🔌 Workers API에 연결할 수 없습니다.\n\n다음을 확인해주세요:\n1. 인터넷 연결 상태\n2. Workers API 서버 상태\n3. API URL이 올바른지 확인\n\n현재 API: ' + WORKERS_API_URL);
           }, 1000);
         });
+    }
+
+    function applyTrackList(data) {
+      console.log('📁 API 응답:', data);
+      if (!data || typeof data !== 'object') {
+        throw new Error('폴더 데이터가 없습니다');
+      }
+
+      allTracks = [];
+      if (data.pop && Array.isArray(data.pop)) {
+        console.log('📂 pop 폴더: ' + data.pop.length + '개 파일');
+        for (var i = 0; i < data.pop.length; i++) {
+          var track = data.pop[i];
+          allTracks.push({
+            title: track.title,
+            folder: 'pop',
+            url: WORKERS_API_URL + track.audio,
+            cover: WORKERS_API_URL + track.image
+          });
+        }
+      }
+      if (data['lofi-inst'] && Array.isArray(data['lofi-inst'])) {
+        console.log('📂 lofi-inst 폴더: ' + data['lofi-inst'].length + '개 파일');
+        for (var j = 0; j < data['lofi-inst'].length; j++) {
+          var track2 = data['lofi-inst'][j];
+          allTracks.push({
+            title: track2.title,
+            folder: 'lofi-inst',
+            url: WORKERS_API_URL + track2.audio,
+            cover: WORKERS_API_URL + track2.image
+          });
+        }
+      }
+      if (data.covers && Array.isArray(data.covers)) {
+        randomCovers = [];
+        for (var k = 0; k < data.covers.length; k++) {
+          var cv = data.covers[k];
+          var coverUrl = typeof cv === 'string' ? (WORKERS_API_URL + cv) : (WORKERS_API_URL + (cv.image || ''));
+          if (coverUrl) randomCovers.push(coverUrl);
+        }
+        console.log('🖼️ 랜덤 커버 수집:', randomCovers.length);
+      }
+
+      console.log('🎵 총 ' + allTracks.length + '개 트랙 로드 완료');
+      if (allTracks.length === 0) {
+        throw new Error('음악 파일이 없습니다');
+      }
+      shuffledTracks = shuffleArray(allTracks);
+      loadTrack(0);
+      setTimeout(function() {
+        console.log('✅ Melony Player 로드 완료! 총 ' + allTracks.length + '곡');
+      }, 200);
     }
 
     // 트랙 로드
@@ -1351,8 +1339,10 @@
       
       // Workers API에서 실제 음악 데이터 로드
       fetchMusicFromAPI();
-      // 커버 목록도 Workers에서 제공할 수 있으면 활용
-      loadCoversFromWorker().then(function(ok){ if(!ok) probeRandomCoverAsync(); });
+      // 커버 목록은 첫 사용자 입력 이후 지연 로드로 초기 부하 감소
+      document.addEventListener('pointerdown', function() {
+        loadCoversFromWorker().then(function(ok){ if(!ok) probeRandomCoverAsync(); });
+      }, { once: true });
       
       // 터치 제스처 설정
       setupTouchGestures();
