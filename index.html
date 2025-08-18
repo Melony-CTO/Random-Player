@@ -53,7 +53,7 @@
     .thumbnail-container {
       position: relative;
       width: 90%;
-      aspect-ratio: 1 / 1;
+      aspect-ratio: 16 / 9;
     }
 
     .thumbnail {
@@ -69,9 +69,7 @@
       position: relative;
     }
 
-    .thumbnail.playing {
-      background-size: 115%;
-    }
+    /* 재생 상태를 표시하는 클래스 (스타일은 slow-zoom 등과 조합) */
 
     .touch-zones {
       position: absolute;
@@ -337,6 +335,17 @@
       animation: pulseZoom 1.2s ease-out;
     }
 
+    /* 느린 무한 줌 인/아웃 (100% -> 102% -> 100%, 각 30초) */
+    @keyframes slowZoom {
+      0% { background-size: 100%; }
+      50% { background-size: 102%; }
+      100% { background-size: 100%; }
+    }
+
+    .thumbnail.slow-zoom {
+      animation: slowZoom 60s ease-in-out infinite;
+    }
+
     .loading {
       display: inline-block;
       width: 20px;
@@ -464,9 +473,9 @@
     </div>
     
     <div class="controls">
-      <button class="control-button" onclick="previousTrack()">⮪</button>
+      <button class="control-button" onclick="previousTrack()">⏮</button>
       <button class="control-button play-button" id="playButton" onclick="togglePlay()">▶</button>
-      <button class="control-button" onclick="nextTrack()">⮫</button>
+      <button class="control-button" onclick="nextTrack()">⏭</button>
     </div>
     
     <div class="category-switch">
@@ -652,12 +661,14 @@
       
       if (isPlaying) {
         thumbnail.classList.add('playing');
+        thumbnail.classList.add('slow-zoom');
         thumbnail.classList.add('start-zoom');
         setTimeout(function() {
           thumbnail.classList.remove('start-zoom');
         }, 1000);
       } else {
         thumbnail.classList.remove('playing');
+        thumbnail.classList.remove('slow-zoom');
       }
       
       currentTrackIndex = index;
@@ -680,6 +691,7 @@
         playButton.textContent = '▶';
         isPlaying = false;
         thumbnail.classList.remove('playing');
+        thumbnail.classList.remove('slow-zoom');
         thumbnail.style.backgroundSize = '100%';
         stopVisualizer();
       } else {
@@ -688,6 +700,7 @@
             playButton.textContent = '⏸';
             isPlaying = true;
             thumbnail.classList.add('playing');
+            thumbnail.classList.add('slow-zoom');
             thumbnail.classList.add('start-zoom');
             setTimeout(function() {
               thumbnail.classList.remove('start-zoom');
@@ -1150,11 +1163,6 @@
           var progress = (audio.currentTime / audio.duration) * 100;
           progressFill.style.width = progress + '%';
           currentTimeDisplay.textContent = formatTime(audio.currentTime);
-
-          if (isPlaying) {
-            var zoomLevel = 100 + (progress * 0.3);
-            thumbnail.style.backgroundSize = zoomLevel + '%';
-          }
         }
       });
       
