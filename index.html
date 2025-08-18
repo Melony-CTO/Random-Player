@@ -557,6 +557,14 @@
         .trim();
     }
 
+    function resolveUrl(base, path) {
+      if (!path) return '';
+      if (typeof path !== 'string') path = String(path);
+      if (/^https?:\/\//i.test(path) || /^data:/i.test(path)) return path;
+      if (path[0] === '/') return base.replace(/\/$/, '') + path;
+      return base.replace(/\/$/, '/') + path;
+    }
+
     // 썸네일 이미지 로드 및 404 대비
     function setThumbnailCover(urlOrUrls) {
       if (!thumbnail) return;
@@ -587,7 +595,6 @@
       } catch (e) {}
 
       var img = new Image();
-      img.crossOrigin = 'anonymous';
 
       function tryNext() {
         if (candidates.length === 0) {
@@ -630,6 +637,42 @@
         }
       }
       return fallbackUrl;
+    }
+
+    // covers 폴더를 직접 추정(패턴)하여 존재하는 커버를 비동기 프로빙
+    function probeRandomCoverAsync() {
+      if (!COVERS_BASE_URL) return;
+      var bases = ['lofi-', 'cover-', 'img-', 'art-'];
+      var exts = SUPPORTED_COVER_EXTS.slice();
+      var tasks = [];
+      var maxTry = 30; // 과도한 요청 방지
+      for (var i = 0; i < bases.length && tasks.length < maxTry; i++) {
+        for (var n = 1; n <= 200 && tasks.length < maxTry; n++) {
+          var num = String(n).padStart(5, '0');
+          for (var e = 0; e < exts.length && tasks.length < maxTry; e++) {
+            var candidate = COVERS_BASE_URL.replace(/\/$/, '/') + bases[i] + num + '.' + exts[e];
+            tasks.push(candidate);
+          }
+        }
+      }
+      // 무작위 섞기 후 일부만 HEAD 시도
+      for (var s = tasks.length - 1; s > 0; s--) {
+        var r = Math.floor(Math.random() * (s + 1));
+        var tmp = tasks[s]; tasks[s] = tasks[r]; tasks[r] = tmp;
+      }
+      tasks = tasks.slice(0, 15);
+      tasks.forEach(function(url){
+        try {
+          fetch(encodeURI(url), { method: 'HEAD', mode: 'cors' })
+            .then(function(res){
+              if (res && res.ok) {
+                if (!Array.isArray(randomCovers)) randomCovers = [];
+                if (randomCovers.indexOf(url) < 0) randomCovers.push(url);
+              }
+            })
+            .catch(function(){});
+        } catch (e) {}
+      });
     }
 
     // Workers API에서 covers 목록을 별도 엔드포인트로 가져오기 (선택 구현)
@@ -808,12 +851,16 @@
       
       // 커버를 covers 폴더에서 랜덤 선택(없으면 트랙 커버 사용)
       var coverUrl = pickRandomCoverUrl(track.cover);
-      // 절대 경로 보정: /file/covers/... 또는 상대 경로는 WORKERS_API_URL 기준으로 맞춤
-      if (coverUrl && coverUrl.indexOf('http') !== 0) {
-        if (coverUrl.indexOf('/file/') === 0) {
-          coverUrl = WORKERS_API_URL + coverUrl;
-        } else if (COVERS_BASE_URL) {
-          coverUrl = COVERS_BASE_URL.replace(/\/$/, '/') + coverUrl.replace(/^\//, '');
+      // 절대 경로 보정 및 인코딩
+      if (coverUrl) {
+        if (coverUrl.indexOf('http') !== 0) {
+          if (coverUrl.indexOf('/file/') === 0) {
+            coverUrl = resolveUrl(WORKERS_API_URL, coverUrl);
+          } else if (COVERS_BASE_URL) {
+            coverUrl = resolveUrl(COVERS_BASE_URL, coverUrl);
+          } else {
+            coverUrl = resolveUrl(WORKERS_API_URL, coverUrl);
+          }
         }
       }
       setThumbnailCover(coverUrl);
@@ -1302,7 +1349,7 @@
       // Workers API에서 실제 음악 데이터 로드
       fetchMusicFromAPI();
       // 커버 목록도 Workers에서 제공할 수 있으면 활용
-      loadCoversFromWorker();
+      loadCoversFromWorker().then(function(ok){ if(!ok) probeRandomCoverAsync(); });
       
       // 터치 제스처 설정
       setupTouchGestures();
