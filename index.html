@@ -145,7 +145,7 @@
     }
 
     .title {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 600;
       color: #222;
       margin-top: 10px;
@@ -300,6 +300,20 @@
       color: #999;
       margin: 0;
       text-align: center;
+    }
+
+    .visit-stats {
+      position: fixed;
+      left: 8px;
+      bottom: 6px;
+      font-size: 10px;
+      color: #8a8a8a;
+      background: rgba(255, 255, 255, 0.7);
+      padding: 4px 6px;
+      border-radius: 6px;
+      border: 1px solid rgba(0,0,0,0.05);
+      z-index: 9999;
+      backdrop-filter: blur(6px);
     }
 
     .shuffle-button {
@@ -498,6 +512,7 @@
     
     <footer>© Melony. All rights reserved.<br>
  Special thanks to Hyundeok, whose inspiration made this possible.</footer>
+    <div class="visit-stats" id="visitStats">today 0 | total 0</div>
     
     <audio id="player" preload="auto" crossorigin="anonymous">
       Your browser does not support the audio element.
@@ -506,7 +521,7 @@
 
   <script>
     // Workers API 설정
-    var WORKERS_API_URL = atob('aHR0cHM6Ly9tZWxvbnktbXVzaWMtYXBpLnplcHBsaW5uMjUud29ya2Vycy5kZXY=');
+    var WORKERS_API_URL = 'https://melony-music-api.zepplinn25.workers.dev';
     
     var isPlaying = false;
     var isShuffle = true;
@@ -583,7 +598,13 @@
         }
         var next = candidates.shift();
         if (!next) { tryNext(); return; }
-        img.src = next;
+        try {
+          // 한글/공백/특수문자 경로 인코딩
+          var encoded = encodeURI(next);
+          img.src = encoded;
+        } catch (e) {
+          img.src = next;
+        }
       }
 
       img.onload = function() {
@@ -752,6 +773,14 @@
       
       // 커버를 covers 폴더에서 랜덤 선택(없으면 트랙 커버 사용)
       var coverUrl = pickRandomCoverUrl(track.cover);
+      // 절대 경로 보정: /file/covers/... 또는 상대 경로는 WORKERS_API_URL 기준으로 맞춤
+      if (coverUrl && coverUrl.indexOf('http') !== 0) {
+        if (coverUrl.indexOf('/file/') === 0) {
+          coverUrl = WORKERS_API_URL + coverUrl;
+        } else if (COVERS_BASE_URL) {
+          coverUrl = COVERS_BASE_URL.replace(/\/$/, '/') + coverUrl.replace(/^\//, '');
+        }
+      }
       setThumbnailCover(coverUrl);
       thumbnail.style.backgroundSize = '100%';
       
@@ -1272,6 +1301,43 @@
         var percent = (e.clientX - rect.left) / rect.width;
         audio.currentTime = percent * audio.duration;
       });
+
+      // 방문자 카운터 표시 (서버 우선, 실패 시 로컬 폴백)
+      (function initVisitStats(){
+        var el = document.getElementById('visitStats');
+        if (!el) return;
+        var todayKey = 'melony_visit_today';
+        var totalKey = 'melony_visit_total';
+        var todayStr = new Date().toISOString().slice(0,10);
+        try {
+          fetch(WORKERS_API_URL + '/stats', { mode: 'cors' })
+            .then(function(r){ if(!r.ok) throw new Error('no stats'); return r.json(); })
+            .then(function(data){
+              if (data && typeof data.today === 'number' && typeof data.total === 'number') {
+                el.textContent = 'today ' + data.today + ' | total ' + data.total;
+                return;
+              }
+              throw new Error('invalid stats');
+            })
+            .catch(function(){
+              // 로컬 카운터 폴백
+              var storedDate = localStorage.getItem(todayKey);
+              var total = parseInt(localStorage.getItem(totalKey) || '0', 10);
+              if (storedDate !== todayStr) {
+                // 날짜 변경 시 today 1로 리셋, total +1
+                localStorage.setItem(todayKey, todayStr);
+                localStorage.setItem('melony_visit_today_count', '1');
+                localStorage.setItem(totalKey, String(total + 1));
+                el.textContent = 'today 1 | total ' + (total + 1);
+              } else {
+                var todayCount = parseInt(localStorage.getItem('melony_visit_today_count') || '0', 10) + 1;
+                localStorage.setItem('melony_visit_today_count', String(todayCount));
+                localStorage.setItem(totalKey, String(total + 1));
+                el.textContent = 'today ' + todayCount + ' | total ' + (total + 1);
+              }
+            });
+        } catch (e) {}
+      })();
     });
   </script>
 </body>
