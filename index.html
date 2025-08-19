@@ -935,7 +935,7 @@
            allTracks.push({
              title: track.title,
              folder: 'pop',
-             url: WORKERS_API_URL + track.audio,
+             url: WORKERS_API_URL + '/file/' + track.audio,
              cover: WORKERS_API_URL + track.image
            });
          }
@@ -948,7 +948,7 @@
            allTracks.push({
              title: track2.title,
              folder: 'lofi-inst',
-             url: WORKERS_API_URL + track2.audio,
+             url: WORKERS_API_URL + '/file/' + track2.audio,
              cover: WORKERS_API_URL + track2.image
            });
          }
