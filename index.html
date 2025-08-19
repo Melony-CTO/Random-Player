@@ -409,18 +409,8 @@
     }
 
     .debug-info {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      background: rgba(0, 0, 0, 0.8);
-      color: white;
-      padding: 10px;
-      border-radius: 5px;
-      font-size: 10px;
-      max-width: 200px;
-      display: none;
-    }
-
+  display: none !important; /* 🔥 완전히 숨김 */
+}
      .debug-info.show {
        display: block;
      }
@@ -550,11 +540,11 @@
       </div>
     </div>
     
-    <div class="controls">
-       <button class="control-button" onclick="previousTrack()">⮪</button>
-      <button class="control-button play-button" id="playButton" onclick="togglePlay()">▶</button>
-       <button class="control-button" onclick="nextTrack()">⭬</button>
-     </div>
+<div class="controls">
+   <button class="control-button" onclick="previousTrack()">⏮</button>
+  <button class="control-button play-button" id="playButton" onclick="togglePlay()">▶</button>
+   <button class="control-button" onclick="nextTrack()">⏭</button>
+ </div>
      
      <!-- 오류 루프 시 수동 재시작 버튼 -->
      <div class="restart-section" id="restartSection" style="display: none;">
@@ -604,7 +594,7 @@
     };
     var currentCategory = 'pop';
     var musicVolume = 0.8;
-    var effectVolume = 0.5;
+    var effectVolume = 0.7;
     var useRandomCover = true;
     var randomCovers = [];
     var currentPlaylist = [];
@@ -1385,26 +1375,16 @@ if (track2.title && track2.title.trim() !== '') {
            consecutiveFailures = 0;
          }
          
-         // 🔥 로딩 상태 리셋 (강화)
-         if (isLoading && currentLoadingTrack && currentLoadingTrack.title === track.title) {
-           isLoading = false;
-           currentLoadingTrack = null;
-           console.log('🔄 로딩 완료 - 상태 리셋');
-           console.log('  - 로딩 상태:', isLoading);
-           console.log('  - 현재 로딩 트랙:', currentLoadingTrack ? currentLoadingTrack.title : 'null');
-           
-           // 🔥 로딩 시간 계산
-           if (track.loadStartTime) {
-             var loadTime = Date.now() - track.loadStartTime;
-             console.log('  - 로딩 소요 시간:', loadTime + 'ms');
-           }
-         } else {
-           console.warn('⚠️ 로딩 상태 불일치:', {
-             isLoading: isLoading,
-             currentLoadingTrack: currentLoadingTrack ? currentLoadingTrack.title : 'null',
-             track: track.title
-           });
-         }
+// 🔥 로딩 상태 리셋 (경고 제거)
+isLoading = false;
+currentLoadingTrack = null;
+console.log('🔄 로딩 완료 - 상태 리셋');
+
+// 🔥 로딩 시간 계산
+if (track.loadStartTime) {
+  var loadTime = Date.now() - track.loadStartTime;
+  console.log('  - 로딩 소요 시간:', loadTime + 'ms');
+}
          
          // 자동 재생 시도 (더 안전하게)
       if (isPlaying) {
@@ -1433,42 +1413,47 @@ if (track2.title && track2.title.trim() !== '') {
        audio.addEventListener('canplaythrough', handleCanPlayThrough);
        
        // ✅ CORS 오류 방지를 위한 오류 처리
-       function handleAudioError() {
-         console.log('❌ 오디오 로딩 실패:', audioUrl);
-         console.log('오류 코드:', audio.error ? audio.error.code : 'unknown');
+function handleAudioError() {
+  console.log('❌ 오디오 로딩 실패:', audioUrl);
+  console.log('오류 코드:', audio.error ? audio.error.code : 'unknown');
+  
+  // 🔥 로딩 상태 리셋 (강화)
+  if (isLoading && currentLoadingTrack) {
+    isLoading = false;
+    currentLoadingTrack = null;
+    console.log('🔄 오류 발생 - 로딩 상태 리셋');
+    console.log('  - 로딩 상태:', isLoading);
+    console.log('  - 현재 로딩 트랙:', currentLoadingTrack ? currentLoadingTrack.title : 'null');
+  } else {
+    // 🔥 강제로 로딩 상태 리셋 (상태 불일치 해결)
+    isLoading = false;
+    currentLoadingTrack = null;
+    console.log('🔄 상태 불일치 감지 - 강제 리셋');
+    console.log('  - 이전 상태:', {
+      isLoading: isLoading,
+      currentLoadingTrack: currentLoadingTrack ? currentLoadingTrack.title : 'null'
+    });
+  }
+  
+  // 🔥 실제 오류만 처리 (CORS 오류 조건을 더 엄격하게)
+  if (audio.error && audio.error.code === 4 && audio.networkState === 3) {
+    console.log('🚨 실제 CORS 오류 감지 - Workers API CORS 설정 필요');
+    updateDebugInfo('CORS 오류 발생<br>Workers API 설정 확인 필요<br>잠시 후 다음 곡으로...');
+    
+    consecutiveFailures++; // 실패 횟수 증가
+    console.log('📊 연속 실패 횟수:', consecutiveFailures);
+    
+    // 🔥 실제 CORS 오류 시에만 다음 곡으로 이동
+    setTimeout(function() {
+      console.log('🔄 실제 CORS 오류로 인한 다음 곡 이동');
+      nextTrack();
+    }, 1500);
+  } else {
+    console.log('⚠️ 일시적 오디오 상태 - 무시');
+  }
+}
          
-         // 🔥 로딩 상태 리셋 (강화)
-         if (isLoading && currentLoadingTrack) {
-           isLoading = false;
-           currentLoadingTrack = null;
-           console.log('🔄 오류 발생 - 로딩 상태 리셋');
-           console.log('  - 로딩 상태:', isLoading);
-           console.log('  - 현재 로딩 트랙:', currentLoadingTrack ? currentLoadingTrack.title : 'null');
-      } else {
-           // 🔥 강제로 로딩 상태 리셋 (상태 불일치 해결)
-           isLoading = false;
-           currentLoadingTrack = null;
-           console.log('🔄 상태 불일치 감지 - 강제 리셋');
-           console.log('  - 이전 상태:', {
-             isLoading: isLoading,
-             currentLoadingTrack: currentLoadingTrack ? currentLoadingTrack.title : 'null'
-           });
-         }
-         
-         // CORS 오류인지 확인
-         if (audio.error && audio.error.code === 4) {
-           console.log('🚨 CORS 오류 감지 - Workers API CORS 설정 필요');
-           updateDebugInfo('CORS 오류 발생<br>Workers API 설정 확인 필요<br>잠시 후 다음 곡으로...');
-           
-           consecutiveFailures++; // 실패 횟수 증가
-           console.log('📊 연속 실패 횟수:', consecutiveFailures);
-           
-           // 🔥 CORS 오류 시 즉시 다음 곡으로 이동 (무한 대기 방지)
-           setTimeout(function() {
-             console.log('🔄 CORS 오류로 인한 다음 곡 이동');
-             nextTrack();
-           }, 1000); // 1초로 단축
-         } else {
+         else {
            updateDebugInfo('오디오 로딩 실패<br>' + track.title + '<br>다음 곡으로 이동...');
            consecutiveFailures++; // 실패 횟수 증가
            console.log('📊 연속 실패 횟수:', consecutiveFailures);
@@ -1500,16 +1485,26 @@ if (track2.title && track2.title.trim() !== '') {
       console.log('🖼️ 선택된 커버 URL:', coverUrl);
       setThumbnailCover(coverUrl);
       
-      currentTrackIndex = index;
-      
-      if (isPlaying) {
-        setTimeout(function() {
-          audio.play().catch(function(error) {
-            console.log('재생 실패:', error);
-             updateDebugInfo('재생 실패<br>' + error.message);
-          });
-        }, 100);
-      }
+currentTrackIndex = index;
+
+// 🔥 재생바 초기화
+var progressFill = document.getElementById('progressFill');
+var currentTimeDisplay = document.getElementById('currentTime');
+if (progressFill) {
+  progressFill.style.width = '0%';
+}
+if (currentTimeDisplay) {
+  currentTimeDisplay.textContent = '0:00';
+}
+
+if (isPlaying) {
+  setTimeout(function() {
+    audio.play().catch(function(error) {
+      console.log('재생 실패:', error);
+      updateDebugInfo('재생 실패<br>' + error.message);
+    });
+  }, 100);
+}
        
             // canplaythrough 이벤트는 canplay로 대체됨
      }
@@ -1548,7 +1543,7 @@ if (track2.title && track2.title.trim() !== '') {
       } else {
         audio.play()
           .then(function() {
-            playButton.textContent = '⸂';
+            playButton.textContent = '⏸';
             isPlaying = true;
             thumbnail.classList.add('playing', 'slow-zoom', 'start-zoom');
             setTimeout(function() {
@@ -1561,6 +1556,8 @@ if (track2.title && track2.title.trim() !== '') {
             updateDebugInfo('재생 실패<br>' + error.message);
           });
       }
+
+      
     }
 
     // 이전/다음 곡
@@ -1644,17 +1641,21 @@ if (track2.title && track2.title.trim() !== '') {
          console.log('  - 첫 3곡:', currentPlaylist.slice(0, 3).map(t => t.title + ' (' + t.folder + ')'));
        }
        
-                // 잠시 대기 후 새 트랙 로드
-         setTimeout(function() {
-           try {
-        loadTrack(0);
-             console.log('🔄 카테고리 전환 완료: ' + categoryName + ' (' + currentPlaylist.length + '곡)');
-             updateDebugInfo('카테고리: ' + categoryName + '<br>' + currentPlaylist.length + '곡');
-           } catch (error) {
-             console.error('❌ 카테고리 전환 오류:', error);
-             updateDebugInfo('카테고리 전환 오류<br>' + error.message);
-      }
-         }, 500);
+// 잠시 대기 후 새 트랙 로드
+setTimeout(function() {
+  try {
+    loadTrack(0);
+    console.log('🔄 카테고리 전환 완료: ' + categoryName + ' (' + currentPlaylist.length + '곡)');
+    
+    // 🔥 카테고리 전환 후 자동 재생 (가장 간단한 방법)
+    setTimeout(function() {
+      togglePlay(); // 기존 함수 그대로 사용
+    }, 1000);
+    
+  } catch (error) {
+    console.error('❌ 카테고리 전환 오류:', error);
+  }
+}, 500);
     }
 
     // ✅ 수정된 효과음 토글 - 올바른 파일명 매핑
@@ -1677,11 +1678,11 @@ if (track2.title && track2.title.trim() !== '') {
       var effectAudio = document.getElementById('effect-' + soundType);
       
       if (!effectAudio) {
-        effectAudio = document.createElement('audio');
-        effectAudio.id = 'effect-' + soundType;
-        effectAudio.loop = true;
-        effectAudio.preload = 'metadata';
-        effectAudio.crossOrigin = 'anonymous';
+  effectAudio = document.createElement('audio');
+  effectAudio.id = 'effect-' + soundType;
+  effectAudio.loop = true;
+  effectAudio.preload = 'auto'; // 🔥 metadata → auto로 변경 (미리 로드)
+  effectAudio.crossOrigin = 'anonymous';
         
                  // ✅ 효과음 경로 (effects 폴더 사용)
          var effectPath = WORKERS_API_URL + '/file/effects/' + encodeURIComponent(actualFileName);
@@ -1724,19 +1725,21 @@ if (track2.title && track2.title.trim() !== '') {
         return;
       }
       
-      // 새 효과음 재생
-      effectAudio.volume = effectVolume;
-      effectAudio.play()
-        .then(function() {
-          currentBgSound = soundType;
-          console.log('✅ 효과음 재생:', soundType);
-          updateDebugInfo('효과음 재생: ' + soundType);
-          
-          var clickedButton = document.querySelector("[onclick=\"toggleBgSound('" + soundType + "')\"]");
-          if (clickedButton) {
-            clickedButton.classList.add('active');
-          }
-        })
+// 새 효과음 재생
+effectAudio.volume = effectVolume;
+
+// 🔥 즉시 상태 업데이트 (재생 성공을 기다리지 않음)
+currentBgSound = soundType;
+var clickedButton = document.querySelector("[onclick=\"toggleBgSound('" + soundType + "')\"]");
+if (clickedButton) {
+  clickedButton.classList.add('active');
+}
+
+// 🔥 빠른 재생 시도
+effectAudio.play()
+  .then(function() {
+    console.log('✅ 효과음 재생:', soundType);
+  })
         .catch(function(error) {
           console.error('❌ 효과음 재생 실패:', error);
           updateDebugInfo('효과음 실패: ' + soundType + '<br>' + error.message);
@@ -2019,105 +2022,172 @@ if (track2.title && track2.title.trim() !== '') {
       });
     }
 
-    // 페이지 로드시 초기화
-    window.addEventListener('load', function() {
-      window.melonyStartTime = Date.now();
-      
-      console.log('🚀 === Melony Player 수정된 버전 시작 ===');
-      
-      // DOM 요소 할당
-      audio = document.getElementById('player');
-      audio.crossOrigin = 'anonymous';
-      playButton = document.getElementById('playButton');
-      title = document.getElementById('title');
-      thumbnail = document.getElementById('thumbnail');
-      volumeOverlay = document.getElementById('volumeOverlay');
-      leftTouchZone = document.getElementById('leftTouchZone');
-      rightTouchZone = document.getElementById('rightTouchZone');
-      debugInfo = document.getElementById('debugInfo');
-      
-       // API에서 음악 데이터 로드
-      fetchMusicFromAPI();
-       
-      // 커버 목록은 첫 사용자 입력 이후 지연 로드로 초기 부하 감소
-      document.addEventListener('pointerdown', function() {
-         loadCoversOptimized();
-      }, { once: true });
-      
-      // 터치 제스처 설정
-      setupTouchGestures();
-      
-      // 오디오 이벤트
-      var progressBar = document.getElementById('progressBar');
-      var progressFill = document.getElementById('progressFill');
-      var currentTimeDisplay = document.getElementById('currentTime');
-      var durationDisplay = document.getElementById('duration');
-      
-      audio.addEventListener('loadedmetadata', function() {
-        durationDisplay.textContent = formatTime(audio.duration);
-      });
-      
-      audio.addEventListener('timeupdate', function() {
-        if (audio.duration) {
-          var progress = (audio.currentTime / audio.duration) * 100;
-          progressFill.style.width = progress + '%';
-          currentTimeDisplay.textContent = formatTime(audio.currentTime);
-        }
-      });
-      
-      audio.addEventListener('ended', function() {
-        stopVisualizer();
-        if (currentPlaylist.length > 0) {
-        nextTrack();
-        }
-      });
-      
-      progressBar.addEventListener('click', function(e) {
-        var rect = progressBar.getBoundingClientRect();
-        var percent = (e.clientX - rect.left) / rect.width;
-        audio.currentTime = percent * audio.duration;
-      });
+  // 페이지 로드시 초기화
+window.addEventListener('load', function() {
+  window.melonyStartTime = Date.now();
+  
+  console.log('🚀 === Melony Player 수정된 버전 시작 ===');
+  
+  // DOM 요소 할당
+  audio = document.getElementById('player');
+  audio.crossOrigin = 'anonymous';
+  playButton = document.getElementById('playButton');
+  title = document.getElementById('title');
+  thumbnail = document.getElementById('thumbnail');
+  volumeOverlay = document.getElementById('volumeOverlay');
+  leftTouchZone = document.getElementById('leftTouchZone');
+  rightTouchZone = document.getElementById('rightTouchZone');
+  debugInfo = document.getElementById('debugInfo');
+  
+   // API에서 음악 데이터 로드
+  fetchMusicFromAPI();
+   
+  // 커버 목록은 첫 사용자 입력 이후 지연 로드로 초기 부하 감소
+  document.addEventListener('pointerdown', function() {
+     loadCoversOptimized();
+  }, { once: true });
+  
+  // 터치 제스처 설정
+  setupTouchGestures();
+  
+  // 오디오 이벤트
+  var progressBar = document.getElementById('progressBar');
+  var progressFill = document.getElementById('progressFill');
+  var currentTimeDisplay = document.getElementById('currentTime');
+  var durationDisplay = document.getElementById('duration');
+  
+  audio.addEventListener('loadedmetadata', function() {
+    durationDisplay.textContent = formatTime(audio.duration);
+  });
+  
+audio.addEventListener('timeupdate', function() {
+  if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
+    var progress = (audio.currentTime / audio.duration) * 100;
+    progressFill.style.width = Math.min(100, Math.max(0, progress)) + '%';
+    currentTimeDisplay.textContent = formatTime(audio.currentTime);
+  }
+});
+  
+  audio.addEventListener('ended', function() {
+    stopVisualizer();
+    if (currentPlaylist.length > 0) {
+    nextTrack();
+    }
+  });
+  
+  progressBar.addEventListener('click', function(e) {
+    var rect = progressBar.getBoundingClientRect();
+    var percent = (e.clientX - rect.left) / rect.width;
+    audio.currentTime = percent * audio.duration;
+  });
 
-      // 방문자 통계
-      (function initVisitStats(){
-        var el = document.getElementById('visitStats');
-        if (!el) return;
-        
-        var performanceInfo = '';
-        if (window.melonyStartTime) {
-          var loadTime = Date.now() - window.melonyStartTime;
-          performanceInfo = ' | ' + loadTime + 'ms';
-        }
-        
-        try {
-          fetch(WORKERS_API_URL + '/stats', { mode: 'cors' })
-            .then(function(r){ if(!r.ok) throw new Error('no stats'); return r.json(); })
-            .then(function(data){
-              if (data && typeof data.today === 'number' && typeof data.total === 'number') {
-                el.textContent = 'today ' + data.today + ' | total ' + data.total + performanceInfo;
-                return;
-              }
-              throw new Error('invalid stats');
-            })
-            .catch(function(){
-              el.textContent = 'today 1 | total 1' + performanceInfo;
-            });
-        } catch (e) {}
-      })();
-    });
-
-    // 키보드 단축키 (디버깅용)
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'F12' || e.key === 'd') {
-        var debug = document.getElementById('debugInfo');
-        if (debug.style.display === 'block') {
-          debug.style.display = 'none';
-        } else {
-          debug.style.display = 'block';
-          updateDebugInfo('디버그 모드 활성화<br>현재 곡: ' + (currentPlaylist[currentTrackIndex] ? currentPlaylist[currentTrackIndex].title : 'None'));
-        }
+  // 🔥 효과음 미리 로드 (사용자 첫 클릭 후)
+  document.addEventListener('click', function() {
+    var soundFileMap = {
+      'Rain': 'effect_Rain.m4a',
+      'Bird': 'effect_Bird.m4a', 
+      'Forest': 'effect_Forest Water_Free.m4a',
+      'Neighborhood': 'effect_Neighborhood_free.m4a',
+      'Amazon': 'effect_Amazonia Jungle_Free.m4a',
+      'Ocean': 'effect_Ocean.m4a',
+      'Crackle': 'effect_Crackle.m4a',
+      'Rain2': 'effect_Rain_Free.m4a'
+    };
+    
+    var soundTypes = ['Rain', 'Bird', 'Forest', 'Neighborhood', 'Amazon', 'Ocean', 'Crackle', 'Rain2'];
+    soundTypes.forEach(function(soundType) {
+      var effectAudio = document.getElementById('effect-' + soundType);
+      if (!effectAudio) {
+        // 미리 로드하지만 재생하지는 않음
+        var audio = document.createElement('audio');
+        audio.id = 'effect-' + soundType;
+        audio.preload = 'auto';
+        audio.loop = true;
+        audio.crossOrigin = 'anonymous';
+        audio.src = WORKERS_API_URL + '/file/effects/' + soundFileMap[soundType];
+        document.body.appendChild(audio);
+        console.log('🔊 효과음 미리 로드:', soundType);
       }
     });
+  }, { once: true });
+
+  // 방문자 통계
+  (function initVisitStats(){
+    var el = document.getElementById('visitStats');
+    if (!el) return;
+    
+    var performanceInfo = '';
+    if (window.melonyStartTime) {
+      var loadTime = Date.now() - window.melonyStartTime;
+      performanceInfo = ' | ' + loadTime + 'ms';
+    }
+    
+    try {
+      fetch(WORKERS_API_URL + '/stats', { mode: 'cors' })
+        .then(function(r){ if(!r.ok) throw new Error('no stats'); return r.json(); })
+        .then(function(data){
+          if (data && typeof data.today === 'number' && typeof data.total === 'number') {
+            el.textContent = 'today ' + data.today + ' | total ' + data.total + performanceInfo;
+            return;
+          }
+          throw new Error('invalid stats');
+        })
+        .catch(function(){
+          el.textContent = 'today 1 | total 1' + performanceInfo;
+        });
+    } catch (e) {}
+  })();
+});
+
+// 🔥 우클릭 금지 및 기타 보안 기능
+document.addEventListener('contextmenu', function(e) {
+  e.preventDefault();
+  return false;
+});
+
+// 🔥 개발자도구 관련 키 조합 금지 (선택사항)
+document.addEventListener('keydown', function(e) {
+  // F12 금지
+  if (e.key === 'F12') {
+    e.preventDefault();
+    return false;
+  }
+  // Ctrl+Shift+I 금지 (개발자도구)
+  if (e.ctrlKey && e.shiftKey && e.key === 'I') {
+    e.preventDefault();
+    return false;
+  }
+  // Ctrl+U 금지 (소스보기)
+  if (e.ctrlKey && e.key === 'U') {
+    e.preventDefault();
+    return false;
+  }
+  // Ctrl+S 금지 (저장)
+  if (e.ctrlKey && e.key === 'S') {
+    e.preventDefault();
+    return false;
+  }
+});
+
+// 🔥 드래그 금지
+document.addEventListener('dragstart', function(e) {
+  e.preventDefault();
+  return false;
+});
+
+
+// 키보드 단축키 (디버깅용)
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'F12' || e.key === 'd') {
+    var debug = document.getElementById('debugInfo');
+    if (debug.style.display === 'block') {
+      debug.style.display = 'none';
+    } else {
+      debug.style.display = 'block';
+      updateDebugInfo('디버그 모드 활성화<br>현재 곡: ' + (currentPlaylist[currentTrackIndex] ? currentPlaylist[currentTrackIndex].title : 'None'));
+    }
+  }
+});
   </script>
 </body>
 </html>
