@@ -649,10 +649,22 @@
         coverIndex++;
         
         if (typeof cover === 'string') {
+          // 이미 /file/covers/로 시작하면 그대로 사용
+          if (cover.startsWith('/file/covers/')) {
+            return resolveUrl(WORKERS_API_URL, cover);
+          }
           return resolveUrl(WORKERS_API_URL, '/file/covers/' + cover.replace(/^\//, ''));
         } else if (cover && cover.url) {
+          // 이미 /file/covers/로 시작하면 그대로 사용
+          if (cover.url.startsWith('/file/covers/')) {
+            return resolveUrl(WORKERS_API_URL, cover.url);
+          }
           return resolveUrl(WORKERS_API_URL, '/file/covers/' + cover.url.replace(/^\//, ''));
         } else if (cover && cover.image) {
+          // 이미 /file/covers/로 시작하면 그대로 사용
+          if (cover.image.startsWith('/file/covers/')) {
+            return resolveUrl(WORKERS_API_URL, cover.image);
+          }
           return resolveUrl(WORKERS_API_URL, '/file/covers/' + cover.image.replace(/^\//, ''));
         }
       }
@@ -677,14 +689,22 @@
                (c.name && c.name.toLowerCase().includes(theme.toLowerCase()));
       });
       
-      if (themeCovers.length > 0) {
-        var selected = themeCovers[Math.floor(Math.random() * themeCovers.length)];
-        if (typeof selected === 'string') {
-          return resolveUrl(WORKERS_API_URL, '/file/covers/' + selected.replace(/^\//, ''));
-        } else if (selected && selected.url) {
-          return resolveUrl(WORKERS_API_URL, '/file/covers/' + selected.url.replace(/^\//, ''));
-        }
-      }
+             if (themeCovers.length > 0) {
+         var selected = themeCovers[Math.floor(Math.random() * themeCovers.length)];
+         if (typeof selected === 'string') {
+           // 이미 /file/covers/로 시작하면 그대로 사용
+           if (selected.startsWith('/file/covers/')) {
+             return resolveUrl(WORKERS_API_URL, selected);
+           }
+           return resolveUrl(WORKERS_API_URL, '/file/covers/' + selected.replace(/^\//, ''));
+         } else if (selected && selected.url) {
+           // 이미 /file/covers/로 시작하면 그대로 사용
+           if (selected.url.startsWith('/file/covers/')) {
+             return resolveUrl(WORKERS_API_URL, selected.url);
+           }
+           return resolveUrl(WORKERS_API_URL, '/file/covers/' + selected.url.replace(/^\//, ''));
+         }
+       }
       return null;
     }
 
@@ -907,30 +927,32 @@
       }
 
       allTracks = [];
-      if (data.pop && Array.isArray(data.pop)) {
-        console.log('📂 pop 폴더: ' + data.pop.length + '개 파일');
-        for (var i = 0; i < data.pop.length; i++) {
-          var track = data.pop[i];
-          allTracks.push({
-            title: track.title,
-            folder: 'pop',
-            url: WORKERS_API_URL + track.audio,
-            cover: WORKERS_API_URL + track.image
-          });
-        }
-      }
-      if (data['lofi-inst'] && Array.isArray(data['lofi-inst'])) {
-        console.log('📂 lofi-inst 폴더: ' + data['lofi-inst'].length + '개 파일');
-        for (var j = 0; j < data['lofi-inst'].length; j++) {
-          var track2 = data['lofi-inst'][j];
-          allTracks.push({
-            title: track2.title,
-            folder: 'lofi-inst',
-            url: WORKERS_API_URL + track2.audio,
-            cover: WORKERS_API_URL + track2.image
-          });
-        }
-      }
+             if (data.pop && Array.isArray(data.pop)) {
+         console.log('📂 pop 폴더: ' + data.pop.length + '개 파일');
+         for (var i = 0; i < data.pop.length; i++) {
+           var track = data.pop[i];
+           console.log('🎵 POP 트랙:', track.title, '| 오디오 경로:', track.audio);
+           allTracks.push({
+             title: track.title,
+             folder: 'pop',
+             url: WORKERS_API_URL + track.audio,
+             cover: WORKERS_API_URL + track.image
+           });
+         }
+       }
+             if (data['lofi-inst'] && Array.isArray(data['lofi-inst'])) {
+         console.log('📂 lofi-inst 폴더: ' + data['lofi-inst'].length + '개 파일');
+         for (var j = 0; j < data['lofi-inst'].length; j++) {
+           var track2 = data['lofi-inst'][j];
+           console.log('🎵 LoFi 트랙:', track2.title, '| 오디오 경로:', track2.audio);
+           allTracks.push({
+             title: track2.title,
+             folder: 'lofi-inst',
+             url: WORKERS_API_URL + track2.audio,
+             cover: WORKERS_API_URL + track2.image
+           });
+         }
+       }
       if (data.covers && Array.isArray(data.covers)) {
         // 새로운 coverList 시스템 사용
         coverList.covers = data.covers;
@@ -968,14 +990,30 @@
         }, 200);
     }
 
-    // 트랙 로드
-    function loadTrack(index) {
-      if (index < 0 || index >= currentPlaylist.length) return;
-      
-      var track = currentPlaylist[index];
-      
-      audio.src = track.url;
-      audio.volume = musicVolume;
+         // 트랙 로드
+     function loadTrack(index) {
+       if (index < 0 || index >= currentPlaylist.length) return;
+       
+       var track = currentPlaylist[index];
+       
+       console.log('🎵 트랙 로드:', track.title);
+       console.log('🔗 오디오 URL:', track.url);
+       
+       // 오디오 파일 로딩 실패 시 대체 경로 시도
+       audio.addEventListener('error', function(e) {
+         console.log('❌ 오디오 로딩 실패:', track.url);
+         console.log('오류 코드:', audio.error ? audio.error.code : 'unknown');
+         
+         // 대체 경로 시도 (파일명만 사용)
+         var fileName = track.url.split('/').pop();
+         var alternativeUrl = WORKERS_API_URL + '/file/pop/' + fileName;
+         console.log('🔄 대체 경로 시도:', alternativeUrl);
+         
+         audio.src = alternativeUrl;
+       }, { once: true });
+       
+       audio.src = track.url;
+       audio.volume = musicVolume;
       
       if (track.folder === 'pop') {
         title.textContent = cleanTitle(track.title);
@@ -985,6 +1023,8 @@
       
       // 커버를 covers 폴더에서 랜덤 선택(없으면 트랙 커버 사용)
       var coverUrl = pickRandomCoverUrl(track.cover);
+      console.log('🖼️ 선택된 커버 URL:', coverUrl);
+      
       // 절대 경로 보정: covers는 반드시 Workers /file/covers/ 경로를 우선 사용(CORS 안전)
       if (coverUrl) {
         if (coverUrl.indexOf('/file/covers/') === 0) {
@@ -994,6 +1034,7 @@
           coverUrl = resolveUrl(WORKERS_API_URL, '/file/covers/' + coverUrl.replace(/^\//, ''));
         }
       }
+      console.log('🔗 최종 커버 URL:', coverUrl);
       setThumbnailCover(coverUrl);
       thumbnail.style.backgroundSize = '100%';
       
@@ -1124,7 +1165,10 @@
         effectAudio.id = 'effect-' + soundType;
         effectAudio.loop = true;
         effectAudio.preload = 'metadata';
-        effectAudio.src = WORKERS_API_URL + '/file/effects/effect_' + soundType + '.m4a';
+        // 효과음 파일 경로 정규화
+        var effectPath = '/file/effects/effect_' + soundType + '.m4a';
+        effectAudio.src = WORKERS_API_URL + effectPath;
+        console.log('🔊 효과음 경로:', effectPath);
         document.body.appendChild(effectAudio);
       }
       
@@ -1175,25 +1219,35 @@
         });
     }
 
-    // 효과음 프리워밍 (첫 사용자 제스처 이후 캐시 워밍)
-    function warmUpEffectSounds() {
-      try {
-        var soundTypes = ['Rain','Bird','Forest Water_Free','Neighborhood_free','Amazonia Jungle_Free','Ocean','Crackle','Rain_Free'];
-        for (var i = 0; i < soundTypes.length; i++) {
-          var url = WORKERS_API_URL + '/file/effects/effect_' + soundTypes[i] + '.m4a';
-          // 초기 256KB만 프리페치하여 지연 감소
-          fetch(url, {
-            method: 'GET',
-            mode: 'cors',
-            headers: { 'Range': 'bytes=0-262143' },
-            cache: 'force-cache',
-            keepalive: true
-          }).catch(function(){});
-        }
-      } catch (e) {
-        // noop
-      }
-    }
+         // 효과음 프리워밍 (첫 사용자 제스처 이후 캐시 워밍)
+     function warmUpEffectSounds() {
+       try {
+         var soundTypes = ['Rain','Bird','Forest Water_Free','Neighborhood_free','Amazonia Jungle_Free','Ocean','Crackle','Rain_Free'];
+         for (var i = 0; i < soundTypes.length; i++) {
+           var effectPath = '/file/effects/effect_' + soundTypes[i] + '.m4a';
+           var url = WORKERS_API_URL + effectPath;
+           console.log('🔊 효과음 프리워밍:', effectPath);
+           // 초기 256KB만 프리페치하여 지연 감소
+           fetch(url, {
+             method: 'GET',
+             mode: 'cors',
+             headers: { 'Range': 'bytes=0-262143' },
+             cache: 'force-cache',
+             keepalive: true
+           }).then(function(response) {
+             if (response.ok) {
+               console.log('✅ 효과음 프리워밍 성공:', effectPath);
+             } else {
+               console.log('❌ 효과음 프리워밍 실패:', effectPath, '상태:', response.status);
+             }
+           }).catch(function(error) {
+             console.log('❌ 효과음 프리워밍 오류:', effectPath, error.message);
+           });
+         }
+       } catch (e) {
+         console.error('효과음 프리워밍 초기화 오류:', e);
+       }
+     }
 
     // 볼륨 오버레이
     function showVolumeOverlay(text) {
