@@ -743,7 +743,6 @@ body::after {
     
     <footer>© Melony. All rights reserved.<br>
  Special thanks to Hyundeok, whose inspiration made this possible.</footer>
-    <div class="visit-stats" id="visitStats">today 0 | total 0</div>
     
     <audio id="player" preload="metadata" crossorigin="anonymous">
       Your browser does not support the audio element.
@@ -2545,32 +2544,7 @@ audio.addEventListener('ended', function() {
     });
   }, { once: true });
 
-  // 방문자 통계
-  (function initVisitStats(){
-    var el = document.getElementById('visitStats');
-    if (!el) return;
-    
-    var performanceInfo = '';
-    if (window.melonyStartTime) {
-      var loadTime = Date.now() - window.melonyStartTime;
-      performanceInfo = ' | ' + loadTime + 'ms';
-    }
-    
-    try {
-      fetch(WORKERS_API_URL + '/stats', { mode: 'cors' })
-        .then(function(r){ if(!r.ok) throw new Error('no stats'); return r.json(); })
-        .then(function(data){
-          if (data && typeof data.today === 'number' && typeof data.total === 'number') {
-            el.textContent = 'today ' + data.today + ' | total ' + data.total + performanceInfo;
-            return;
-          }
-          throw new Error('invalid stats');
-        })
-        .catch(function(){
-          el.textContent = 'today 1 | total 1' + performanceInfo;
-        });
-    } catch (e) {}
-  })();
+
 });
 
 // 🔥 강화된 iOS 백그라운드 재생 지원
