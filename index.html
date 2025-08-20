@@ -1523,24 +1523,70 @@ audio.addEventListener('ended', function() {
 
 console.log('🔄 새로운 오디오 객체에 이벤트 리스너 연결 완료');
        
-// 🔥 오디오 비주얼라이저 연결 복구 (강화)
-if (window.audioContext && window.analyser) {
+// 🔥 강화된 오디오 비주얼라이저 연결
+function reconnectVisualizer() {
   try {
-    // 🔥 기존 소스 연결 해제
-    if (window.currentSource) {
-      window.currentSource.disconnect();
+    // 🔥 오디오 컨텍스트 초기화
+    if (!window.audioContext) {
+      window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      window.analyser = window.audioContext.createAnalyser();
+      window.analyser.fftSize = 1024;
+      window.analyser.smoothingTimeConstant = 0.3;
+      window.dataArray = new Uint8Array(window.analyser.frequencyBinCount);
+      console.log('🎛️ 새로운 오디오 컨텍스트 생성');
     }
     
-    // 🔥 새로운 소스 생성 및 연결
-    window.currentSource = window.audioContext.createMediaElementSource(audio);
-    window.currentSource.connect(window.analyser);
-    window.analyser.connect(window.audioContext.destination);
-    console.log('🎛️ 오디오 비주얼라이저 연결 복구 완료');
+    // 🔥 기존 소스 완전히 정리
+    if (window.currentSource) {
+      try {
+        window.currentSource.disconnect();
+        window.currentSource = null;
+        console.log('🔄 기존 소스 연결 해제');
+      } catch (e) {
+        console.log('🔄 기존 소스 해제 중 오류 (무시됨)');
+      }
+    }
+    
+    // 🔥 오디오 컨텍스트 상태 확인 및 재개
+    if (window.audioContext.state === 'suspended') {
+      window.audioContext.resume().then(() => {
+        console.log('🎛️ 오디오 컨텍스트 재개됨');
+      });
+    }
+    
+    // 🔥 새로운 소스 생성 (audio가 준비된 후)
+    setTimeout(() => {
+      try {
+        if (audio && audio.src && !audio._audioSourceConnected) {
+          window.currentSource = window.audioContext.createMediaElementSource(audio);
+          window.currentSource.connect(window.analyser);
+          window.analyser.connect(window.audioContext.destination);
+          
+          // 🔥 중복 연결 방지 플래그
+          audio._audioSourceConnected = true;
+          
+          // 🔥 전역 변수 업데이트
+          audioContext = window.audioContext;
+          analyser = window.analyser;
+          dataArray = window.dataArray;
+          
+          console.log('🎛️ 비주얼라이저 연결 완료:', audio.src.substring(0, 50) + '...');
+          window.useFallbackVisualizer = false;
+        }
+      } catch (error) {
+        console.warn('⚠️ 비주얼라이저 연결 실패:', error.message);
+        window.useFallbackVisualizer = true;
+      }
+    }, 500); // 오디오 로딩 대기
+    
   } catch (error) {
-    console.warn('⚠️ 비주얼라이저 연결 실패:', error.message);
+    console.warn('⚠️ 비주얼라이저 초기화 실패:', error.message);
     window.useFallbackVisualizer = true;
   }
 }
+
+// 🔥 비주얼라이저 연결 실행
+reconnectVisualizer();
        
        // 🔥 이전 오디오 객체 정리
        if (oldAudio) {
@@ -2177,19 +2223,35 @@ effectAudio.play()
         var currentAudio = window.audio || audio;
         
 // 🔥 전역 변수의 소스 사용
-if (window.currentSource && !window.useFallbackVisualizer) {
+// 🔥 비주얼라이저 연결 상태 강화 체크
+var currentAudio = window.audio || audio;
+
+if (window.currentSource && !window.useFallbackVisualizer && currentAudio._audioSourceConnected) {
   console.log('🎛️ 기존 연결된 소스 사용');
 } else if (!window.useFallbackVisualizer) {
   try {
-    var currentAudio = window.audio || audio;
-    if (currentAudio && currentAudio.src) {
+    // 🔥 기존 소스가 있으면 먼저 해제
+    if (window.currentSource) {
+      try {
+        window.currentSource.disconnect();
+        console.log('🔄 기존 소스 해제');
+      } catch (e) {}
+    }
+    
+    if (currentAudio && currentAudio.src && !currentAudio._audioSourceConnected) {
       window.currentSource = audioContext.createMediaElementSource(currentAudio);
       window.currentSource.connect(analyser);
       analyser.connect(audioContext.destination);
+      
+      // 🔥 중복 연결 방지 플래그
+      currentAudio._audioSourceConnected = true;
+      
       console.log('🎛️ 새로운 Audio Context 연결 완료');
+    } else {
+      console.log('🎛️ 이미 연결된 오디오 소스 재사용');
     }
   } catch (error) {
-    console.log('Audio Context 연결 실패, 폴백 애니메이션 사용');
+    console.log('Audio Context 연결 실패, 폴백 애니메이션 사용:', error.message);
     window.useFallbackVisualizer = true;
     startFallbackVisualizer();
     return;
