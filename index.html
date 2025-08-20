@@ -1213,34 +1213,64 @@ const [popRes, lofiRes, coversRes] = await Promise.all([
       allTracks = [];
       
       if (data.pop && Array.isArray(data.pop)) {
-        console.log('📂 pop 폴더: ' + data.pop.length + '개 파일');
-        for (var i = 0; i < data.pop.length; i++) {
-          var track = data.pop[i];
-          console.log('🎵 POP 트랙 원본 데이터:', track);
-          console.log('  - title:', track.title);
-          console.log('  - audio:', track.audio);
-          
-          // 🔥 POP 트랙 title 강화 처리
-          var cleanTitle = null;
-          
-// 🔥 플레이리스트 방식이므로 JSON title 필드 직접 사용
-var cleanTitle = track.title || 'Unknown Track';
-console.log('  - JSON title 사용:', cleanTitle);
-          
-          // 🔥 4단계: 최종 제목 설정
-          cleanTitle = cleanTitle || 'Unknown Track';
-          console.log('  - 최종 제목:', cleanTitle);
-          console.log('  - 원본 vs 정제:', track.title, '→', cleanTitle);
-          
-          // 🔥 제목 변경 여부 확인
-allTracks.push({
-  title: track.title || 'Unknown Track', // 🔥 JSON title 직접 사용
-  folder: 'pop',
-  audio: track.audio,
-  cover: normalizeUrl(WORKERS_API_URL, track.image || 'covers/default-cover.jpg')
-});
-        }
+  console.log('📂 pop 폴더: ' + data.pop.length + '개 파일');
+  for (var i = 0; i < data.pop.length; i++) {
+    var track = data.pop[i];
+    
+    if (i === 0) {
+      console.log('🎵 POP 트랙 원본 데이터:', track);
+      console.log('  - title:', track.title);
+      console.log('  - audio:', track.audio);
+    }
+    
+    // 🔥 POP도 제목 정제 로직 적용
+    var cleanTitle = null;
+    
+    if (track.title && track.title.trim() !== '') {
+      // 🔥 대괄호 내용만 추출하여 제목으로 사용
+      var bracketMatch = track.title.match(/\[(.*?)\]/);
+      if (bracketMatch && bracketMatch[1]) {
+        cleanTitle = bracketMatch[1].trim(); // 대괄호 안의 내용만 사용
+        if (i === 0) console.log('  - ✅ 대괄호 내용 추출:', track.title, '→', cleanTitle);
+      } else {
+        // 대괄호가 없으면 전체 title 사용하되 정제
+        cleanTitle = track.title
+          .replace(/\([^)]*\)/g, '') // (내용) 제거
+          .replace(/_M$/, '') // _M 접미사 제거
+          .replace(/\s+/g, ' ') // 연속된 공백을 하나로
+          .trim();
+        if (i === 0) console.log('  - ✅ 전체 title 정제:', track.title, '→', cleanTitle);
       }
+    } else {
+      // title이 없으면 파일명에서 추출
+      var fileName = track.audio.split('/').pop();
+      cleanTitle = fileName
+        .replace(/\.(m4a|mp3)$/i, '') // 확장자 제거
+        .replace(/^\[(.*?)\]\s*/, '$1') // [태그] 제거
+        .replace(/_M$/, '') // _M 접미사 제거
+        .replace(/\([^)]*\)/g, '') // (내용) 제거
+        .replace(/[_-]/g, ' ') // 언더스코어, 하이픈을 공백으로
+        .replace(/\s+/g, ' ') // 연속된 공백을 하나로
+        .trim();
+      if (i === 0) console.log('  - 🔄 파일명에서 제목 추출:', fileName, '→', cleanTitle);
+    }
+    
+    // 🔥 최종 제목 설정
+    cleanTitle = cleanTitle || 'Unknown Track';
+    
+    if (i === 0) {
+      console.log('  - 최종 제목:', cleanTitle);
+      console.log('  - 원본 vs 최종:', track.title, '→', cleanTitle);
+    }
+    
+    allTracks.push({
+      title: cleanTitle, // 🔥 정제된 제목 사용
+      folder: 'pop',
+      audio: track.audio,
+      cover: normalizeUrl(WORKERS_API_URL, track.image || 'covers/default-cover.jpg')
+    });
+  }
+}
       
 if (data['lofi-inst'] && Array.isArray(data['lofi-inst'])) {
   console.log('📂 lofi-inst 폴더: ' + data['lofi-inst'].length + '개 파일');
