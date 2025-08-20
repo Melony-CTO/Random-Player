@@ -257,6 +257,11 @@ body::after {
       font-weight: bold;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
       touch-action: none;
+        /* iOS 터치 최적화 추가 */
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .touch-zone.left {
@@ -1836,11 +1841,21 @@ function togglePlay() {
     isPlaying = false;
     thumbnail.classList.remove('playing', 'slow-zoom');
     stopVisualizer();
-  } else {
-    audio.play()
-      .then(function() {
-        playButton.textContent = '⏸';
-        isPlaying = true;
+} else {
+  // iOS에서 오디오 컨텍스트 강제 시작
+  if (window.audioContext && window.audioContext.state === 'suspended') {
+    window.audioContext.resume();
+  }
+  
+  audio.play()
+    .then(function() {
+      playButton.textContent = '⏸';
+      isPlaying = true;
+      
+      // iOS Media Session 상태 업데이트
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.playbackState = 'playing';
+      }
         thumbnail.classList.add('playing', 'slow-zoom', 'start-zoom');
         setTimeout(function() {
           thumbnail.classList.remove('start-zoom');
@@ -1914,11 +1929,16 @@ function nextTrack() {
        
        // 현재 재생 중이면 정지
        if (isPlaying) {
-         audio.pause();
-         isPlaying = false;
-         playButton.textContent = '▶';
-         thumbnail.classList.remove('playing', 'slow-zoom');
-         stopVisualizer();
+  audio.pause();
+  playButton.textContent = '▶';
+  isPlaying = false;
+  thumbnail.classList.remove('playing', 'slow-zoom');
+  stopVisualizer();
+  
+  // iOS Media Session 상태 업데이트
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.playbackState = 'paused';
+  }
        }
        
        // 오디오 상태 초기화
@@ -2318,14 +2338,13 @@ if (window.useFallbackVisualizer) {
       }
 
       leftTouchZone.addEventListener('touchstart', function(e) {
-        handleTouchStart(e, 'left');
-      }, { passive: false });
+  handleTouchStart(e, 'left');
+      }, { passive: false, capture: true });
       rightTouchZone.addEventListener('touchstart', function(e) {
         handleTouchStart(e, 'right');
-      }, { passive: false });
-      
-      document.addEventListener('touchmove', handleTouchMove, { passive: false });
-      document.addEventListener('touchend', handleTouchEnd, { passive: false });
+      }, { passive: false, capture: true });
+      document.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+      document.addEventListener('touchend', handleTouchEnd, { passive: false, capture: true });
 
       // 마우스 이벤트
       leftTouchZone.addEventListener('mousedown', function(e) {
