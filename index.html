@@ -2692,31 +2692,7 @@ document.addEventListener('dragstart', function(e) {
   return false;
 });
 
-// 🔥 Page Visibility API로 백그라운드 전환 감지
-document.addEventListener('visibilitychange', function() {
-  if (document.hidden) {
-    // 백그라운드로 전환
-    console.log('📱 백그라운드로 전환됨');
-    if (window.audioContext && window.audioContext.state === 'running') {
-      window.audioContext.suspend();
-    }
-  } else {
-    // 포그라운드로 복귀
-    console.log('📱 포그라운드로 복귀');
-    if (window.audioContext && window.audioContext.state === 'suspended') {
-      window.audioContext.resume().then(function() {
-        console.log('🎛️ 오디오 컨텍스트 재개됨');
-        
-        // 비주얼라이저 재연결
-        if (isPlaying && audio.src) {
-          setTimeout(function() {
-            startVisualizer();
-          }, 500);
-        }
-      });
-    }
-  }
-});
+
 
 // 키보드 단축키 (디버깅용)
 document.addEventListener('keydown', function(e) {
