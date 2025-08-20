@@ -4,6 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Melony Random Player</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Melony Player">
+
   <style>
     body {
       margin: 0;
@@ -1520,7 +1524,17 @@ if (track.loadStartTime) {
        console.log('  - 폴더:', track.folder);
        console.log('  - 원본 제목:', track.title);
        console.log('  - 정제된 제목:', cleanTitleText);
-      
+
+
+    // 🔥 미디어 세션 업데이트 (iOS 백그라운드 재생용)
+    if (window.updateMediaSession) {
+      window.updateMediaSession({
+       title: cleanTitleText,
+      folder: track.folder,
+      cover: coverUrl
+  });
+}
+
       var coverUrl = pickRandomCoverUrl(track.cover);
       console.log('🖼️ 선택된 커버 URL:', coverUrl);
       setThumbnailCover(coverUrl);
@@ -1729,12 +1743,45 @@ setTimeout(function() {
       var actualFileName = soundFileMap[soundType] || (soundType + '.m4a');
       var effectAudio = document.getElementById('effect-' + soundType);
       
-      if (!effectAudio) {
-  effectAudio = document.createElement('audio');
-  effectAudio.id = 'effect-' + soundType;
-  effectAudio.loop = true;
-  effectAudio.preload = 'auto'; // 🔥 metadata → auto로 변경 (미리 로드)
-  effectAudio.crossOrigin = 'anonymous';
+    if (!effectAudio) {
+      effectAudio = document.createElement('audio');
+      effectAudio.id = 'effect-' + soundType;
+      effectAudio.loop = true; // 🔥 무한루프 설정
+      effectAudio.preload = 'auto';
+      setTimeout(function() { effectAudio.loop = true; }, 100);
+      effectAudio.crossOrigin = 'anonymous';
+  
+  // 🔥 루프 강제 설정 (일부 브라우저에서 필요)
+      effectAudio.addEventListener('ended', function() {
+    if (currentBgSound === soundType) {
+      this.currentTime = 0;
+      this.play().catch(function(error) {
+        console.log('🔄 효과음 루프 재시작 실패:', error);
+      });
+    }
+  });
+  
+  // 🔥 로딩 완료 후 루프 재확인
+  effectAudio.addEventListener('loadeddata', function() {
+    this.loop = true;
+    console.log('🔊 효과음 루프 설정 확인:', soundType, this.loop);
+  });
+  
+  // 🔥 루프 강제 설정 (일부 브라우저에서 필요)
+  effectAudio.addEventListener('ended', function() {
+    if (currentBgSound === soundType) {
+      this.currentTime = 0;
+      this.play().catch(function(error) {
+        console.log('🔄 효과음 루프 재시작 실패:', error);
+      });
+    }
+  });
+  
+  // 🔥 로딩 완료 후 루프 재확인
+  effectAudio.addEventListener('loadeddata', function() {
+    this.loop = true;
+    console.log('🔊 효과음 루프 설정 확인:', soundType, this.loop);
+  });
         
                  // ✅ 효과음 경로 (effects 폴더 사용)
          var effectPath = WORKERS_API_URL + '/file/effects/' + encodeURIComponent(actualFileName);
@@ -1778,13 +1825,14 @@ setTimeout(function() {
       }
       
 // 새 효과음 재생
-effectAudio.volume = effectVolume;
+     effectAudio.volume = effectVolume;
+     effectAudio.loop = true; // 🔥 재생 전 루프 재확인
 
 // 🔥 즉시 상태 업데이트 (재생 성공을 기다리지 않음)
-currentBgSound = soundType;
-var clickedButton = document.querySelector("[onclick=\"toggleBgSound('" + soundType + "')\"]");
-if (clickedButton) {
-  clickedButton.classList.add('active');
+      currentBgSound = soundType;
+     var clickedButton = document.querySelector("[onclick=\"toggleBgSound('" + soundType + "')\"]");
+      if (clickedButton) {
+      clickedButton.classList.add('active');
 }
 
 // 🔥 빠른 재생 시도
@@ -2075,29 +2123,29 @@ effectAudio.play()
     }
 
   // 페이지 로드시 초기화
-window.addEventListener('load', function() {
-  window.melonyStartTime = Date.now();
+      window.addEventListener('load', function() {
+      window.melonyStartTime = Date.now();
   
-  console.log('🚀 === Melony Player 수정된 버전 시작 ===');
+      console.log('🚀 === Melony Player 수정된 버전 시작 ===');
   
   // DOM 요소 할당
-  audio = document.getElementById('player');
-  audio.crossOrigin = 'anonymous';
-  playButton = document.getElementById('playButton');
-  title = document.getElementById('title');
-  thumbnail = document.getElementById('thumbnail');
-  volumeOverlay = document.getElementById('volumeOverlay');
-  leftTouchZone = document.getElementById('leftTouchZone');
-  rightTouchZone = document.getElementById('rightTouchZone');
-  debugInfo = document.getElementById('debugInfo');
+      audio = document.getElementById('player');
+      audio.crossOrigin = 'anonymous';
+      playButton = document.getElementById('playButton');
+      title = document.getElementById('title');
+      thumbnail = document.getElementById('thumbnail');
+      volumeOverlay = document.getElementById('volumeOverlay');
+      leftTouchZone = document.getElementById('leftTouchZone');
+      rightTouchZone = document.getElementById('rightTouchZone');
+      debugInfo = document.getElementById('debugInfo');
   
    // API에서 음악 데이터 로드
-  fetchMusicFromAPI();
+      fetchMusicFromAPI();
    
   // 커버 목록은 첫 사용자 입력 이후 지연 로드로 초기 부하 감소
-  document.addEventListener('pointerdown', function() {
+      document.addEventListener('pointerdown', function() {
      loadCoversOptimized();
-  }, { once: true });
+      }, { once: true });
   
   // 터치 제스처 설정
   setupTouchGestures();
@@ -2204,6 +2252,48 @@ audio.addEventListener('ended', function() {
     } catch (e) {}
   })();
 });
+
+// 🔥 iOS 백그라운드 재생 지원 (Media Session API)
+if ('mediaSession' in navigator) {
+  console.log('📱 Media Session API 지원됨');
+  
+  // 메타데이터 설정 함수
+  window.updateMediaSession = function(track) {
+    if (!track) return;
+    
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: track.title || 'Unknown Track',
+      artist: 'Melony Player',
+      album: track.folder === 'pop' ? 'POP Collection' : 'LoFi Collection',
+      artwork: [
+        { src: track.cover || '', sizes: '512x512', type: 'image/jpeg' }
+      ]
+    });
+    
+    console.log('📱 미디어 세션 업데이트:', track.title);
+  };
+  
+  // 미디어 컨트롤 설정
+  navigator.mediaSession.setActionHandler('play', function() {
+    if (!isPlaying) togglePlay();
+  });
+  
+  navigator.mediaSession.setActionHandler('pause', function() {
+    if (isPlaying) togglePlay();
+  });
+  
+  navigator.mediaSession.setActionHandler('nexttrack', function() {
+    nextTrack();
+  });
+  
+  navigator.mediaSession.setActionHandler('previoustrack', function() {
+    previousTrack();
+  });
+  
+  console.log('📱 iOS 백그라운드 재생 설정 완료');
+} else {
+  console.log('📱 Media Session API 미지원');
+}
 
 // 🔥 우클릭 금지 및 기타 보안 기능
 document.addEventListener('contextmenu', function(e) {
