@@ -517,14 +517,18 @@ body::after {
     }
 
     @keyframes slowZoomBg {
-      0% { background-size: 100%; }
-      50% { background-size: 104%; }
-      100% { background-size: 100%; }
-    }
+  0% { background-size: 100%; }
+  50% { background-size: 110%; }
+  100% { background-size: 100%; }
+}
 
-    .thumbnail.slow-zoom {
-      animation: slowZoomBg 30s ease-in-out infinite;
-    }
+.thumbnail.slow-zoom {
+  animation: slowZoomBg 120s ease-in-out infinite;
+}
+
+.thumbnail.playing {
+  animation: slowZoomBg 60s linear infinite;
+}
 
     .thumbnail.start-zoom.slow-zoom {
       animation: pulseZoom 1.2s ease-out, slowZoomBg 60s ease-in-out infinite;
@@ -776,6 +780,50 @@ body::after {
     var dataArray;
     var source;
     var animationId;
+
+    // 🔥 페이드 효과 함수들 추가
+function fadeInAudio(audioElement, duration = 500) {
+  return new Promise(function(resolve) {
+    audioElement.volume = 0;
+    var targetVolume = musicVolume;
+    var steps = 20;
+    var stepDuration = duration / steps;
+    var volumeStep = targetVolume / steps;
+    
+    var currentStep = 0;
+    var fadeInterval = setInterval(function() {
+      currentStep++;
+      audioElement.volume = Math.min(volumeStep * currentStep, targetVolume);
+      
+      if (currentStep >= steps) {
+        clearInterval(fadeInterval);
+        audioElement.volume = targetVolume;
+        resolve();
+      }
+    }, stepDuration);
+  });
+}
+
+function fadeOutAudio(audioElement, duration = 500) {
+  return new Promise(function(resolve) {
+    var startVolume = audioElement.volume;
+    var steps = 20;
+    var stepDuration = duration / steps;
+    var volumeStep = startVolume / steps;
+    
+    var currentStep = 0;
+    var fadeInterval = setInterval(function() {
+      currentStep++;
+      audioElement.volume = Math.max(startVolume - (volumeStep * currentStep), 0);
+      
+      if (currentStep >= steps || audioElement.volume <= 0) {
+        clearInterval(fadeInterval);
+        audioElement.volume = 0;
+        resolve();
+      }
+    }, stepDuration);
+  });
+}
 
     // DOM 요소
     var audio, playButton, title, thumbnail, volumeOverlay, leftTouchZone, rightTouchZone, debugInfo;
@@ -1468,136 +1516,23 @@ if (currentPlaylist.length > 1) {
        var loadStartTime = Date.now();
        track.loadStartTime = loadStartTime;
        
-       // 🔥 새로운 오디오 객체 생성 (완전 분리)
-       var oldAudio = audio;
-       audio = new Audio();
-       audio.preload = 'none'; // 🔥 프리로딩 비활성화
-       audio.autoplay = false; // 🔥 자동재생 비활성화
-       audio.crossOrigin = 'anonymous';
-       
-       // 🔥 전역 audio 변수 업데이트
-       window.audio = audio;
+// 🔥 기존 오디오 객체 재사용 (새로 생성하지 않음)
+console.log('🔄 기존 오디오 객체 재사용 - 새로 생성하지 않음');
 
-       
-
-       // 🔥 새로운 오디오 객체에 이벤트 리스너 다시 연결
-audio.addEventListener('loadedmetadata', function() {
-  var durationDisplay = document.getElementById('duration');
-  if (durationDisplay) {
-    durationDisplay.textContent = formatTime(audio.duration);
-  }
-});
-
-audio.addEventListener('timeupdate', function() {
-  if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
-    var progressFill = document.getElementById('progressFill');
-    var currentTimeDisplay = document.getElementById('currentTime');
-    if (progressFill && currentTimeDisplay) {
-      var progress = (audio.currentTime / audio.duration) * 100;
-      progressFill.style.width = Math.min(100, Math.max(0, progress)) + '%';
-      currentTimeDisplay.textContent = formatTime(audio.currentTime);
-    }
-  }
-});
-
-audio.addEventListener('ended', function() {
-  console.log('🎵 곡 종료 - 다음 곡으로 이동');
-  stopVisualizer();
-  
-  // 🔥 재생 상태 유지하면서 다음 곡
-  if (currentPlaylist.length > 0) {
-    var wasPlaying = isPlaying;
-    nextTrack();
-    
-    // 🔥 이전에 재생 중이었다면 자동 재생
-    if (wasPlaying) {
-      setTimeout(function() {
-        if (audio.src && !isPlaying) {
-          togglePlay();
-          console.log('🎵 다음 곡 자동 재생');
-        }
-      }, 1000);
-    }
-  }
-});
-
-console.log('🔄 새로운 오디오 객체에 이벤트 리스너 연결 완료');
-       
-// 🔥 강화된 오디오 비주얼라이저 연결
-function reconnectVisualizer() {
-  try {
-    // 🔥 오디오 컨텍스트 초기화
-    if (!window.audioContext) {
-      window.audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      window.analyser = window.audioContext.createAnalyser();
-      window.analyser.fftSize = 1024;
-      window.analyser.smoothingTimeConstant = 0.3;
-      window.dataArray = new Uint8Array(window.analyser.frequencyBinCount);
-      console.log('🎛️ 새로운 오디오 컨텍스트 생성');
-    }
-    
-    // 🔥 기존 소스 완전히 정리
-    if (window.currentSource) {
-      try {
-        window.currentSource.disconnect();
-        window.currentSource = null;
-        console.log('🔄 기존 소스 연결 해제');
-      } catch (e) {
-        console.log('🔄 기존 소스 해제 중 오류 (무시됨)');
-      }
-    }
-    
-    // 🔥 오디오 컨텍스트 상태 확인 및 재개
-    if (window.audioContext.state === 'suspended') {
-      window.audioContext.resume().then(() => {
-        console.log('🎛️ 오디오 컨텍스트 재개됨');
-      });
-    }
-    
-    // 🔥 새로운 소스 생성 (audio가 준비된 후)
-    setTimeout(() => {
-      try {
-        if (audio && audio.src && !audio._audioSourceConnected) {
-          window.currentSource = window.audioContext.createMediaElementSource(audio);
-          window.currentSource.connect(window.analyser);
-          window.analyser.connect(window.audioContext.destination);
-          
-          // 🔥 중복 연결 방지 플래그
-          audio._audioSourceConnected = true;
-          
-          // 🔥 전역 변수 업데이트
-          audioContext = window.audioContext;
-          analyser = window.analyser;
-          dataArray = window.dataArray;
-          
-          console.log('🎛️ 비주얼라이저 연결 완료:', audio.src.substring(0, 50) + '...');
-          window.useFallbackVisualizer = false;
-        }
-      } catch (error) {
-        console.warn('⚠️ 비주얼라이저 연결 실패:', error.message);
-        window.useFallbackVisualizer = true;
-      }
-    }, 500); // 오디오 로딩 대기
-    
-  } catch (error) {
-    console.warn('⚠️ 비주얼라이저 초기화 실패:', error.message);
-    window.useFallbackVisualizer = true;
-  }
+// 🔥 기존 오디오만 정리
+if (audio) {
+  audio.pause();
+  audio.currentTime = 0;
+  console.log('🔄 기존 오디오 정리 완료');
 }
 
-// 🔥 비주얼라이저 연결 실행
-reconnectVisualizer();
        
-       // 🔥 이전 오디오 객체 정리
-       if (oldAudio) {
-         oldAudio.pause();
-         oldAudio.src = '';
-         oldAudio.removeAttribute('src');
-         oldAudio.load();
-         console.log('🔄 이전 오디오 객체 정리 완료');
-       }
+
+
        
-       console.log('🔄 새로운 오디오 객체 생성 완료');
+
+       
+
        
        // 오류 루프 상태면 중단
        if (isInErrorLoop) {
@@ -1630,9 +1565,11 @@ reconnectVisualizer();
        // 🔥 새로운 오디오 객체이므로 이벤트 리스너 제거 불필요
        console.log('🔄 새로운 오디오 객체 - 이벤트 리스너 제거 불필요');
        
-       // 🔥 새로운 오디오 객체에 URL 설정
-       audio.src = audioUrl;
-       console.log('🎯 오디오 URL 설정:', audioUrl);
+// 🔥 기존 오디오 객체에 새 URL 설정
+audio.src = audioUrl;
+audio.volume = musicVolume;
+console.log('🎯 오디오 URL 설정:', audioUrl);
+console.log('🔊 볼륨 설정:', musicVolume);
        
        // ✅ 강화된 오디오 로딩 상태 관리 - 함수로 분리
        function handleLoadStart() {
@@ -1922,29 +1859,28 @@ function togglePlay() {
     window.audioContext.resume();
   }
   
-  audio.play()
-    .then(function() {
-      playButton.textContent = '⏸';
-      isPlaying = true;
-      
-      // iOS Media Session 상태 업데이트
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'playing';
-      }
-        thumbnail.classList.add('playing', 'slow-zoom', 'start-zoom');
-        setTimeout(function() {
-          thumbnail.classList.remove('start-zoom');
-        }, 1200);
-        startVisualizer();
-        console.log('🎵 수동 재생 + 펄스 애니메이션');
-        
-        // 🚀 재생 시작 3초 후 다음 곡 미리 로딩
-        setTimeout(preloadNextTrack, 3000);
-      })
-      .catch(function(error) {
-        console.log('재생 실패:', error);
-        updateDebugInfo('재생 실패<br>' + error.message);
-      });
+// 🔥 페이드인 효과와 함께 재생
+audio.volume = 0; // 시작 볼륨 0
+audio.play()
+  .then(function() {
+    playButton.textContent = '⏸';
+    isPlaying = true;
+    
+    // 페이드인 효과 적용
+    fadeInAudio(audio, 500).then(function() {
+      console.log('✅ 페이드인 완료');
+    });
+    
+    // 기존 비주얼라이저 및 애니메이션 코드
+    thumbnail.classList.add('playing', 'slow-zoom', 'start-zoom');
+    setTimeout(function() {
+      thumbnail.classList.remove('start-zoom');
+    }, 1200);
+    startVisualizer();
+    console.log('🎵 수동 재생 + 펄스 애니메이션');
+    
+    setTimeout(preloadNextTrack, 3000);
+  })
   }
 }
 
@@ -1959,22 +1895,36 @@ function togglePlay() {
     }
 
 function nextTrack() {
-    console.log('🔄 nextTrack 호출됨');
+  console.log('🔄 nextTrack 호출됨');
   console.log('  - 현재 인덱스:', currentTrackIndex);
+  
   var wasPlaying = isPlaying;
   var newIndex = currentTrackIndex + 1;
   if (newIndex >= currentPlaylist.length) newIndex = 0;
   
-  loadTrack(newIndex);
-  
-  // 🔥 이전에 재생 중이었다면 자동 재생 보장
-  if (wasPlaying) {
-    setTimeout(function() {
-      if (audio.src && !isPlaying) {
-        togglePlay();
-        console.log('🎵 nextTrack 자동 재생');
-      }
-    }, 1500);
+  // 🔥 현재 재생 중이면 페이드아웃 후 전환
+  if (wasPlaying && audio) {
+    console.log('🔉 현재 곡 페이드아웃 시작');
+    fadeOutAudio(audio, 500).then(function() {
+      audio.pause();
+      isPlaying = false;
+      playButton.textContent = '▶';
+      stopVisualizer();
+      
+      // 새 트랙 로드
+      loadTrack(newIndex);
+      
+      // 1.5초 후 페이드인과 함께 재생
+      setTimeout(function() {
+        if (audio.src) {
+          console.log('🎵 1.5초 후 다음곡 페이드인 재생');
+          togglePlay();
+        }
+      }, 1500);
+    });
+  } else {
+    // 재생 중이 아니면 바로 로드
+    loadTrack(newIndex);
   }
 }
 
@@ -2219,8 +2169,42 @@ effectAudio.play()
           audioContext.resume();
         }
 
-        // 🔥 전역 audio 객체 사용 (새로운 오디오 객체 지원)
-        var currentAudio = window.audio || audio;
+// 🔥 개선된 오디오 소스 연결 관리
+var currentAudio = window.audio || audio;
+
+if (window.currentSource && !window.useFallbackVisualizer && currentAudio._audioSourceConnected) {
+  console.log('🎛️ 기존 연결된 소스 사용');
+} else if (!window.useFallbackVisualizer) {
+  try {
+    // 🔥 기존 소스가 있으면 먼저 해제
+    if (window.currentSource) {
+      try {
+        window.currentSource.disconnect();
+        console.log('🔄 기존 소스 해제');
+      } catch (e) {
+        console.log('🔄 소스 해제 중 오류 (무시됨)');
+      }
+    }
+    
+    if (currentAudio && currentAudio.src && !currentAudio._audioSourceConnected) {
+      window.currentSource = audioContext.createMediaElementSource(currentAudio);
+      window.currentSource.connect(analyser);
+      analyser.connect(audioContext.destination);
+      
+      // 🔥 중복 연결 방지 플래그
+      currentAudio._audioSourceConnected = true;
+      
+      console.log('🎛️ 새로운 Audio Context 연결 완료');
+    } else {
+      console.log('🎛️ 이미 연결된 오디오 소스 재사용');
+    }
+  } catch (error) {
+    console.log('Audio Context 연결 실패, 폴백 애니메이션 사용:', error.message);
+    window.useFallbackVisualizer = true;
+    startFallbackVisualizer();
+    return;
+  }
+}
         
 // 🔥 전역 변수의 소스 사용
 // 🔥 비주얼라이저 연결 상태 강화 체크
@@ -2553,20 +2537,24 @@ audio.addEventListener('ended', function() {
   console.log('🎵 곡 종료 - 다음 곡으로 이동');
   stopVisualizer();
   
-  // 🔥 재생 상태 유지하면서 다음 곡
+  // 🔥 자동으로 다음 곡 전환 (페이드 효과 포함)
   if (currentPlaylist.length > 0) {
-    var wasPlaying = isPlaying;
-    nextTrack();
+    isPlaying = false;
+    playButton.textContent = '▶';
     
-    // 🔥 이전에 재생 중이었다면 자동 재생
-    if (wasPlaying) {
-      setTimeout(function() {
-        if (audio.src && !isPlaying) {
-          togglePlay();
-          console.log('🎵 다음 곡 자동 재생');
-        }
-      }, 1000);
-    }
+    var newIndex = currentTrackIndex + 1;
+    if (newIndex >= currentPlaylist.length) newIndex = 0;
+    
+    // 트랙 로드
+    loadTrack(newIndex);
+    
+    // 1.5초 후 페이드인과 함께 자동 재생
+    setTimeout(function() {
+      if (audio.src) {
+        console.log('🎵 곡 종료 후 1.5초 뒤 다음곡 자동 재생');
+        togglePlay();
+      }
+    }, 1500);
   }
 });
   
@@ -2704,6 +2692,31 @@ document.addEventListener('dragstart', function(e) {
   return false;
 });
 
+// 🔥 Page Visibility API로 백그라운드 전환 감지
+document.addEventListener('visibilitychange', function() {
+  if (document.hidden) {
+    // 백그라운드로 전환
+    console.log('📱 백그라운드로 전환됨');
+    if (window.audioContext && window.audioContext.state === 'running') {
+      window.audioContext.suspend();
+    }
+  } else {
+    // 포그라운드로 복귀
+    console.log('📱 포그라운드로 복귀');
+    if (window.audioContext && window.audioContext.state === 'suspended') {
+      window.audioContext.resume().then(function() {
+        console.log('🎛️ 오디오 컨텍스트 재개됨');
+        
+        // 비주얼라이저 재연결
+        if (isPlaying && audio.src) {
+          setTimeout(function() {
+            startVisualizer();
+          }, 500);
+        }
+      });
+    }
+  }
+});
 
 // 키보드 단축키 (디버깅용)
 document.addEventListener('keydown', function(e) {
