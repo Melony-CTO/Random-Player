@@ -6,6 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <!-- PWA 매니페스트 -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#5c6de0">
+
+  <!-- 추가 PWA 설정 -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="application-name" content="Melony Player">
+
   <meta name="apple-mobile-web-app-title" content="Melony Player">
   <title>Melony Random Player</title>
 
@@ -2379,6 +2387,17 @@ if (window.useFallbackVisualizer) {
       window.melonyStartTime = Date.now();
   
       console.log('🚀 === Melony Player 수정된 버전 시작 ===');
+
+      // PWA Service Worker 등록
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+    .then(function(registration) {
+      console.log('📱 Service Worker 등록 성공:', registration.scope);
+    })
+    .catch(function(error) {
+      console.log('📱 Service Worker 등록 실패:', error);
+    });
+}
   
   // DOM 요소 할당
       audio = document.getElementById('player');
@@ -2505,45 +2524,62 @@ audio.addEventListener('ended', function() {
   })();
 });
 
-// 🔥 iOS 백그라운드 재생 지원 (Media Session API)
+// 🔥 강화된 iOS 백그라운드 재생 지원
 if ('mediaSession' in navigator) {
   console.log('📱 Media Session API 지원됨');
   
-  // 메타데이터 설정 함수
+  // 메타데이터 설정 함수 강화
   window.updateMediaSession = function(track) {
     if (!track) return;
     
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: track.title || 'Unknown Track',
-      artist: 'Melony Player',
-      album: track.folder === 'pop' ? 'POP Collection' : 'LoFi Collection',
-      artwork: [
-        { src: track.cover || '', sizes: '512x512', type: 'image/jpeg' }
-      ]
-    });
-    
-    console.log('📱 미디어 세션 업데이트:', track.title);
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: track.title || 'Unknown Track',
+        artist: 'Melony Player',
+        album: track.folder === 'pop' ? 'POP Collection' : 'LoFi Collection',
+        artwork: [
+          { src: track.cover || '', sizes: '96x96', type: 'image/jpeg' },
+          { src: track.cover || '', sizes: '128x128', type: 'image/jpeg' },
+          { src: track.cover || '', sizes: '192x192', type: 'image/jpeg' },
+          { src: track.cover || '', sizes: '256x256', type: 'image/jpeg' },
+          { src: track.cover || '', sizes: '384x384', type: 'image/jpeg' },
+          { src: track.cover || '', sizes: '512x512', type: 'image/jpeg' }
+        ]
+      });
+      
+      // 플레이백 상태 업데이트
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+      
+      console.log('📱 미디어 세션 업데이트:', track.title);
+    } catch (error) {
+      console.log('📱 Media Session 오류:', error);
+    }
   };
   
   // 미디어 컨트롤 설정
   navigator.mediaSession.setActionHandler('play', function() {
+    console.log('📱 Media Session: play');
     if (!isPlaying) togglePlay();
   });
   
   navigator.mediaSession.setActionHandler('pause', function() {
+    console.log('📱 Media Session: pause');
     if (isPlaying) togglePlay();
   });
   
   navigator.mediaSession.setActionHandler('nexttrack', function() {
+    console.log('📱 Media Session: nexttrack');
     nextTrack();
   });
   
   navigator.mediaSession.setActionHandler('previoustrack', function() {
+    console.log('📱 Media Session: previoustrack');
     previousTrack();
   });
   
-  console.log('📱 iOS 백그라운드 재생 설정 완료');
-} else {
+  console.log('📱 강화된 iOS 백그라운드 재생 설정 완료');
+}
+ else {
   console.log('📱 Media Session API 미지원');
 }
 
