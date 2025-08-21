@@ -759,8 +759,27 @@ body::after {
   </div>
 
   <script>
-    // Workers API 설정
-    var WORKERS_API_URL = 'https://melony-music-api.zepplinn25.workers.dev';
+// 🔥 Base64 인코딩된 API 주소
+var encodedAPI = "aHR0cHM6Ly9tZWxvbnktbXVzaWMtYXBpLnplcHBsaW5uMjUud29ya2Vycy5kZXY=";
+var WORKERS_API_URL = atob(encodedAPI);
+// 🔥 로그용 URL 마스킹 함수
+function maskUrlForLog(url) {
+  if (!url) return url;
+  return url.replace(/https:\/\/melony-music-api\.zepplinn25\.workers\.dev/g, 'melony');
+}
+
+// 🔥 기존 console.log 백업 후 마스킹 버전으로 교체
+var originalConsoleLog = console.log;
+console.log = function() {
+  var args = Array.prototype.slice.call(arguments);
+  var maskedArgs = args.map(function(arg) {
+    if (typeof arg === 'string') {
+      return maskUrlForLog(arg);
+    }
+    return arg;
+  });
+  originalConsoleLog.apply(console, maskedArgs);
+};
     
     var isPlaying = false;
     var isShuffle = true;
