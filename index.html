@@ -1974,7 +1974,7 @@ function togglePlay() {
 audio.volume = 0; // 시작 볼륨 0
 audio.play()
   .then(function() {
-    playButton.innerHTML = '<span style="transform: translate(-2px, -3px); display: inline-block;">⏸</span>';
+    playButton.innerHTML = '<span style="transform: translate(-2px, -3px); display: inline-block; -webkit-tap-highlight-color: transparent; background: none;">⏸</span>';
     isPlaying = true;
     
     // 페이드인 효과 적용
