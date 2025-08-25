@@ -221,7 +221,7 @@ body::after {
       width: 100%;
       height: 100%;
       border-radius: 30px;
-      background-size: 100%;
+      background-size: 110%;
       background-position: center;
       background-repeat: no-repeat;
       box-shadow: 0 10px 30px rgba(0,0,0,0.2);
@@ -391,6 +391,9 @@ body::after {
       justify-content: center;
       align-items: center;
       padding-left: 12px; /* 🔥 살짝 오른쪽으로 */
+   /*   padding-right: 값px; → 왼쪽으로 이동 (추가하면 됨)*/
+      padding-top: 5px; /*→ 아래쪽으로 이동 (추가하면 됨)*/ 
+      padding-bottom: 2px; /*→ 위쪽으로 이동 (추가하면 됨)*/
       
     }
 
@@ -511,34 +514,55 @@ body::after {
   transform: scale(1.1);
 }
 
-    @keyframes pulseZoom {
-      0% { transform: scale(1.01); }
-      30% { transform: scale(1.02); }
-      100% { transform: scale(1.01); }
-    }
-
-    .thumbnail.start-zoom {
-      animation: pulseZoom 2s ease-out;
-    }
-
-    @keyframes slowZoomBg {
-  0% { background-size: 98%; }
-  50% { background-size: 120%; }
-  100% { background-size: 100%; }
+@keyframes blurStart {
+  0% { 
+    filter: blur(8px); 
+    opacity: 0; 
+    transform: scale(0.9);
+  }
+  100% { 
+    filter: none; 
+    opacity: 1; 
+    transform: scale(1);
+  }
 }
 
-.thumbnail.slow-zoom {
-  animation: slowZoomBg 60s ease-in-out infinite;
+    thumbnail.blur-start.playing {
+  animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacity 25s ease-in-out infinite;
 }
 
-.thumbnail.playing {
-  animation: slowZoomBg 30s linear infinite;
+.thumbnail.blur-hidden {
+  transform: scale(0.9);
+  opacity: 0;
 }
 
-    .thumbnail.start-zoom.slow-zoom {
-      animation: pulseZoom 1.2s ease-out, slowZoomBg 60s ease-in-out infinite;
+@keyframes slowZoomBg {
+  0% { 
+    background-size: 110% !important;
+    transform: scale(1);
+  }
+  50% { 
+    background-size: 130% !important;
+    transform: scale(1.05);
+  }
+  100% { 
+    background-size: 110% !important;
+    transform: scale(1);
+  }
+}
+
+@keyframes fadeOpacity {
+  0% { opacity: 1; }
+  50% { opacity: 0.8; }
+  100% { opacity: 1; }
+}
+
+    .thumbnail.blur-start.slow-zoom {  
+      animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacit 25s ease-in-out infinite;
     }
-
+.thumbnail.blur-start.playing {
+  animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacity 25s ease-in-out infinite !important;
+}
     .loading {
       display: inline-block;
       width: 20px;
@@ -617,27 +641,21 @@ body::after {
        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
      }
 
-     /* 재생 상태를 표시하는 클래스 */
-     .thumbnail.playing {
-       animation: slowZoomBg 30s ease-in-out infinite;
-     }
 
-     .thumbnail.start-zoom {
-       animation: pulseZoom 1.2s ease-out;
-     }
 
-     .thumbnail.slow-zoom {
-       animation: slowZoomBg 30s ease-in-out infinite;
-     }
+.thumbnail.blur-start.playing {
+  animation: blurStart 1.5s ease-out, slowZoomBg 25s ease-in-out infinite;
+}
 
-     /* 시작 펄스와 슬로우줌을 동시에 적용하기 위한 결합 규칙 */
-     .thumbnail.start-zoom.slow-zoom {
-       animation: pulseZoom 1.2s ease-out, slowZoomBg 60s ease-in-out infinite;
-    }
+.thumbnail.slow-zoom {
+  animation: slowZoomBg 25s ease-in-out infinite, fadeOpacity 25s ease-in-out infinite;
+}
+
+
   </style>
 </head>
 <body>
-  <div class="debug-info" id="debugInfo">디버그 정보</div>
+  <div class="debug-info" id="debugInfo"></div>
   
   <div class="container">
     <div class="shuffle-button" id="shuffleButton" onclick="toggleShuffle()">🔀</div>
@@ -903,6 +921,7 @@ function fadeOutAudio(audioElement, duration = 500) {
 
     // 디버그 정보 업데이트
     function updateDebugInfo(info) {
+        return; // 🔥 이 줄 추가하면 모든 디버그 메시지 차단
       if (debugInfo) {
         debugInfo.innerHTML = info;
         debugInfo.classList.add('show');
@@ -925,23 +944,33 @@ function cleanTitle(rawTitle) {
       var img = new Image();
 
       function tryNext() {
-        if (candidates.length === 0) {
-          thumbnail.style.backgroundImage = '';
-           thumbnail.style.backgroundColor = '#9b83f1';
-           thumbnail.style.background = 'linear-gradient(135deg, #9b83f1, #5c6de0)';
-          return;
-        }
-        var next = candidates.shift();
-        if (!next) { tryNext(); return; }
-          img.src = next;
-      }
+  if (candidates.length === 0) {
+    thumbnail.style.backgroundImage = '';
+    thumbnail.style.backgroundColor = '#9b83f1';
+    thumbnail.style.background = 'linear-gradient(135deg, #9b83f1, #5c6de0)';
+    return;
+  }
+  var next = candidates.shift();
+  if (!next) { tryNext(); return; }
+  
+  // 이벤트 핸들러를 여기로 이동
+  img.onload = function() {
+    thumbnail.style.backgroundImage = "url('" + img.src + "')";
+    thumbnail.style.backgroundSize = "120%";
+    
+    // 블러 효과 시작
+    console.log('이미지 로딩 완료, 블러 효과 시작');
+    thumbnail.classList.remove('blur-hidden');
+    thumbnail.classList.add('blur-start', 'playing');
+  };
+  
+  img.onerror = function() {
+    tryNext();
+  };
+  
+  img.src = next;
+}
 
-      img.onload = function() {
-        thumbnail.style.backgroundImage = "url('" + img.src + "')";
-      };
-      img.onerror = function() {
-        tryNext();
-      };
 
       tryNext();
     }
@@ -1500,7 +1529,7 @@ loadTrack(0);
      function handleCanPlay() {
        if (currentTrackForHandlers) {
          console.log('✅ 오디오 재생 가능:', currentTrackForHandlers.title);
-         updateDebugInfo('오디오 준비됨<br>' + currentTrackForHandlers.title);
+         //updateDebugInfo('오디오 준비됨<br>' + currentTrackForHandlers.title);
          
          // 실패 횟수 리셋
          if (consecutiveFailures > 0) {
@@ -1603,6 +1632,7 @@ loadTrack(0);
      
     function loadTrack(index) {
        if (index < 0 || index >= currentPlaylist.length) return;
+       thumbnail.classList.remove('playing', 'slow-zoom', 'blur-start', 'start-zoom');
        
        var track = currentPlaylist[index];
        
@@ -1858,8 +1888,16 @@ if (window.updateMediaSession) {
 }
 
       var coverUrl = pickRandomCoverUrl(track.cover);
-      console.log('🖼️ 선택된 커버 URL:', coverUrl);
-      setThumbnailCover(coverUrl);
+console.log('🖼️ 선택된 커버 URL:', coverUrl);
+
+// 🔥 먼저 모든 애니메이션 클래스 제거
+thumbnail.classList.remove('blur-hidden', 'blur-start', 'playing', 'slow-zoom');
+
+thumbnail.classList.add('blur-hidden');
+setThumbnailCover(coverUrl);
+
+
+
 
 // 🔥 body 배경도 같은 이미지로 설정 (블러 처리됨)
 if (coverUrl) {
@@ -1890,12 +1928,9 @@ if (isPlaying) {
   setTimeout(function() {
     audio.play()
     .then(function() {
-  // 🔥 재생 시작 시 펄스 애니메이션
-  thumbnail.classList.add('playing', 'slow-zoom', 'start-zoom');
-  setTimeout(function() {
-    thumbnail.classList.remove('start-zoom');
-  }, 1200);
-  console.log('🎵 재생 시작 + 펄스 애니메이션');
+  // 🔥 재생 시작 시 블러 애니메이션
+thumbnail.classList.add('playing');
+console.log('🎵 재생 시작');
   
   
 })
@@ -1974,7 +2009,7 @@ function togglePlay() {
 audio.volume = 0; // 시작 볼륨 0
 audio.play()
   .then(function() {
-    playButton.innerHTML = '<span style="transform: translate(-2px, -3px); display: inline-block; -webkit-tap-highlight-color: transparent; background: none;">❚❚</span>';
+    playButton.innerHTML = '<span style="transform: translate(-2px, 0px); display: inline-block; -webkit-tap-highlight-color: transparent; background: none;">l l</span>';
     isPlaying = true;
     
     // 페이드인 효과 적용
@@ -1983,12 +2018,9 @@ audio.play()
     });
     
     // 기존 비주얼라이저 및 애니메이션 코드
-    thumbnail.classList.add('playing', 'slow-zoom', 'start-zoom');
-    setTimeout(function() {
-      thumbnail.classList.remove('start-zoom');
-    }, 1200);
-    startVisualizer();
-    console.log('🎵 수동 재생 + 펄스 애니메이션');
+thumbnail.classList.add('playing', 'slow-zoom');
+startVisualizer();
+console.log('🎵 수동 재생');
     
     
   })
