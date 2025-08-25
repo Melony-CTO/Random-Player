@@ -528,7 +528,7 @@ body::after {
 }
 
     thumbnail.blur-start.playing {
-  animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacity 25s ease-in-out infinite;
+  animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
 }
 
 .thumbnail.blur-hidden {
@@ -553,15 +553,15 @@ body::after {
 
 @keyframes fadeOpacity {
   0% { opacity: 1; }
-  50% { opacity: 0.8; }
+  50% { opacity: 0.85; }
   100% { opacity: 1; }
 }
 
     .thumbnail.blur-start.slow-zoom {  
-      animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacit 25s ease-in-out infinite;
+      animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacit 10s ease-in-out infinite;
     }
 .thumbnail.blur-start.playing {
-  animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacity 25s ease-in-out infinite !important;
+  animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite !important;
 }
     .loading {
       display: inline-block;
@@ -648,7 +648,7 @@ body::after {
 }
 
 .thumbnail.slow-zoom {
-  animation: slowZoomBg 25s ease-in-out infinite, fadeOpacity 25s ease-in-out infinite;
+  animation: slowZoomBg 25s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
 }
 
 
