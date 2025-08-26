@@ -147,13 +147,6 @@ body::after {
   transition-duration: 0.1s;
 }
 
-/* 🎵 음악 아이콘 추가 */
-.player-title::after {
-  content: '🎵';
-  font-size: 16px;
-  animation: musicNote 2s ease-in-out infinite;
-}
-
 @keyframes musicNote {
   0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.8; }
   50% { transform: translateY(-3px) rotate(5deg); opacity: 1; }
@@ -611,10 +604,81 @@ body::after {
 
     .debug-info {
   display: none !important; /* 🔥 완전히 숨김 */
-}
+    }
      .debug-info.show {
        display: block;
      }
+
+/* EQ 패널 스타일 */
+.eq-panel {
+  width: 90%;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 20px;
+  padding: 20px;
+  margin: 10px 0;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.eq-controls {
+  display: flex;
+  gap: 20px;
+  justify-content: space-around;
+}
+
+.eq-band {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.eq-band label {
+  font-weight: bold;
+  font-size: 14px;
+  color: #333;
+}
+
+.eq-value {
+  font-size: 12px;
+  font-weight: bold;
+  color: #5c6de0;
+  min-width: 30px;
+  text-align: center;
+}
+
+.eq-presets {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 15px;
+}
+
+.preset-btn {
+  padding: 8px 12px;
+  background: rgba(92, 109, 224, 0.8);
+  color: white;
+  border: none;
+  border-radius: 15px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.preset-btn:hover {
+  background: rgba(92, 109, 224, 1);
+  transform: translateY(-1px);
+}
+
+.eq-band input[type="range"] {
+  writing-mode: bt-lr;
+  -webkit-appearance: slider-vertical;
+  width: 10px;
+  height: 100px;
+  background: #ddd;
+  outline: none;
+  border-radius: 5px;
+}
 
      /* 재시작 버튼 스타일 */
      .restart-section {
@@ -658,13 +722,16 @@ body::after {
   <div class="debug-info" id="debugInfo"></div>
   
   <div class="container">
-    <div class="shuffle-button" id="shuffleButton" onclick="toggleShuffle()">🔀</div>
+    <div class="shuffle-button" id="eqButton" onclick="toggleEQ()">🎛️</div>
+
     
     <div class="player-header">
 
       <div class="player-title">
   <a href="https://blog.naver.com/plipli4989" target="_blank" class="title-icon-link">🎧</a>
   <span class="title-text">Melony Music Player</span>
+  <a href="https://www.youtube.com/@Melony-1004" target="_blank" class="title-icon-link">🎵</a>
+  
 </div>
     </div>
     
@@ -672,10 +739,10 @@ body::after {
       <div class="thumbnail" id="thumbnail">
         <div class="touch-zones">
           <div class="touch-zone left" id="leftTouchZone">
-            <span>🔊 효과음</span>
+            <span>🔊 Effects</span>
           </div>
           <div class="touch-zone right" id="rightTouchZone">
-            <span>🎵 음악</span>
+            <span>🎵 Sound</span>
           </div>
         </div>
         <div class="volume-overlay" id="volumeOverlay">🔊 50%</div>
@@ -725,6 +792,34 @@ body::after {
       </div>
     </div>
     
+    <!-- EQ 패널 추가 -->
+<div class="eq-panel" id="eqPanel" style="display: none;">
+  <div class="eq-presets">
+    <button class="preset-btn" onclick="applyEQPreset('flat')">Flat</button>
+    <button class="preset-btn" onclick="applyEQPreset('bass')">Bass</button>
+    <button class="preset-btn" onclick="applyEQPreset('vocal')">Vocal</button>
+    <button class="preset-btn" onclick="applyEQPreset('treble')">Treble</button>
+  </div>
+  <div class="eq-controls">
+    <div class="eq-band">
+      <label>Low</label>
+      <span class="eq-value" id="lowValue">0</span>
+      <input type="range" id="lowEQ" min="-20" max="20" value="0">
+    </div>
+    <div class="eq-band">
+      <label>Mid</label>
+      <span class="eq-value" id="midValue">0</span>
+      <input type="range" id="midEQ" min="-20" max="20" value="0">
+    </div>
+    <div class="eq-band">
+      <label>High</label>
+      <span class="eq-value" id="highValue">0</span>
+      <input type="range" id="highEQ" min="-20" max="20" value="0">
+    </div>
+  </div>
+</div>
+    
+ 
     <div class="song-info">
       <div class="title" id="title">Loading...</div>
     </div>
@@ -1352,7 +1447,8 @@ const [popRes, lofiRes, coversRes] = await Promise.all([
         // 대괄호가 없으면 전체 title 사용하되 정제
         cleanTitle = track.title
           .replace(/\([^)]*\)/g, '') // (내용) 제거
-          .replace(/_M$/, '') // _M 접미사 제거
+          .replace(/\s+M$/, '') // 공백 + M으로 끝나는 경우 제거
+          .replace(/_M$/, '') // 언더스코어 + M으로 끝나는 경우 제거
           .replace(/\s+/g, ' ') // 연속된 공백을 하나로
           .trim();
         if (i === 0) console.log('  - ✅ 전체 title 정제:', track.title, '→', cleanTitle);
@@ -1363,7 +1459,8 @@ const [popRes, lofiRes, coversRes] = await Promise.all([
       cleanTitle = fileName
         .replace(/\.(m4a|mp3)$/i, '') // 확장자 제거
         .replace(/^\[(.*?)\]\s*/, '$1') // [태그] 제거
-        .replace(/_M$/, '') // _M 접미사 제거
+        .replace(/\s+M$/, '') // 공백 + M으로 끝나는 경우 제거
+        .replace(/_M$/, '') // 언더스코어 + M으로 끝나는 경우 제거
         .replace(/\([^)]*\)/g, '') // (내용) 제거
         .replace(/[_-]/g, ' ') // 언더스코어, 하이픈을 공백으로
         .replace(/\s+/g, ' ') // 연속된 공백을 하나로
@@ -1478,6 +1575,21 @@ console.log('🎯 초기 플레이리스트 설정: POP', currentPlaylist.length
 
 // 🔥 첫 곡 즉시 로딩
 loadTrack(0);
+
+// 자동재생은 모든 초기화 완료 후 실행
+setTimeout(function() {
+  if (audio && audio.src && !isPlaying) {
+    isPlaying = true;
+    audio.play().then(function() {
+      playButton.innerHTML = '<span style="transform: translate(-2px, -3px); display: inline-block; -webkit-tap-highlight-color: transparent; background: none;">❚❚</span>';
+      thumbnail.classList.add('playing', 'slow-zoom');
+      startVisualizer();
+    }).catch(function(error) {
+      console.log('자동재생 실패:', error);
+      isPlaying = false;
+    });
+  }
+}, 1500);
 
 
       
@@ -1748,7 +1860,7 @@ loadTrack(0);
        }
        
        // 연속 실패가 너무 많으면 오류 루프 상태로 전환
-       if (consecutiveFailures >= 3) {
+       if (consecutiveFailures >= 5) {
          console.error('🚨 연속 3회 실패 - 오류 루프 상태로 전환');
          isInErrorLoop = true;
          updateDebugInfo('연속 실패로 오류 루프<br>수동 재시작 필요');
@@ -1964,6 +2076,142 @@ console.log('🎵 재생 시작');
        
        updateDebugInfo('플레이어 재시작됨<br>새로고침 중...');
     }
+
+    // EQ 관련 변수
+var lowFilter, midFilter, highFilter;
+var eqInitialized = false;
+
+// EQ 패널 토글
+function toggleEQ() {
+  var eqPanel = document.getElementById('eqPanel');
+  if (eqPanel.style.display === 'none') {
+    eqPanel.style.display = 'block';
+    initializeEQ();
+  } else {
+    eqPanel.style.display = 'none';
+  }
+}
+
+// EQ 초기화
+function initializeEQ() {
+  console.log('EQ 초기화 시도, audioContext:', audioContext);
+  if (!eqInitialized) {
+    if (!audioContext) {
+      console.log('audioContext 없음, 생성 중...');
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    
+    // 필터 생성
+    lowFilter = audioContext.createBiquadFilter();
+    midFilter = audioContext.createBiquadFilter();
+    highFilter = audioContext.createBiquadFilter();
+    
+    // 필터 설정
+    lowFilter.type = 'peaking';
+    lowFilter.frequency.setValueAtTime(100, audioContext.currentTime);
+    lowFilter.Q.setValueAtTime(1, audioContext.currentTime);
+    
+    midFilter.type = 'peaking';
+    midFilter.frequency.setValueAtTime(1000, audioContext.currentTime);
+    midFilter.Q.setValueAtTime(1, audioContext.currentTime);
+    
+    highFilter.type = 'peaking';
+    highFilter.frequency.setValueAtTime(10000, audioContext.currentTime);
+    highFilter.Q.setValueAtTime(1, audioContext.currentTime);
+    
+// 이벤트 리스너 추가
+document.getElementById('lowEQ').addEventListener('input', function() {
+  updateEQRealtime();
+  updateEQ();
+});
+document.getElementById('midEQ').addEventListener('input', function() {
+  updateEQRealtime();
+  updateEQ();
+});
+document.getElementById('highEQ').addEventListener('input', function() {
+  updateEQRealtime();
+  updateEQ();
+});
+    
+    // 실시간 EQ 수치 표시
+function updateEQRealtime() {
+  var lowGain = document.getElementById('lowEQ').value;
+  var midGain = document.getElementById('midEQ').value;
+  var highGain = document.getElementById('highEQ').value;
+  
+  // 수치 표시 업데이트
+  document.getElementById('lowValue').textContent = lowGain;
+  document.getElementById('midValue').textContent = midGain;
+  document.getElementById('highValue').textContent = highGain;
+}
+eqInitialized = true;
+console.log('EQ 초기화 완료');
+    // 기존 오디오 소스가 있다면 재연결
+    if (window.currentSource) {
+      try {
+        window.currentSource.disconnect();
+        window.currentSource.connect(lowFilter);
+        lowFilter.connect(midFilter);
+        midFilter.connect(highFilter);
+        highFilter.connect(analyser);
+        console.log('EQ와 오디오 재연결 완료');
+      } catch (error) {
+        console.log('EQ 재연결 실패:', error);
+      }
+    }
+  }
+
+}
+
+// EQ 업데이트
+function updateEQ() {
+  if (!eqInitialized) return;
+  
+  var lowGain = document.getElementById('lowEQ').value;
+  var midGain = document.getElementById('midEQ').value;
+  var highGain = document.getElementById('highEQ').value;
+  
+    // 수치 표시 업데이트
+  document.getElementById('lowValue').textContent = lowGain;
+  document.getElementById('midValue').textContent = midGain;
+  document.getElementById('highValue').textContent = highGain;
+  
+  lowFilter.gain.setValueAtTime(lowGain, audioContext.currentTime);
+  midFilter.gain.setValueAtTime(midGain, audioContext.currentTime);
+  highFilter.gain.setValueAtTime(highGain, audioContext.currentTime);
+  console.log('EQ 업데이트:', lowGain, midGain, highGain);
+}
+
+// 실시간 EQ 수치 표시
+function updateEQRealtime() {
+  var lowGain = document.getElementById('lowEQ').value;
+  var midGain = document.getElementById('midEQ').value;
+  var highGain = document.getElementById('highEQ').value;
+  
+  // 수치 표시 업데이트
+  document.getElementById('lowValue').textContent = lowGain;
+  document.getElementById('midValue').textContent = midGain;
+  document.getElementById('highValue').textContent = highGain;
+}
+
+// EQ 프리셋 적용
+function applyEQPreset(preset) {
+  var presets = {
+    flat: { low: 0, mid: 0, high: 0 },
+    bass: { low: 8, mid: 2, high: -2 },
+    vocal: { low: -3, mid: 5, high: 2 },
+    treble: { low: -2, mid: 2, high: 8 }
+  };
+  
+  if (presets[preset]) {
+    document.getElementById('lowEQ').value = presets[preset].low;
+    document.getElementById('midEQ').value = presets[preset].mid;
+    document.getElementById('highEQ').value = presets[preset].high;
+    
+    updateEQRealtime();
+    updateEQ();
+  }
+}
 
     // ✅ 플레이어 재시작 함수
 function restartPlayer() {
@@ -2330,9 +2578,19 @@ if (window.currentSource && !window.useFallbackVisualizer && currentAudio._audio
     }
     
     if (currentAudio && currentAudio.src && !currentAudio._audioSourceConnected) {
-      window.currentSource = audioContext.createMediaElementSource(currentAudio);
-      window.currentSource.connect(analyser);
-      analyser.connect(audioContext.destination);
+  window.currentSource = audioContext.createMediaElementSource(currentAudio);
+  
+  // EQ 필터 연결 또는 직접 연결
+  if (eqInitialized) {
+    window.currentSource.connect(lowFilter);
+    lowFilter.connect(midFilter);
+    midFilter.connect(highFilter);
+    highFilter.connect(analyser);
+  } else {
+    window.currentSource.connect(analyser);
+  }
+  
+  analyser.connect(audioContext.destination);
       
       // 🔥 중복 연결 방지 플래그
       currentAudio._audioSourceConnected = true;
@@ -2349,42 +2607,6 @@ if (window.currentSource && !window.useFallbackVisualizer && currentAudio._audio
   }
 }
         
-// 🔥 전역 변수의 소스 사용
-// 🔥 비주얼라이저 연결 상태 강화 체크
-var currentAudio = window.audio || audio;
-
-if (window.currentSource && !window.useFallbackVisualizer && currentAudio._audioSourceConnected) {
-  console.log('🎛️ 기존 연결된 소스 사용');
-} else if (!window.useFallbackVisualizer) {
-  try {
-    // 🔥 기존 소스가 있으면 먼저 해제
-    if (window.currentSource) {
-      try {
-        window.currentSource.disconnect();
-        console.log('🔄 기존 소스 해제');
-      } catch (e) {}
-    }
-    
-    if (currentAudio && currentAudio.src && !currentAudio._audioSourceConnected) {
-      window.currentSource = audioContext.createMediaElementSource(currentAudio);
-      window.currentSource.connect(analyser);
-      analyser.connect(audioContext.destination);
-      
-      // 🔥 중복 연결 방지 플래그
-      currentAudio._audioSourceConnected = true;
-      
-      console.log('🎛️ 새로운 Audio Context 연결 완료');
-    } else {
-      console.log('🎛️ 이미 연결된 오디오 소스 재사용');
-    }
-  } catch (error) {
-    console.log('Audio Context 연결 실패, 폴백 애니메이션 사용:', error.message);
-    window.useFallbackVisualizer = true;
-    startFallbackVisualizer();
-    return;
-  }
-}
-
 if (window.useFallbackVisualizer) {
   startFallbackVisualizer();
   return;
