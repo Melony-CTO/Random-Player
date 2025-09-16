@@ -489,14 +489,14 @@ body::after {
       backdrop-filter: blur(6px);
     }
 
-  .eq-button {
+  .shuffle-button {
   position: absolute;
   top: 20px;
   right: 20px;
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(92, 109, 224, 0.8);
+  background: rgba(92, 109, 224, 0.5);
   box-shadow: 0 4px 15px rgba(0,0,0,0.15);
   display: flex;
   justify-content: center;
@@ -504,70 +504,14 @@ body::after {
   font-size: 18px;
   color: white;
   cursor: pointer;
-  opacity: 1.0;
+  opacity: 0.05;
   transition: all 0.3s ease;
 }
 
-.eq-button:hover {
-  background: rgba(92, 109, 224, 1.0);
+.shuffle-button:hover {
+  background: rgba(92, 109, 224, 0.8);
+  opacity: 1.0;
   transform: scale(1.1);
-}
-
-/* 이퀄라이저 패널 */
-.eq-panel {
-  position: absolute;
-  top: 70px;
-  right: 20px;
-  width: 280px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 15px;
-  padding: 15px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  display: none;
-  z-index: 1000;
-}
-
-.eq-panel.show {
-  display: block;
-}
-
-.eq-preset {
-  text-align: center;
-  margin-bottom: 10px;
-  font-weight: bold;
-  color: #333;
-}
-
-.eq-bands {
-  display: flex;
-  justify-content: space-between;
-  align-items: end;
-  height: 120px;
-  margin: 10px 0;
-}
-
-.eq-band {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  flex: 1;
-}
-
-.eq-slider {
-  writing-mode: bt-lr; /* IE */
-  writing-mode: vertical-lr;
-  -webkit-appearance: slider-vertical;
-  width: 20px;
-  height: 80px;
-  background: #ddd;
-  outline: none;
-  margin: 5px 0;
-}
-
-.eq-label {
-  font-size: 10px;
-  color: #666;
-  text-align: center;
 }
 
 @keyframes blurStart {
@@ -714,7 +658,7 @@ body::after {
   <div class="debug-info" id="debugInfo"></div>
   
   <div class="container">
-    <div class="eq-button" id="eqButton" onclick="toggleEqualizer()">🎛️</div>
+    <div class="shuffle-button" id="shuffleButton" onclick="toggleShuffle()">🔀</div>
     
     <div class="player-header">
 
@@ -780,37 +724,6 @@ body::after {
         </div>
       </div>
     </div>
-
-    <div class="eq-panel" id="eqPanel">
-      <div class="eq-preset" id="eqPreset">Flat</div>
-      <div class="eq-bands">
-        <div class="eq-band">
-          <input type="range" class="eq-slider" min="-12" max="12" value="0" data-freq="60">
-          <div class="eq-label">60Hz</div>
-        </div>
-        <div class="eq-band">
-          <input type="range" class="eq-slider" min="-12" max="12" value="0" data-freq="170">
-          <div class="eq-label">170Hz</div>
-        </div>
-        <div class="eq-band">
-          <input type="range" class="eq-slider" min="-12" max="12" value="0" data-freq="350">
-          <div class="eq-label">350Hz</div>
-        </div>
-        <div class="eq-band">
-          <input type="range" class="eq-slider" min="-12" max="12" value="0" data-freq="1000">
-          <div class="eq-label">1kHz</div>
-        </div>
-        <div class="eq-band">
-          <input type="range" class="eq-slider" min="-12" max="12" value="0" data-freq="3500">
-          <div class="eq-label">3.5kHz</div>
-        </div>
-        <div class="eq-band">
-          <input type="range" class="eq-slider" min="-12" max="12" value="0" data-freq="10000">
-          <div class="eq-label">10kHz</div>
-        </div>
-      </div>
-    </div>
-
     
     <div class="song-info">
       <div class="title" id="title">Loading...</div>
@@ -1042,9 +955,12 @@ function cleanTitle(rawTitle) {
   var next = candidates.shift();
   if (!next) { tryNext(); return; }
   
+  // 🔥 URL 대체 적용
+  var displayUrl = normalizeUrl(WORKERS_API_URL, next);
+  
   // 이벤트 핸들러를 여기로 이동
   img.onload = function() {
-    thumbnail.style.backgroundImage = "url('" + img.src + "')";
+    thumbnail.style.backgroundImage = "url('" + displayUrl + "')";
     thumbnail.style.backgroundSize = "120%";
     
     // 블러 효과 시작
@@ -1052,10 +968,6 @@ function cleanTitle(rawTitle) {
     thumbnail.classList.remove('blur-hidden');
     thumbnail.classList.add('blur-start', 'playing');
   };
-
-  // 이미지 로딩 우선순위 설정
-img.loading = 'eager'; // 현재 트랙은 즉시 로드
-img.fetchPriority = 'high';
   
   img.onerror = function() {
     tryNext();
@@ -1084,7 +996,7 @@ img.fetchPriority = 'high';
        if (themeCovers.length > 0) {
          var selected = themeCovers[Math.floor(Math.random() * themeCovers.length)];
          if (typeof selected === 'string') {
-           return WORKERS_API_URL + /file/covers-8090gayo/ + selected;
+           return WORKERS_API_URL + '/file/covers/' + selected;
          } else if (selected && selected.filename) {
            return WORKERS_API_URL + '/file/covers/' + selected.filename;
          } else if (selected && selected.url) {
@@ -1194,7 +1106,31 @@ img.fetchPriority = 'high';
                    var track = data.tracks[i];
                    
                    var cleanTitle = track.title || 'Unknown Track';
-                  
+                   
+                   // 🔥 실제 트랙 데이터 구조 확인
+                   console.log('🔍 플레이리스트 트랙 데이터:', {
+                     index: i,
+                     title: track.title,
+                     coverUrl: track.coverUrl,
+                     audio: track.audio,
+                     allKeys: Object.keys(track)
+                   });
+                   
+                   // 🔥 8090가요 커버 이미지 처리 - Workers API 엔드포인트 사용
+                   var coverUrl = WORKERS_API_URL + '/file/' + (track.coverUrl || 'covers-8090gayo/default-cover.jpg');
+                   console.log('🖼️ 8090가요 커버 URL 생성:', {
+                     original: track.coverUrl,
+                     final: coverUrl,
+                     workersUrl: WORKERS_API_URL
+                   });
+                   
+                   allTracks.push({
+                     title: cleanTitle,
+                     folder: '8090gayo',
+                     audio: track.audio,
+                     cover: track.coverUrl ? WORKERS_API_URL + '/file/' + track.coverUrl : coverUrl,  // 🔥 올바른 커버 URL 저장
+                     coverUrl: track.coverUrl  // 🔥 원본 coverUrl 정보 보존
+                   });
                  }
                  
                  console.log('  - 8090가요 데이터 추가 완료:', data.tracks.length + '곡');
@@ -1517,9 +1453,7 @@ img.fetchPriority = 'high';
 const [gayo8090Res, popRes, lofiRes, coversRes] = await Promise.all([
   fetch(WORKERS_API_URL + '/playlist-8090gayo.json', { 
     cache: 'force-cache',
-    priority: 'high',
-    mode: 'cors',
-    credentials: 'omit' // 불필요한 쿠키 전송 방지
+    priority: 'high'
   }),
   fetch(WORKERS_API_URL + '/playlist-pop.json', { 
     cache: 'force-cache',
@@ -1617,34 +1551,15 @@ const [gayo8090Res, popRes, lofiRes, coversRes] = await Promise.all([
       console.log('  - data[8090gayo] 길이:', data['8090gayo'] ? data['8090gayo'].length : 'N/A');
       
 if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
-//  console.log('📂 8090gayo 폴더: ' + data['8090gayo'].length + '개 파일');
+  console.log('📂 8090gayo 폴더: ' + data['8090gayo'].length + '개 파일');
   for (var i = 0; i < data['8090gayo'].length; i++) {
     var track = data['8090gayo'][i];
-    
-    // 🔥 디버깅: 행복한 나를 트랙 확인
-    if (track.title && track.title.includes('행복한 나를')) {
-      console.log('🔍 행복한 나를 트랙 원본 데이터:', track);
-      console.log('  - track.title:', track.title);
-      console.log('  - track.coverUrl:', track.coverUrl);
-      console.log('  - track.audio:', track.audio);
-      console.log('  - 모든 키:', Object.keys(track));
-      console.log('  - 실제 키-값 쌍:');
-      Object.keys(track).forEach(function(key) {
-        console.log('    - ' + key + ':', track[key]);
-      });
-    }
     
     if (i === 0) {
       console.log('🎵 8090 트랙 원본 데이터:', track);
       console.log('  - title:', track.title);
       console.log('  - audio:', track.audio);
-      console.log('  - 모든 키:', Object.keys(track));
-      console.log('  - 실제 키-값 쌍:');
-      Object.keys(track).forEach(function(key) {
-        console.log('    - ' + key + ':', track[key]);
-      });
     }
-    // 여기서 중괄호 하나 제거
     
     var cleanTitle = null;
     
@@ -1689,14 +1604,22 @@ if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
       console.log('  - 원본 vs 최종:', track.title, '→', cleanTitle);
     }
     
+    // 🔥 8090가요 커버 이미지 처리 - Workers API 엔드포인트 사용
+    var coverUrl = WORKERS_API_URL + '/file/' + (track.coverUrl || track.image || 'covers-8090gayo/default-cover.jpg');
+    console.log('🖼️ 8090가요 커버 URL 생성 (applyTrackList):', {
+      original: track.coverUrl,
+      image: track.image,
+      final: coverUrl,
+      workersUrl: WORKERS_API_URL
+    });
+    
     allTracks.push({
-  title: track.audio.split('/').pop().replace(/\.[^/.]+$/, ''), // 파일명에서 확장자만 제거
-  folder: '8090gayo',
-  audio: track.audio,
-  cover: (track.coverUrl && track.coverUrl !== 'default-cover.jpg') ? 
-     normalizeUrl(WORKERS_API_URL, track.coverUrl) : 
-     normalizeUrl(WORKERS_API_URL, `covers-8090gayo/${track.audio.split('/').pop().replace(/\.[^/.]+$/, '')}.jpg`)
-});
+      title: cleanTitle,
+      folder: '8090gayo',
+      audio: track.audio,
+      cover: track.coverUrl ? WORKERS_API_URL + '/file/' + track.coverUrl : coverUrl,  // 🔥 올바른 커버 URL 저장
+      coverUrl: track.coverUrl  // 🔥 원본 coverUrl 정보 보존
+    });
   }
 }
       
@@ -2156,7 +2079,7 @@ loadTrack(0);
          // 🔥 새로운 오디오 객체 생성
          audio = new Audio();
          audio.crossOrigin = 'anonymous';
-         audio.preload = 'none'; // 재생 시에만 로드
+         audio.preload = 'metadata';
          console.log('🔄 새로운 오디오 객체 생성 완료');
        } else {
          console.log('🔄 일반 로딩 - 기존 오디오 객체 재사용');
@@ -2190,9 +2113,9 @@ loadTrack(0);
          return;
        }
       
-      //console.log('🎵 트랙 로드:', track.title);
-     // console.log('📁 폴더:', track.folder);
-     // console.log('🔗 오디오 경로:', track.audio);
+      console.log('🎵 트랙 로드:', track.title);
+      console.log('📁 폴더:', track.folder);
+      console.log('🔗 오디오 경로:', track.audio);
       
       // ✅ 오디오 URL 생성 - Workers API가 자동으로 파일을 찾음
       var audioUrl = generateAudioUrl(WORKERS_API_URL, track.audio, track.folder);
@@ -2262,18 +2185,9 @@ console.log('🔊 볼륨 설정:', musicVolume);
            isPlaying = false;
            playButton.textContent = '▶';
            
-           var newIndex;
-
-if (isShuffle) {
-  // 셔플 모드: 랜덤 선택
-  do {
-    newIndex = Math.floor(Math.random() * currentPlaylist.length);
-  } while (newIndex === currentTrackIndex && currentPlaylist.length > 1);
-} else {
-  // 순차 모드: 다음 곡
-  newIndex = currentTrackIndex + 1;
-  if (newIndex >= currentPlaylist.length) newIndex = 0;
-}
+           var newIndex = currentTrackIndex + 1;
+           if (newIndex >= currentPlaylist.length) newIndex = 0;
+           
            // 트랙 로드
            loadTrack(newIndex);
            
@@ -2322,6 +2236,45 @@ setTimeout(function() {
 console.log('🎵 제목 표시 완료');
 
 
+      // 🔥 8090가요는 트랙별 커버 사용, 다른 카테고리는 랜덤 커버 사용
+      var coverUrl;
+      if (track.folder === '8090gayo') {
+        console.log('🔍 8090가요 트랙 정보:', {
+          title: track.title,
+          coverUrl: track.coverUrl,
+          cover: track.cover,
+          hasCoverUrl: !!track.coverUrl
+        });
+        
+        if (track.coverUrl) {
+          // 🔥 원본 coverUrl을 Workers API URL과 연결
+          coverUrl = WORKERS_API_URL + '/file/' + track.coverUrl;
+          console.log('🖼️ 8090가요 트랙별 커버 사용:', coverUrl);
+          console.log('🖼️ 원본 coverUrl:', track.coverUrl);
+          console.log('🖼️ 기존 track.cover:', track.cover);
+        } else {
+          // 🔥 coverUrl이 없으면 기존 cover 사용하되, default-cover.jpg가 아닌 경우만
+          if (track.cover && !track.cover.includes('default-cover.jpg')) {
+            coverUrl = track.cover;
+            console.log('🖼️ 8090가요 기존 커버 사용:', coverUrl);
+          } else {
+            // 🔥 최종 폴백: 첫 번째 8090가요 트랙의 커버 사용
+            var first8090Track = allTracks.find(t => t.folder === '8090gayo' && t.coverUrl);
+            if (first8090Track) {
+              coverUrl = WORKERS_API_URL + '/file/' + first8090Track.coverUrl;
+              console.log('🖼️ 8090가요 첫 번째 트랙 커버 사용:', coverUrl);
+            } else {
+              coverUrl = WORKERS_API_URL + '/file/covers-8090gayo/default-cover.jpg';
+              console.log('🖼️ 8090가요 최종 폴백 커버 사용:', coverUrl);
+            }
+          }
+          console.log('⚠️ track.coverUrl이 없습니다!');
+        }
+      } else {
+        coverUrl = pickRandomCoverUrl(track.cover);
+        console.log('🖼️ 랜덤 커버 선택:', coverUrl);
+      }
+
 // 🔥 미디어 세션 업데이트 (iOS 백그라운드 재생용)
 if (window.updateMediaSession) {
   window.updateMediaSession({
@@ -2330,9 +2283,6 @@ if (window.updateMediaSession) {
   cover: coverUrl
 });
 }
-
-      var coverUrl = track.folder === '8090gayo' ? track.cover : pickRandomCoverUrl(track.cover);
-console.log('🖼️ 선택된 커버 URL:', coverUrl);
 
 // 🔥 먼저 모든 애니메이션 클래스 제거
 thumbnail.classList.remove('blur-hidden', 'blur-start', 'playing', 'slow-zoom');
@@ -2475,135 +2425,66 @@ console.log('🎵 수동 재생');
     
 
     // 이전/다음 곡
-    var newIndex;
-
-if (isShuffle) {
-  do {
-    newIndex = Math.floor(Math.random() * currentPlaylist.length);
-  } while (newIndex === currentTrackIndex && currentPlaylist.length > 1);
-} else {
-  newIndex = currentTrackIndex - 1;
-  if (newIndex < 0) newIndex = currentPlaylist.length - 1;
-
+    function previousTrack() {
+      var newIndex = currentTrackIndex - 1;
       if (newIndex < 0) newIndex = currentPlaylist.length - 1;
       loadTrack(newIndex);
     }
 
 function nextTrack() {
   console.log('🔄 nextTrack 호출됨');
+  console.log('  - 현재 인덱스:', currentTrackIndex);
+  
   var wasPlaying = isPlaying;
   var newIndex = currentTrackIndex + 1;
   if (newIndex >= currentPlaylist.length) newIndex = 0;
   
-  if (isShuffle) {
-    // 셔플 모드: 랜덤 선택 (현재 곡 제외)
-    do {
-      newIndex = Math.floor(Math.random() * currentPlaylist.length);
-    } while (newIndex === currentTrackIndex && currentPlaylist.length > 1);
-  } else {
-    // 순차 모드: 다음 곡
-    newIndex = currentTrackIndex + 1;
-    if (newIndex >= currentPlaylist.length) newIndex = 0;
-  }
-  
-  // 기존 페이드아웃 코드는 그대로 유지
+  // 🔥 현재 재생 중이면 페이드아웃 후 전환
   if (wasPlaying && audio) {
+    console.log('🔉 현재 곡 페이드아웃 시작');
     fadeOutAudio(audio, 500).then(function() {
       audio.pause();
       isPlaying = false;
       playButton.textContent = '▶';
       stopVisualizer();
       
+      // 새 트랙 로드
       loadTrack(newIndex);
       
+      // 1.5초 후 페이드인과 함께 재생
       setTimeout(function() {
         if (audio.src) {
+          console.log('🎵 1.5초 후 다음곡 페이드인 재생');
           togglePlay();
         }
       }, 1500);
     });
   } else {
+    // 재생 중이 아니면 바로 로드
     loadTrack(newIndex);
   }
 }
 
-// 이퀄라이저 변수들
-var eqFilters = [];
-var currentPreset = 0;
-var presets = [
-  { name: 'Flat', gains: [0, 0, 0, 0, 0, 0] },
-  { name: 'Rock', gains: [4, 2, -1, 1, 3, 4] },
-  { name: 'Pop', gains: [-1, 2, 4, 2, -1, -1] },
-  { name: 'Jazz', gains: [3, 1, 1, 2, -1, 2] },
-  { name: 'Classical', gains: [3, 2, -1, 2, 2, 1] },
-  { name: 'Bass', gains: [6, 4, 1, 0, -1, -1] }
-];
-
-function toggleEqualizer() {
-  var panel = document.getElementById('eqPanel');
-  
-  if (panel.classList.contains('show')) {
-    currentPreset = (currentPreset + 1) % presets.length;
-    applyPreset(currentPreset);
-  } else {
-    panel.classList.add('show');
-    initEqualizer();
-  }
-}
-
-function applyPreset(presetIndex) {
-  var preset = presets[presetIndex];
-  var sliders = document.querySelectorAll('.eq-slider');
-  var presetDisplay = document.getElementById('eqPreset');
-  
-  presetDisplay.textContent = preset.name;
-  
-  sliders.forEach(function(slider, index) {
-    slider.value = preset.gains[index];
-    updateEqBand(index, preset.gains[index]);
-  });
-}
-
-function initEqualizer() {
-  if (!audioContext || !window.currentSource) return;
-  
-  var frequencies = [60, 170, 350, 1000, 3500, 10000];
-  
-  eqFilters = frequencies.map(function(freq) {
-    var filter = audioContext.createBiquadFilter();
-    filter.type = 'peaking';
-    filter.frequency.value = freq;
-    filter.Q.value = 1;
-    filter.gain.value = 0;
-    return filter;
-  });
-  
-  if (window.currentSource && eqFilters.length > 0) {
-    window.currentSource.disconnect();
-    
-    var prevNode = window.currentSource;
-    eqFilters.forEach(function(filter) {
-      prevNode.connect(filter);
-      prevNode = filter;
-    });
-    
-    prevNode.connect(analyser);
-    analyser.connect(audioContext.destination);
-  }
-  
-  var sliders = document.querySelectorAll('.eq-slider');
-  sliders.forEach(function(slider, index) {
-    slider.addEventListener('input', function() {
-      updateEqBand(index, this.value);
-    });
-  });
-}
-
-function updateEqBand(index, gain) {
-  if (eqFilters[index]) {
-    eqFilters[index].gain.value = gain;
-  }
-}
+    // 셔플 토글
+    function toggleShuffle() {
+      isShuffle = !isShuffle;
+      
+      if (isShuffle) {
+         generateShuffledPlaylists();
+      } else {
+         shuffledTracks.all = allTracks.slice();
+shuffledTracks['8090gayo'] = allTracks.filter(function(t) { return t.folder === '8090gayo'; });
+shuffledTracks.pop = allTracks.filter(function(t) { return t.folder === 'pop'; });
+shuffledTracks['lofi-inst'] = allTracks.filter(function(t) { return t.folder === 'lofi-inst'; });
+      }
+      
+      updateCurrentPlaylist();
+      currentTrackIndex = 0;
+      loadTrack(0);
+      
+      console.log('🔄 셔플 ' + (isShuffle ? '활성화' : '비활성화'));
+      updateDebugInfo('셔플 ' + (isShuffle ? 'ON' : 'OFF'));
+    }
 
          // 🔥 강화된 카테고리 전환
     function switchCategory(categoryName) {
@@ -3192,18 +3073,6 @@ if (window.useFallbackVisualizer) {
       });
     }
 
-    // 새로운 함수 추가 (window.addEventListener 바로 앞에)
-function preloadNextImages() {
-  if (currentPlaylist.length > 1) {
-    var nextIndex = (currentTrackIndex + 1) % currentPlaylist.length;
-    var nextTrack = currentPlaylist[nextIndex];
-    
-    // 다음 곡 커버 이미지 미리 로드
-    var preloadImg = new Image();
-    preloadImg.src = nextTrack.folder === '8090gayo' ? nextTrack.cover : pickRandomCoverUrl(nextTrack.cover);
-  }
-}
-
   // 페이지 로드시 초기화
       window.addEventListener('load', function() {
       window.melonyStartTime = Date.now();
@@ -3355,15 +3224,6 @@ document.addEventListener('contextmenu', function(e) {
 
 // 🔥 개발자도구 관련 키 조합 금지 (선택사항)
 document.addEventListener('keydown', function(e) {
-    document.addEventListener('click', function(e) {
-  var panel = document.getElementById('eqPanel');
-  var button = document.getElementById('eqButton');
-  
-  if (panel && !panel.contains(e.target) && !button.contains(e.target)) {
-    panel.classList.remove('show');
-  }
-});
-
   // F12 금지
   if (e.key === 'F12') {
     e.preventDefault();
@@ -3409,4 +3269,3 @@ document.addEventListener('keydown', function(e) {
   </script>
 </body>
 </html>
-
