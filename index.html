@@ -489,7 +489,7 @@ body::after {
       backdrop-filter: blur(6px);
     }
 
-  .shuffle-button {
+  .equalizer-button {
   position: absolute;
   top: 20px;
   right: 20px;
@@ -506,6 +506,162 @@ body::after {
   cursor: pointer;
   opacity: 0.05;
   transition: all 0.3s ease;
+  z-index: 1000;
+}
+
+.equalizer-button:hover {
+  background: rgba(92, 109, 224, 0.8);
+  opacity: 1.0;
+  transform: scale(1.1);
+}
+
+.equalizer-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90%;
+  max-width: 400px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  z-index: 2000;
+  display: none;
+  opacity: 0;
+  transition: all 0.3s ease;
+}
+
+.equalizer-panel.show {
+  display: block;
+  opacity: 1;
+}
+
+.equalizer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.equalizer-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.close-eq {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-eq:hover {
+  background: rgba(0,0,0,0.1);
+  color: #333;
+}
+
+.equalizer-presets {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.preset-btn {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(92, 109, 224, 0.1);
+  color: #5c6de0;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preset-btn:hover {
+  background: rgba(92, 109, 224, 0.2);
+  transform: translateY(-1px);
+}
+
+.preset-btn.active {
+  background: rgba(92, 109, 224, 0.9);
+  color: white;
+}
+
+.equalizer-controls {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 15px;
+}
+
+.eq-band {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.eq-band label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #666;
+  text-align: center;
+}
+
+.eq-slider {
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 25px;
+  height: 120px;
+  background: linear-gradient(to top, #e0e0e0, #e0e0e0);
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 10px;
+}
+
+.eq-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #5c6de0;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.eq-slider::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #5c6de0;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.eq-value {
+  font-size: 10px;
+  font-weight: 600;
+  color: #5c6de0;
+  text-align: center;
+  min-height: 12px;
 }
 
 .shuffle-button:hover {
@@ -658,8 +814,58 @@ body::after {
   <div class="debug-info" id="debugInfo"></div>
   
   <div class="container">
-    <div class="shuffle-button" id="shuffleButton" onclick="toggleShuffle()">🔀</div>
-    
+    <div class="equalizer-button" id="equalizerButton" onclick="toggleEqualizer()">🎛️</div>
+
+<!-- 이퀄라이저 패널 추가 -->
+<div class="equalizer-panel" id="equalizerPanel">
+  <div class="equalizer-header">
+    <h3>6-Band Equalizer</h3>
+    <button class="close-eq" onclick="closeEqualizer()">×</button>
+  </div>
+  
+  <div class="equalizer-presets">
+    <button class="preset-btn active" onclick="applyPreset('flat')">Flat</button>
+    <button class="preset-btn" onclick="applyPreset('rock')">Rock</button>
+    <button class="preset-btn" onclick="applyPreset('pop')">Pop</button>
+    <button class="preset-btn" onclick="applyPreset('jazz')">Jazz</button>
+    <button class="preset-btn" onclick="applyPreset('classical')">Classical</button>
+    <button class="preset-btn" onclick="applyPreset('electronic')">Electronic</button>
+  </div>
+  
+  <div class="equalizer-controls">
+    <div class="eq-band">
+      <label>60Hz</label>
+      <input type="range" class="eq-slider" id="eq60" min="-12" max="12" value="0" step="0.5" oninput="updateEqualizer()">
+      <span class="eq-value">0dB</span>
+    </div>
+    <div class="eq-band">
+      <label>170Hz</label>
+      <input type="range" class="eq-slider" id="eq170" min="-12" max="12" value="0" step="0.5" oninput="updateEqualizer()">
+      <span class="eq-value">0dB</span>
+    </div>
+    <div class="eq-band">
+      <label>350Hz</label>
+      <input type="range" class="eq-slider" id="eq350" min="-12" max="12" value="0" step="0.5" oninput="updateEqualizer()">
+      <span class="eq-value">0dB</span>
+    </div>
+    <div class="eq-band">
+      <label>1kHz</label>
+      <input type="range" class="eq-slider" id="eq1000" min="-12" max="12" value="0" step="0.5" oninput="updateEqualizer()">
+      <span class="eq-value">0dB</span>
+    </div>
+    <div class="eq-band">
+      <label>3kHz</label>
+      <input type="range" class="eq-slider" id="eq3000" min="-12" max="12" value="0" step="0.5" oninput="updateEqualizer()">
+      <span class="eq-value">0dB</span>
+    </div>
+    <div class="eq-band">
+      <label>6kHz</label>
+      <input type="range" class="eq-slider" id="eq6000" min="-12" max="12" value="0" step="0.5" oninput="updateEqualizer()">
+      <span class="eq-value">0dB</span>
+    </div>
+  </div>
+</div>
+
     <div class="player-header">
 
       <div class="player-title">
@@ -1405,8 +1611,8 @@ function cleanTitle(rawTitle) {
       title.innerHTML = '<div class="loading"></div>Loading Playlists...';
 
       // 캐시 확인
-      var cacheKey = 'melony_playlist_cache_v4'; // 버전 업
-      var cacheTtlMs = 24 * 60 * 60 * 1000; // 24시간으로 증가
+      var cacheKey = 'melony_playlist_cache_v5';
+      var cacheTtlMs = 7 * 24 * 60 * 60 * 1000; // 7일로 연장
       try {
         var cached = localStorage.getItem(cacheKey);
         if (cached) {
@@ -1414,6 +1620,12 @@ function cleanTitle(rawTitle) {
           if (parsed && parsed.expiresAt && parsed.data && Date.now() < parsed.expiresAt) {
             console.log('📦 캐시된 플레이리스트 사용');
             applyTrackList(parsed.data);
+
+      // 🔥 백그라운드에서 캐시 갱신 (선택사항)
+      setTimeout(function() {
+        fetchPlaylistsFromAPI(true); // 백그라운드 갱신
+      }, 5000);
+
             return;
           }
         }
@@ -1423,11 +1635,9 @@ function cleanTitle(rawTitle) {
         console.log('📥 병렬 다운로드 시작...');
         const startTime = Date.now();
         
-const [gayo8090Res, popRes, lofiRes, coversRes] = await Promise.all([
-  fetch(WORKERS_API_URL + '/playlist-8090gayo.json', { 
-    cache: 'force-cache',
-    priority: 'high'
-  }),
+// 🔥 1단계: 핵심 플레이리스트 먼저 로드 (POP, LOFI)
+console.log('🚀 1단계: 핵심 플레이리스트 우선 로드...');
+const [popRes, lofiRes] = await Promise.all([
   fetch(WORKERS_API_URL + '/playlist-pop.json', { 
     cache: 'force-cache',
     priority: 'high'
@@ -1435,23 +1645,86 @@ const [gayo8090Res, popRes, lofiRes, coversRes] = await Promise.all([
   fetch(WORKERS_API_URL + '/playlist-lofi-inst.json', { 
     cache: 'force-cache',
     priority: 'high'
-  }),
-  fetch(WORKERS_API_URL + '/coverlist-lofi.json', { 
-    cache: 'force-cache',
-    priority: 'low'
   })
 ]);
 
-        if (!gayo8090Res.ok || !popRes.ok || !lofiRes.ok || !coversRes.ok) {
-        throw new Error(`플레이리스트 로딩 실패: 8090(${gayo8090Res.status}) pop(${popRes.status}) lofi(${lofiRes.status}) covers(${coversRes.status})`);
-        }
+if (!popRes.ok || !lofiRes.ok) {
+  throw new Error(`핵심 플레이리스트 로딩 실패: pop(${popRes.status}) lofi(${lofiRes.status})`);
+}
 
-        const [gayo8090Data, popData, lofiData, coversData] = await Promise.all([
+// JSON 파싱도 1단계에서 완료
+const [popData, lofiData] = await Promise.all([
+  popRes.json(),
+  lofiRes.json()
+]);
+
+const coreLoadTime = Date.now() - startTime;
+console.log(`⚡ 1단계 완료 (${coreLoadTime}ms): POP ${popData.tracks?.length || 0}곡, LOFI ${lofiData.tracks?.length || 0}곡`);
+
+// 🔥 즉시 플레이어 시작 (8090과 커버는 나중에)
+const quickData = {
+  'pop': popData.tracks || popData,
+  'lofi-inst': lofiData.tracks || lofiData,
+  '8090gayo': [], // 빈 배열로 시작
+  'covers': []   // 빈 배열로 시작
+};
+
+// 빠른 시작을 위한 임시 적용
+applyTrackListQuick(quickData);
+
+// 🔥 2단계: 나머지 데이터 백그라운드 로드
+console.log('🔄 2단계: 나머지 데이터 백그라운드 로드...');
+setTimeout(async function() {
+  try {
+    const [gayo8090Res, coversRes] = await Promise.all([
+      fetch(WORKERS_API_URL + '/playlist-8090gayo.json', { 
+        cache: 'force-cache',
+        priority: 'low'
+      }),
+      fetch(WORKERS_API_URL + '/coverlist-lofi.json', { 
+        cache: 'force-cache',
+        priority: 'low'
+      })
+    ]);
+
+    if (gayo8090Res.ok && coversRes.ok) {
+      const [gayo8090Data, coversData] = await Promise.all([
         gayo8090Res.json(),
-        popRes.json(),
-        lofiRes.json(),
         coversRes.json()
-        ]);
+      ]);
+
+      // 전체 데이터로 완전한 업데이트
+      const completeData = {
+        '8090gayo': gayo8090Data.tracks || gayo8090Data,
+        'pop': popData.tracks || popData,
+        'lofi-inst': lofiData.tracks || lofiData,
+        'covers': coversData.covers || coversData
+      };
+
+      applyTrackListComplete(completeData);
+      
+      const totalTime = Date.now() - startTime;
+      console.log(`🎯 2단계 완료 (${totalTime}ms): 8090 ${gayo8090Data.tracks?.length || 0}곡, 커버 ${coversData.covers?.length || 0}개 추가`);
+      
+      // 캐시 저장은 전체 완료 후에만
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify({
+          data: completeData,
+          expiresAt: Date.now() + cacheTtlMs
+        }));
+        console.log('💾 전체 데이터 캐시 저장 완료');
+      } catch (e) {
+        console.log('캐시 저장 실패:', e);
+      }
+    } else {
+      console.log('⚠️ 2단계 로드 실패, 1단계 데이터로만 동작');
+    }
+  } catch (error) {
+    console.log('🔄 2단계 로딩 오류:', error);
+    console.log('✅ 1단계 데이터로 정상 동작 중');
+  }
+}, 200); // 200ms 후 백그라운드 로드 시작
+
 
         const loadTime = Date.now() - startTime;
         console.log(`⚡ 플레이리스트 로딩 완료: ${loadTime}ms`);
@@ -2063,7 +2336,7 @@ loadTrack(0);
          // 🔥 새로운 오디오 객체 생성
          audio = new Audio();
          audio.crossOrigin = 'anonymous';
-         audio.preload = 'metadata';
+         audio.preload = 'none'; // 필요할 때만 로드
          console.log('🔄 새로운 오디오 객체 생성 완료');
        } else {
          console.log('🔄 일반 로딩 - 기존 오디오 객체 재사용');
@@ -2347,6 +2620,11 @@ function togglePlay() {
     window.audioContext.resume();
   }
   
+    // 🔥 오디오가 로드되지 않았으면 먼저 로드
+    if (audio.readyState === 0) {
+      audio.load();
+    }
+
 // 🔥 페이드인 효과와 함께 재생
 audio.volume = 0; // 시작 볼륨 0
 audio.play()
@@ -2363,9 +2641,12 @@ audio.play()
 thumbnail.classList.add('playing', 'slow-zoom');
 startVisualizer();
 console.log('🎵 수동 재생');
-    
-    
   })
+      .catch(function(error) {
+        console.log('재생 실패:', error);
+        updateDebugInfo('재생 실패<br>' + error.message);
+      });
+
   }
 }
 
@@ -2413,26 +2694,149 @@ function nextTrack() {
   }
 }
 
-    // 셔플 토글
-    function toggleShuffle() {
-      isShuffle = !isShuffle;
+// 이퀄라이저 관련 변수들
+var equalizerFilters = [];
+var equalizerGains = [0, 0, 0, 0, 0, 0]; // 6개 밴드
+var equalizerFreqs = [60, 170, 350, 1000, 3000, 6000];
+var isEqualizerVisible = false;
+
+// 이퀄라이저 프리셋
+var equalizerPresets = {
+  flat: [0, 0, 0, 0, 0, 0],
+  rock: [3, 2, -1, -2, 2, 4],
+  pop: [1, 3, 2, 0, -1, -2],
+  jazz: [2, 1, 0, 1, 2, 3],
+  classical: [3, 2, -1, -2, 1, 2],
+  electronic: [4, 2, 0, -1, 2, 4]
+};
+
+// 이퀄라이저 토글
+function toggleEqualizer() {
+  var panel = document.getElementById('equalizerPanel');
+  isEqualizerVisible = !isEqualizerVisible;
+  
+  if (isEqualizerVisible) {
+    panel.classList.add('show');
+    setupEqualizer();
+  } else {
+    panel.classList.remove('show');
+  }
+}
+
+// 이퀄라이저 닫기
+function closeEqualizer() {
+  var panel = document.getElementById('equalizerPanel');
+  panel.classList.remove('show');
+  isEqualizerVisible = false;
+}
+
+// 이퀄라이저 설정
+function setupEqualizer() {
+  if (!audioContext) {
+    try {
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (error) {
+      console.log('Web Audio API 지원 안됨');
+      return;
+    }
+  }
+  
+  // 기존 필터들 초기화
+  equalizerFilters = [];
+  
+  // 6개 밴드 필터 생성
+  for (var i = 0; i < 6; i++) {
+    var filter = audioContext.createBiquadFilter();
+    filter.type = i === 0 ? 'lowshelf' : i === 5 ? 'highshelf' : 'peaking';
+    filter.frequency.value = equalizerFreqs[i];
+    filter.Q.value = 1;
+    filter.gain.value = equalizerGains[i];
+    equalizerFilters.push(filter);
+  }
+  
+  // 필터들을 체인으로 연결
+  if (equalizerFilters.length > 0 && window.currentSource) {
+    try {
+      window.currentSource.disconnect();
       
-      if (isShuffle) {
-         generateShuffledPlaylists();
-      } else {
-         shuffledTracks.all = allTracks.slice();
-shuffledTracks['8090gayo'] = allTracks.filter(function(t) { return t.folder === '8090gayo'; });
-shuffledTracks.pop = allTracks.filter(function(t) { return t.folder === 'pop'; });
-shuffledTracks['lofi-inst'] = allTracks.filter(function(t) { return t.folder === 'lofi-inst'; });
+      // 필터 체인 연결
+      var input = window.currentSource;
+      for (var i = 0; i < equalizerFilters.length; i++) {
+        input.connect(equalizerFilters[i]);
+        input = equalizerFilters[i];
       }
       
-      updateCurrentPlaylist();
-      currentTrackIndex = 0;
-      loadTrack(0);
+      // 마지막 필터를 analyser와 destination에 연결
+      if (analyser) {
+        input.connect(analyser);
+        analyser.connect(audioContext.destination);
+      } else {
+        input.connect(audioContext.destination);
+      }
       
-      console.log('🔄 셔플 ' + (isShuffle ? '활성화' : '비활성화'));
-      updateDebugInfo('셔플 ' + (isShuffle ? 'ON' : 'OFF'));
+      console.log('이퀄라이저 설정 완료');
+    } catch (error) {
+      console.log('이퀄라이저 연결 오류:', error);
     }
+  }
+}
+
+// 이퀄라이저 업데이트
+function updateEqualizer() {
+  for (var i = 0; i < 6; i++) {
+    var slider = document.getElementById('eq' + equalizerFreqs[i]);
+    if (slider && equalizerFilters[i]) {
+      var value = parseFloat(slider.value);
+      equalizerGains[i] = value;
+      equalizerFilters[i].gain.value = value;
+      
+      // 값 표시 업데이트
+      var valueDisplay = slider.parentElement.querySelector('.eq-value');
+      if (valueDisplay) {
+        valueDisplay.textContent = (value >= 0 ? '+' : '') + value.toFixed(1) + 'dB';
+      }
+    }
+  }
+}
+
+// 프리셋 적용
+function applyPreset(presetName) {
+  if (!equalizerPresets[presetName]) return;
+  
+  var preset = equalizerPresets[presetName];
+  
+  // 슬라이더 값 업데이트
+  for (var i = 0; i < 6; i++) {
+    var slider = document.getElementById('eq' + equalizerFreqs[i]);
+    if (slider) {
+      slider.value = preset[i];
+      equalizerGains[i] = preset[i];
+      
+      if (equalizerFilters[i]) {
+        equalizerFilters[i].gain.value = preset[i];
+      }
+      
+      // 값 표시 업데이트
+      var valueDisplay = slider.parentElement.querySelector('.eq-value');
+      if (valueDisplay) {
+        valueDisplay.textContent = (preset[i] >= 0 ? '+' : '') + preset[i].toFixed(1) + 'dB';
+      }
+    }
+  }
+  
+  // 프리셋 버튼 활성화 상태 업데이트
+  var presetButtons = document.querySelectorAll('.preset-btn');
+  presetButtons.forEach(function(btn) {
+    btn.classList.remove('active');
+  });
+  
+  var activeButton = document.querySelector("[onclick=\"applyPreset('" + presetName + "')\"]");
+  if (activeButton) {
+    activeButton.classList.add('active');
+  }
+  
+  console.log('프리셋 적용:', presetName);
+}
 
          // 🔥 강화된 카테고리 전환
     function switchCategory(categoryName) {
@@ -2733,8 +3137,20 @@ if (window.currentSource && !window.useFallbackVisualizer && currentAudio._audio
     
     if (currentAudio && currentAudio.src && !currentAudio._audioSourceConnected) {
       window.currentSource = audioContext.createMediaElementSource(currentAudio);
-      window.currentSource.connect(analyser);
-      analyser.connect(audioContext.destination);
+
+// 이퀄라이저 필터 연결
+if (equalizerFilters.length > 0) {
+  var input = window.currentSource;
+  for (var i = 0; i < equalizerFilters.length; i++) {
+    input.connect(equalizerFilters[i]);
+    input = equalizerFilters[i];
+  }
+  input.connect(analyser);
+  analyser.connect(audioContext.destination);
+} else {
+  window.currentSource.connect(analyser);
+  analyser.connect(audioContext.destination);
+}
       
       // 🔥 중복 연결 방지 플래그
       currentAudio._audioSourceConnected = true;
