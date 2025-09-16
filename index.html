@@ -2239,12 +2239,6 @@ console.log('🎵 제목 표시 완료');
       // 🔥 8090가요는 트랙별 커버 사용, 다른 카테고리는 랜덤 커버 사용
       var coverUrl;
       if (track.folder === '8090gayo') {
-        console.log('🔍 8090가요 트랙 정보:', {
-          title: track.title,
-          coverUrl: track.coverUrl,
-          cover: track.cover,
-          hasCoverUrl: !!track.coverUrl
-        });
         
         if (track.coverUrl) {
           // 🔥 원본 coverUrl을 Workers API URL과 연결
@@ -3269,4 +3263,3 @@ document.addEventListener('keydown', function(e) {
   </script>
 </body>
 </html>
- 
