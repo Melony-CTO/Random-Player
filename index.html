@@ -673,6 +673,7 @@ body::after {
 .eq-band input[type="range"] {
   writing-mode: bt-lr;
   -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
   width: 10px;
   height: 100px;
   background: #ddd;
@@ -715,6 +716,161 @@ body::after {
   animation: slowZoomBg 25s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
 }
 
+/* 비밀번호 모달 스타일 */
+.password-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: modalFadeIn 0.3s ease-out;
+}
+
+.password-modal-content {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 20px;
+  padding: 30px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(20px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+.password-modal-header {
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.password-modal-header h3 {
+  color: #2d3748;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0 0 10px 0;
+}
+
+.password-modal-header p {
+  color: #666;
+  font-size: 14px;
+  margin: 0;
+}
+
+.password-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+#passwordInput {
+  width: 100%;
+  padding: 15px 20px;
+  border: 2px solid #e2e8f0;
+  border-radius: 15px;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+#passwordInput:focus {
+  outline: none;
+  border-color: #5c6de0;
+  box-shadow: 0 0 0 3px rgba(92, 109, 224, 0.1);
+  background: rgba(255, 255, 255, 1);
+}
+
+.password-options {
+  display: flex;
+  justify-content: center;
+}
+
+.password-save-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+}
+
+.password-save-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #5c6de0;
+}
+
+.password-modal-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+}
+
+.password-btn {
+  flex: 1;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 15px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 100px;
+}
+
+.password-btn-cancel {
+  background: rgba(108, 117, 125, 0.1);
+  color: #6c757d;
+}
+
+.password-btn-cancel:hover {
+  background: rgba(108, 117, 125, 0.2);
+  transform: translateY(-1px);
+}
+
+.password-btn-confirm {
+  background: linear-gradient(135deg, #9b83f1, #5c6de0);
+  color: white;
+}
+
+.password-btn-confirm:hover {
+  background: linear-gradient(135deg, #8a72e0, #4a5bc7);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(92, 109, 224, 0.3);
+}
+
+.password-error {
+  text-align: center;
+  color: #e53e3e;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 10px;
+  background: rgba(229, 62, 62, 0.1);
+  border-radius: 10px;
+  border: 1px solid rgba(229, 62, 62, 0.2);
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+  from { 
+    opacity: 0;
+    transform: translateY(-30px) scale(0.9);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 
   </style>
 </head>
@@ -846,6 +1002,7 @@ body::after {
     </div>
     
     <div class="category-switch">
+      <div class="category" onclick="switchToGayo()" data-folder="8090gayo">🔒 8090</div>
       <div class="category active" onclick="switchCategory('POP')" data-folder="pop">POP</div>
        <div class="category" onclick="switchCategory('LOFI-INST')" data-folder="lofi-inst">lofi-inst</div>
     </div>
@@ -869,6 +1026,29 @@ body::after {
     <audio id="player" preload="metadata" crossorigin="anonymous">
       Your browser does not support the audio element.
     </audio>
+  </div>
+
+  <!-- 비밀번호 모달 -->
+  <div id="passwordModal" class="password-modal" style="display: none;">
+    <div class="password-modal-content">
+      <div class="password-modal-header">
+        <h3>🔒 가요 섹션 접근</h3>
+        <p>8090년대 가요를 듣기 위해 비밀번호를 입력해주세요</p>
+      </div>
+      <div class="password-modal-body">
+        <input type="password" id="passwordInput" placeholder="비밀번호를 입력하세요" maxlength="20">
+        <div class="password-options">
+          <label class="password-save-option">
+            <input type="checkbox" id="savePassword"> 이 기기에서 비밀번호 저장
+          </label>
+        </div>
+        <div class="password-modal-buttons">
+          <button class="password-btn password-btn-cancel" onclick="closePasswordModal()">취소</button>
+          <button class="password-btn password-btn-confirm" onclick="checkPassword()">확인</button>
+        </div>
+        <div id="passwordError" class="password-error" style="display: none;"></div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -918,7 +1098,8 @@ console.log = function() {
     var shuffledTracks = {
       all: [],
       pop: [],
-      lofi: []
+      lofi: [],
+      '8090gayo': []
     };
     var currentCategory = 'pop';
     var musicVolume = 0.8;
@@ -927,6 +1108,12 @@ console.log = function() {
     var randomCovers = [];
     var currentPlaylist = [];
     var coverList = { covers: [] };
+    
+    // 가요 섹션 관련 변수
+    var gayoTracks = [];
+    var isGayoUnlocked = false;
+    var gayoPassword = "melony8090"; // 기본 비밀번호
+    var gayoSessionKey = "melony_gayo_session";
 
     var audioContext;
     var analyser;
@@ -1169,12 +1356,12 @@ function cleanTitle(rawTitle) {
       return shuffled;
     }
 
-         // 🔥 강화된 셔플된 플레이리스트 생성 - 정확한 카테고리 매칭 및 검증
+         // 🔥 강화된 셔플된 플레이리스트 생성 - 정확한 카테고리 매칭 및 검증 (가요 섹션 포함)
      function generateShuffledPlaylists() {
        // 🔥 카테고리별 트랙 분리 및 검증
        var popTracks = allTracks.filter(function(t) { 
          var isPop = t.folder === 'pop';
-         if (!isPop && t.folder !== 'lofi-inst') {
+         if (!isPop && t.folder !== 'lofi-inst' && t.folder !== '8090gayo') {
            console.warn('⚠️ 알 수 없는 폴더:', t.folder, '트랙:', t.title);
          }
          return isPop; 
@@ -1182,16 +1369,22 @@ function cleanTitle(rawTitle) {
        
        var lofiTracks = allTracks.filter(function(t) { 
          var isLofi = t.folder === 'lofi-inst';
-         if (!isLofi && t.folder !== 'pop') {
+         if (!isLofi && t.folder !== 'pop' && t.folder !== '8090gayo') {
            console.warn('⚠️ 알 수 없는 폴더:', t.folder, '트랙:', t.title);
          }
          return isLofi; 
+       });
+       
+       // 🔥 가요 트랙은 별도로 관리 (비밀번호 해제 시에만 로드됨)
+       var gayoTracks = allTracks.filter(function(t) { 
+         return t.folder === '8090gayo'; 
        });
        
        // 🔥 카테고리별 플레이리스트 생성 및 검증
        shuffledTracks.all = shuffleArray(allTracks);
        shuffledTracks.pop = shuffleArray(popTracks);
        shuffledTracks['lofi-inst'] = shuffleArray(lofiTracks);
+       shuffledTracks['8090gayo'] = shuffleArray(gayoTracks);
        
        // 🔥 강력한 카테고리 검증
        var popValidation = shuffledTracks.pop.every(function(track) {
@@ -1200,6 +1393,10 @@ function cleanTitle(rawTitle) {
        
        var lofiValidation = shuffledTracks['lofi-inst'].every(function(track) {
          return track.folder === 'lofi-inst';
+       });
+       
+       var gayoValidation = shuffledTracks['8090gayo'].every(function(track) {
+         return track.folder === '8090gayo';
        });
        
        if (!popValidation) {
@@ -1218,14 +1415,24 @@ function cleanTitle(rawTitle) {
          console.log('  - 오염된 트랙:', lofiContaminants.map(t => t.title + ' (' + t.folder + ')'));
        }
        
+       if (!gayoValidation) {
+         console.error('❌ 가요 플레이리스트 오염됨!');
+         var gayoContaminants = shuffledTracks['8090gayo'].filter(function(track) {
+           return track.folder !== '8090gayo';
+         });
+         console.log('  - 오염된 트랙:', gayoContaminants.map(t => t.title + ' (' + t.folder + ')'));
+       }
+       
        console.log('🔄 셔플된 플레이리스트 생성 완료');
        console.log('  - 전체: ' + shuffledTracks.all.length + '곡');
        console.log('  - POP: ' + shuffledTracks.pop.length + '곡 (검증됨)');
        console.log('  - LOFI-INST: ' + shuffledTracks['lofi-inst'].length + '곡 (검증됨)');
+       console.log('  - 가요: ' + shuffledTracks['8090gayo'].length + '곡 (검증됨)');
        
        // 🔥 검증 결과 표시
        console.log('  - POP 검증:', popValidation ? '✅ 통과' : '❌ 실패');
        console.log('  - LOFI-INST 검증:', lofiValidation ? '✅ 통과' : '❌ 실패');
+       console.log('  - 가요 검증:', gayoValidation ? '✅ 통과' : '❌ 실패');
        
        // 🔥 카테고리별 첫 3곡 확인
        if (shuffledTracks.pop.length > 0) {
@@ -1234,12 +1441,38 @@ function cleanTitle(rawTitle) {
        if (shuffledTracks['lofi-inst'].length > 0) {
          console.log('  - LOFI-INST 첫 3곡:', shuffledTracks['lofi-inst'].slice(0, 3).map(t => t.title + ' (' + t.folder + ')'));
        }
+       if (shuffledTracks['8090gayo'].length > 0) {
+         console.log('  - 가요 첫 3곡:', shuffledTracks['8090gayo'].slice(0, 3).map(t => t.title + ' (' + t.folder + ')'));
+       }
      }
 
-         // 🔥 강화된 플레이리스트 업데이트 - 카테고리별 완전 분리
+         // 🔥 강화된 플레이리스트 업데이트 - 카테고리별 완전 분리 (가요 섹션 포함)
      function updateCurrentPlaylist() {
        var selectedCategories = getSelectedCategories();
        console.log('🎯 선택된 카테고리:', selectedCategories);
+       
+      // 🔥 가요 섹션이 선택된 경우 특별 처리
+      if (selectedCategories.includes('8090gayo')) {
+        console.log('🎯 가요 섹션 선택됨 - gayoTracks 길이:', gayoTracks.length);
+        
+        if (gayoTracks.length > 0) {
+          currentPlaylist = [...gayoTracks];
+          console.log('🎵 가요 플레이리스트 사용:', currentPlaylist.length + '곡');
+        } else {
+          console.log('⚠️ 가요 트랙이 로드되지 않음 - shuffledTracks에서 시도');
+          
+          // shuffledTracks에서 가요 트랙 찾기
+          if (shuffledTracks['8090gayo'] && shuffledTracks['8090gayo'].length > 0) {
+            currentPlaylist = [...shuffledTracks['8090gayo']];
+            console.log('🎵 shuffledTracks에서 가요 플레이리스트 사용:', currentPlaylist.length + '곡');
+          } else {
+            console.log('❌ 가요 트랙을 찾을 수 없음 - 전체 플레이리스트 다시 로드');
+            fetchMusicFromAPI();
+            return;
+          }
+        }
+        return;
+      }
        
                 // 🔥 카테고리가 하나만 선택된 경우 완전 분리
        if (selectedCategories.length === 1) {
@@ -1294,7 +1527,7 @@ function cleanTitle(rawTitle) {
        }
      }
 
-         // 🔥 강화된 카테고리 선택 - 정확한 플레이리스트 연결
+         // 🔥 강화된 카테고리 선택 - 정확한 플레이리스트 연결 (가요 섹션 포함)
      function getSelectedCategories() {
        var categories = document.querySelectorAll('.category');
        var selected = [];
@@ -1310,6 +1543,9 @@ function cleanTitle(rawTitle) {
            } else if (folder === 'lofi-inst') {
              selected.push('lofi-inst');
              console.log('  - LOFI-INST 플레이리스트 선택됨');
+           } else if (folder === '8090gayo') {
+             selected.push('8090gayo');
+             console.log('  - 가요 플레이리스트 선택됨');
            }
          }
        });
@@ -1317,6 +1553,175 @@ function cleanTitle(rawTitle) {
        console.log('🎯 최종 선택된 카테고리:', selected);
        return selected.length > 0 ? selected : ['pop']; // 🔥 기본값을 'pop'으로 변경
      }
+
+    // 가요 섹션 관련 함수들
+    function switchToGayo() {
+      console.log('🔒 가요 섹션 접근 시도');
+      
+      // 세션 확인
+      if (checkGayoSession()) {
+        console.log('✅ 세션 유효 - 가요 섹션 바로 접근');
+        switchToGayoCategory();
+        return;
+      }
+      
+      // 저장된 비밀번호 확인
+      var savedPassword = localStorage.getItem('melony_gayo_password');
+      if (savedPassword === gayoPassword) {
+        console.log('✅ 저장된 비밀번호 유효 - 가요 섹션 바로 접근');
+        switchToGayoCategory();
+        return;
+      }
+      
+      // 비밀번호 모달 표시
+      showPasswordModal();
+    }
+    
+    function showPasswordModal() {
+      var modal = document.getElementById('passwordModal');
+      var input = document.getElementById('passwordInput');
+      var error = document.getElementById('passwordError');
+      
+      modal.style.display = 'flex';
+      input.value = '';
+      error.style.display = 'none';
+      
+      // 포커스 설정
+      setTimeout(function() {
+        input.focus();
+      }, 100);
+      
+      // Enter 키 이벤트
+      input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          checkPassword();
+        }
+      });
+    }
+    
+    function closePasswordModal() {
+      var modal = document.getElementById('passwordModal');
+      modal.style.display = 'none';
+    }
+    
+    function checkPassword() {
+      var input = document.getElementById('passwordInput');
+      var error = document.getElementById('passwordError');
+      var saveCheckbox = document.getElementById('savePassword');
+      var password = input.value.trim();
+      
+      if (password === gayoPassword) {
+        console.log('✅ 비밀번호 확인 성공');
+        
+        // 비밀번호 저장 옵션 확인
+        if (saveCheckbox.checked) {
+          localStorage.setItem('melony_gayo_password', password);
+          console.log('💾 비밀번호 저장됨');
+        }
+        
+        // 세션 설정
+        setGayoSession();
+        
+        // 모달 닫기
+        closePasswordModal();
+        
+        // 가요 섹션으로 전환
+        switchToGayoCategory();
+        
+      } else {
+        console.log('❌ 비밀번호 확인 실패');
+        error.textContent = '비밀번호가 올바르지 않습니다. 다시 시도해주세요.';
+        error.style.display = 'block';
+        
+        // 입력 필드 초기화 및 포커스
+        input.value = '';
+        input.focus();
+        
+        // 에러 메시지 3초 후 자동 숨김
+        setTimeout(function() {
+          error.style.display = 'none';
+        }, 3000);
+      }
+    }
+    
+    function checkGayoSession() {
+      var sessionData = sessionStorage.getItem(gayoSessionKey);
+      if (sessionData) {
+        var data = JSON.parse(sessionData);
+        var now = Date.now();
+        
+        // 세션이 유효한지 확인 (24시간)
+        if (data.timestamp && (now - data.timestamp) < 24 * 60 * 60 * 1000) {
+          isGayoUnlocked = true;
+          return true;
+        } else {
+          // 만료된 세션 제거
+          sessionStorage.removeItem(gayoSessionKey);
+        }
+      }
+      return false;
+    }
+    
+    function setGayoSession() {
+      var sessionData = {
+        timestamp: Date.now(),
+        unlocked: true
+      };
+      sessionStorage.setItem(gayoSessionKey, JSON.stringify(sessionData));
+      isGayoUnlocked = true;
+      console.log('🔓 가요 섹션 세션 설정됨');
+    }
+    
+    function switchToGayoCategory() {
+      console.log('🎵 가요 섹션으로 전환');
+      
+      // 현재 재생 중이면 정지
+      if (isPlaying) {
+        audio.pause();
+        playButton.textContent = '▶';
+        isPlaying = false;
+        thumbnail.classList.remove('playing', 'slow-zoom');
+        stopVisualizer();
+      }
+      
+      // 오디오 상태 초기화
+      audio.src = '';
+      audio.load();
+      
+      // 카테고리 버튼 상태 업데이트
+      var categories = document.querySelectorAll('.category');
+      for (var i = 0; i < categories.length; i++) {
+        categories[i].classList.remove('active');
+      }
+      
+      var gayoButton = document.querySelector("[onclick=\"switchToGayo()\"]");
+      if (gayoButton) {
+        gayoButton.classList.add('active');
+      }
+      
+      // 가요 플레이리스트가 로드되지 않았다면 로드
+      if (gayoTracks.length === 0) {
+        console.log('⚠️ 가요 트랙이 로드되지 않음 - 전체 플레이리스트 다시 로드');
+        fetchMusicFromAPI();
+      } else {
+        console.log('🎵 가요 트랙 발견:', gayoTracks.length + '곡');
+        
+        // 이미 로드된 경우 바로 전환
+        currentPlaylist = [...gayoTracks];
+        currentTrackIndex = 0;
+        
+        console.log('🔄 가요 플레이리스트 설정 완료:', currentPlaylist.length + '곡');
+        console.log('  - 첫 3곡:', currentPlaylist.slice(0, 3).map(t => t.title + ' (' + t.folder + ')'));
+        
+        loadTrack(0);
+        
+        // 자동 재생
+        setTimeout(function() {
+          togglePlay();
+        }, 1000);
+      }
+    }
+    
 
     // ✅ 수정된 플레이리스트 로딩
     async function fetchMusicFromAPI() {
@@ -1342,7 +1747,7 @@ function cleanTitle(rawTitle) {
         console.log('📥 병렬 다운로드 시작...');
         const startTime = Date.now();
         
-const [popRes, lofiRes, coversRes] = await Promise.all([
+const [popRes, lofiRes, coversRes, gayoRes] = await Promise.all([
   fetch(WORKERS_API_URL + '/playlist-pop.json', { 
     cache: 'force-cache',
     priority: 'high'
@@ -1354,6 +1759,10 @@ const [popRes, lofiRes, coversRes] = await Promise.all([
   fetch(WORKERS_API_URL + '/coverlist-lofi.json', { 
     cache: 'force-cache',
     priority: 'low'
+  }),
+  fetch(WORKERS_API_URL + '/playlist-8090gayo.json', { 
+    cache: 'force-cache',
+    priority: 'high'
   })
 ]);
 
@@ -1361,20 +1770,36 @@ const [popRes, lofiRes, coversRes] = await Promise.all([
           throw new Error(`플레이리스트 로딩 실패: pop(${popRes.status}) lofi(${lofiRes.status}) covers(${coversRes.status})`);
         }
 
-        const [popData, lofiData, coversData] = await Promise.all([
+        const [popData, lofiData, coversData, gayoData] = await Promise.all([
           popRes.json(),
           lofiRes.json(),
-          coversRes.json()
+          coversRes.json(),
+          gayoRes.ok ? gayoRes.json() : Promise.resolve({ tracks: [] })
         ]);
 
         const loadTime = Date.now() - startTime;
         console.log(`⚡ 플레이리스트 로딩 완료: ${loadTime}ms`);
+        
+        // 🔥 가요 데이터 로딩 상태 확인
+        console.log('📊 가요 데이터 로딩 상태:');
+        console.log('  - gayoRes.ok:', gayoRes.ok);
+        console.log('  - gayoRes.status:', gayoRes.status);
+        console.log('  - gayoData:', gayoData);
+        console.log('  - gayoData.tracks:', gayoData.tracks);
+        console.log('  - gayoData.tracks 길이:', gayoData.tracks ? gayoData.tracks.length : 'undefined');
 
         const combinedData = {
           pop: popData.tracks || popData,
           'lofi-inst': lofiData.tracks || lofiData,
-          covers: coversData.covers || coversData
+          covers: coversData.covers || coversData,
+          '8090gayo': gayoData.tracks || gayoData
         };
+        
+        console.log('📦 combinedData 생성 완료:');
+        console.log('  - pop:', combinedData.pop.length + '곡');
+        console.log('  - lofi-inst:', combinedData['lofi-inst'].length + '곡');
+        console.log('  - covers:', combinedData.covers.length + '개');
+        console.log('  - 8090gayo:', combinedData['8090gayo'].length + '곡');
 
         // 캐시 저장
         try {
@@ -1547,6 +1972,39 @@ allTracks.push({
   cover: normalizeUrl(WORKERS_API_URL, track2.image || 'covers/default-cover.jpg')
 });
   }
+}
+
+// 가요 섹션 처리
+if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
+  console.log('📂 8090gayo 폴더: ' + data['8090gayo'].length + '개 파일');
+  console.log('  - 첫 번째 트랙 샘플:', data['8090gayo'][0]);
+  
+  for (var k = 0; k < data['8090gayo'].length; k++) {
+    var track3 = data['8090gayo'][k];
+    
+    // 가요 트랙은 이미 정제된 제목을 사용
+    allTracks.push({
+      title: track3.title,
+      folder: '8090gayo',
+      audio: track3.audioUrl,
+      cover: normalizeUrl(WORKERS_API_URL, track3.coverUrl)
+    });
+  }
+  
+  // 가요 트랙을 별도 변수에도 저장 (비밀번호 해제 시 사용)
+  gayoTracks = data['8090gayo'].map(function(track) {
+    return {
+      title: track.title,
+      folder: '8090gayo',
+      audio: track.audioUrl,
+      cover: normalizeUrl(WORKERS_API_URL, track.coverUrl)
+    };
+  });
+  
+  console.log('🎵 가요 트랙 로드 완료:', gayoTracks.length + '곡');
+  console.log('  - gayoTracks 첫 3곡:', gayoTracks.slice(0, 3).map(t => t.title + ' (' + t.folder + ')'));
+} else {
+  console.log('⚠️ 가요 데이터가 없음:', data['8090gayo']);
 }
       
       if (data.covers && Array.isArray(data.covers)) {
@@ -2319,7 +2777,7 @@ function nextTrack() {
   }
 }
 
-    // 셔플 토글
+    // 셔플 토글 (가요 섹션 포함)
     function toggleShuffle() {
       isShuffle = !isShuffle;
       
@@ -2328,7 +2786,8 @@ function nextTrack() {
       } else {
          shuffledTracks.all = allTracks.slice();
          shuffledTracks.pop = allTracks.filter(function(t) { return t.folder === 'pop'; });
-         shuffledTracks['lofi-inst'] = allTracks.filter(function(t) { return t.folder === 'lofi-inst'; }); // 🔥 lofi → lofi-inst로 수정
+         shuffledTracks['lofi-inst'] = allTracks.filter(function(t) { return t.folder === 'lofi-inst'; });
+         shuffledTracks['8090gayo'] = allTracks.filter(function(t) { return t.folder === '8090gayo'; });
       }
       
       updateCurrentPlaylist();
@@ -2438,22 +2897,6 @@ setTimeout(function() {
   
   // 🔥 루프 강제 설정 (일부 브라우저에서 필요)
       effectAudio.addEventListener('ended', function() {
-    if (currentBgSound === soundType) {
-      this.currentTime = 0;
-      this.play().catch(function(error) {
-        console.log('🔄 효과음 루프 재시작 실패:', error);
-      });
-    }
-  });
-  
-  // 🔥 로딩 완료 후 루프 재확인
-  effectAudio.addEventListener('loadeddata', function() {
-    this.loop = true;
-    console.log('🔊 효과음 루프 설정 확인:', soundType, this.loop);
-  });
-  
-  // 🔥 루프 강제 설정 (일부 브라우저에서 필요)
-  effectAudio.addEventListener('ended', function() {
     if (currentBgSound === soundType) {
       this.currentTime = 0;
       this.play().catch(function(error) {
@@ -2846,6 +3289,13 @@ if (window.useFallbackVisualizer) {
       window.melonyStartTime = Date.now();
   
       console.log('🚀 === Melony Player 수정된 버전 시작 ===');
+
+      // 가요 섹션 세션 확인
+      if (checkGayoSession()) {
+        console.log('🔓 가요 섹션 세션 유효 - 접근 가능');
+      } else {
+        console.log('🔒 가요 섹션 세션 없음 - 비밀번호 필요');
+      }
 
       // PWA Service Worker 등록
     if ('serviceWorker' in navigator) {
