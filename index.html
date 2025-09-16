@@ -1699,6 +1699,14 @@ function cleanTitle(rawTitle) {
         gayoButton.classList.add('active');
       }
       
+      // 실패 횟수 리셋
+      consecutiveFailures = 0;
+      isInErrorLoop = false;
+      
+      // 로딩 상태 완전 리셋
+      isLoading = false;
+      currentLoadingTrack = null;
+      
       // 가요 플레이리스트가 로드되지 않았다면 로드
       if (gayoTracks.length === 0) {
         console.log('⚠️ 가요 트랙이 로드되지 않음 - 전체 플레이리스트 다시 로드');
@@ -1706,19 +1714,32 @@ function cleanTitle(rawTitle) {
       } else {
         console.log('🎵 가요 트랙 발견:', gayoTracks.length + '곡');
         
-        // 이미 로드된 경우 바로 전환
-        currentPlaylist = [...gayoTracks];
+        // updateCurrentPlaylist() 호출하여 올바른 플레이리스트 설정
+        updateCurrentPlaylist();
         currentTrackIndex = 0;
         
         console.log('🔄 가요 플레이리스트 설정 완료:', currentPlaylist.length + '곡');
         console.log('  - 첫 3곡:', currentPlaylist.slice(0, 3).map(t => t.title + ' (' + t.folder + ')'));
         
-        loadTrack(0);
+        // 플레이리스트 검증
+        if (currentPlaylist.length > 0) {
+          var categories = [...new Set(currentPlaylist.map(t => t.folder))];
+          console.log('  - 포함된 폴더:', categories);
+        }
         
-        // 자동 재생
+        // 잠시 대기 후 새 트랙 로드
         setTimeout(function() {
-          togglePlay();
-        }, 1000);
+          try {
+            loadTrack(0);
+            
+            // 자동 재생
+            setTimeout(function() {
+              togglePlay();
+            }, 1000);
+          } catch (error) {
+            console.error('❌ 가요 트랙 로드 실패:', error);
+          }
+        }, 100);
       }
     }
     
@@ -1748,45 +1769,38 @@ function cleanTitle(rawTitle) {
         const startTime = Date.now();
         
 const [popRes, lofiRes, coversRes, gayoRes] = await Promise.all([
-  fetch(WORKERS_API_URL + '/playlist-pop.json', { 
+  fetch('./playlist-pop.json', { 
     cache: 'force-cache',
     priority: 'high'
   }),
-  fetch(WORKERS_API_URL + '/playlist-lofi-inst.json', { 
+  fetch('./playlist-lofi-inst.json', { 
     cache: 'force-cache',
     priority: 'high'
   }),
-  fetch(WORKERS_API_URL + '/coverlist-lofi.json', { 
+  fetch('./coverlist-lofi.json', { 
     cache: 'force-cache',
     priority: 'low'
   }),
-  fetch(WORKERS_API_URL + '/playlist-8090gayo.json', { 
+  fetch('./playlist-8090gayo.json', { 
     cache: 'force-cache',
     priority: 'high'
   })
 ]);
 
-        if (!popRes.ok || !lofiRes.ok || !coversRes.ok) {
-          throw new Error(`플레이리스트 로딩 실패: pop(${popRes.status}) lofi(${lofiRes.status}) covers(${coversRes.status})`);
+        if (!popRes.ok || !lofiRes.ok || !coversRes.ok || !gayoRes.ok) {
+          throw new Error(`플레이리스트 로딩 실패: pop(${popRes.status}) lofi(${lofiRes.status}) covers(${coversRes.status}) gayo(${gayoRes.status})`);
         }
 
         const [popData, lofiData, coversData, gayoData] = await Promise.all([
           popRes.json(),
           lofiRes.json(),
           coversRes.json(),
-          gayoRes.ok ? gayoRes.json() : Promise.resolve({ tracks: [] })
+          gayoRes.json()
         ]);
 
         const loadTime = Date.now() - startTime;
         console.log(`⚡ 플레이리스트 로딩 완료: ${loadTime}ms`);
         
-        // 🔥 가요 데이터 로딩 상태 확인
-        console.log('📊 가요 데이터 로딩 상태:');
-        console.log('  - gayoRes.ok:', gayoRes.ok);
-        console.log('  - gayoRes.status:', gayoRes.status);
-        console.log('  - gayoData:', gayoData);
-        console.log('  - gayoData.tracks:', gayoData.tracks);
-        console.log('  - gayoData.tracks 길이:', gayoData.tracks ? gayoData.tracks.length : 'undefined');
 
         const combinedData = {
           pop: popData.tracks || popData,
@@ -1794,12 +1808,6 @@ const [popRes, lofiRes, coversRes, gayoRes] = await Promise.all([
           covers: coversData.covers || coversData,
           '8090gayo': gayoData.tracks || gayoData
         };
-        
-        console.log('📦 combinedData 생성 완료:');
-        console.log('  - pop:', combinedData.pop.length + '곡');
-        console.log('  - lofi-inst:', combinedData['lofi-inst'].length + '곡');
-        console.log('  - covers:', combinedData.covers.length + '개');
-        console.log('  - 8090gayo:', combinedData['8090gayo'].length + '곡');
 
         // 캐시 저장
         try {
@@ -1977,17 +1985,16 @@ allTracks.push({
 // 가요 섹션 처리
 if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
   console.log('📂 8090gayo 폴더: ' + data['8090gayo'].length + '개 파일');
-  console.log('  - 첫 번째 트랙 샘플:', data['8090gayo'][0]);
   
   for (var k = 0; k < data['8090gayo'].length; k++) {
     var track3 = data['8090gayo'][k];
     
-    // 가요 트랙은 이미 정제된 제목을 사용
+    // 가요 트랙은 audioUrl과 coverUrl 필드 사용 (다른 플레이리스트와 필드명 다름)
     allTracks.push({
       title: track3.title,
       folder: '8090gayo',
-      audio: track3.audioUrl,
-      cover: normalizeUrl(WORKERS_API_URL, track3.coverUrl)
+      audio: track3.audioUrl,  // audioUrl 필드 사용
+      cover: track3.coverUrl  // 로컬 파일이므로 normalizeUrl 제거
     });
   }
   
@@ -1996,15 +2003,12 @@ if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
     return {
       title: track.title,
       folder: '8090gayo',
-      audio: track.audioUrl,
-      cover: normalizeUrl(WORKERS_API_URL, track.coverUrl)
+      audio: track.audioUrl,  // audioUrl 필드 사용
+      cover: track.coverUrl  // 로컬 파일이므로 normalizeUrl 제거
     };
   });
   
   console.log('🎵 가요 트랙 로드 완료:', gayoTracks.length + '곡');
-  console.log('  - gayoTracks 첫 3곡:', gayoTracks.slice(0, 3).map(t => t.title + ' (' + t.folder + ')'));
-} else {
-  console.log('⚠️ 가요 데이터가 없음:', data['8090gayo']);
 }
       
       if (data.covers && Array.isArray(data.covers)) {
