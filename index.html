@@ -955,12 +955,9 @@ function cleanTitle(rawTitle) {
   var next = candidates.shift();
   if (!next) { tryNext(); return; }
   
-  // 🔥 URL 대체 적용
-  var displayUrl = normalizeUrl(WORKERS_API_URL, next);
-  
   // 이벤트 핸들러를 여기로 이동
   img.onload = function() {
-    thumbnail.style.backgroundImage = "url('" + displayUrl + "')";
+    thumbnail.style.backgroundImage = "url('" + img.src + "')";
     thumbnail.style.backgroundSize = "120%";
     
     // 블러 효과 시작
@@ -1106,31 +1103,7 @@ function cleanTitle(rawTitle) {
                    var track = data.tracks[i];
                    
                    var cleanTitle = track.title || 'Unknown Track';
-                   
-                   // 🔥 실제 트랙 데이터 구조 확인
-                   console.log('🔍 플레이리스트 트랙 데이터:', {
-                     index: i,
-                     title: track.title,
-                     coverUrl: track.coverUrl,
-                     audio: track.audio,
-                     allKeys: Object.keys(track)
-                   });
-                   
-                   // 🔥 8090가요 커버 이미지 처리 - Workers API 엔드포인트 사용
-                   var coverUrl = WORKERS_API_URL + '/file/' + (track.coverUrl || 'covers-8090gayo/default-cover.jpg');
-                   console.log('🖼️ 8090가요 커버 URL 생성:', {
-                     original: track.coverUrl,
-                     final: coverUrl,
-                     workersUrl: WORKERS_API_URL
-                   });
-                   
-                   allTracks.push({
-                     title: cleanTitle,
-                     folder: '8090gayo',
-                     audio: track.audio,
-                     cover: track.coverUrl ? WORKERS_API_URL + '/file/' + track.coverUrl : coverUrl,  // 🔥 올바른 커버 URL 저장
-                     coverUrl: track.coverUrl  // 🔥 원본 coverUrl 정보 보존
-                   });
+                  
                  }
                  
                  console.log('  - 8090가요 데이터 추가 완료:', data.tracks.length + '곡');
@@ -1555,11 +1528,30 @@ if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
   for (var i = 0; i < data['8090gayo'].length; i++) {
     var track = data['8090gayo'][i];
     
+    // 🔥 디버깅: 행복한 나를 트랙 확인
+    if (track.title && track.title.includes('행복한 나를')) {
+      console.log('🔍 행복한 나를 트랙 원본 데이터:', track);
+      console.log('  - track.title:', track.title);
+      console.log('  - track.coverUrl:', track.coverUrl);
+      console.log('  - track.audio:', track.audio);
+      console.log('  - 모든 키:', Object.keys(track));
+      console.log('  - 실제 키-값 쌍:');
+      Object.keys(track).forEach(function(key) {
+        console.log('    - ' + key + ':', track[key]);
+      });
+    }
+    
     if (i === 0) {
       console.log('🎵 8090 트랙 원본 데이터:', track);
       console.log('  - title:', track.title);
       console.log('  - audio:', track.audio);
+      console.log('  - 모든 키:', Object.keys(track));
+      console.log('  - 실제 키-값 쌍:');
+      Object.keys(track).forEach(function(key) {
+        console.log('    - ' + key + ':', track[key]);
+      });
     }
+    // 여기서 중괄호 하나 제거
     
     var cleanTitle = null;
     
@@ -1604,22 +1596,14 @@ if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
       console.log('  - 원본 vs 최종:', track.title, '→', cleanTitle);
     }
     
-    // 🔥 8090가요 커버 이미지 처리 - Workers API 엔드포인트 사용
-    var coverUrl = WORKERS_API_URL + '/file/' + (track.coverUrl || track.image || 'covers-8090gayo/default-cover.jpg');
-    console.log('🖼️ 8090가요 커버 URL 생성 (applyTrackList):', {
-      original: track.coverUrl,
-      image: track.image,
-      final: coverUrl,
-      workersUrl: WORKERS_API_URL
-    });
-    
     allTracks.push({
-      title: cleanTitle,
-      folder: '8090gayo',
-      audio: track.audio,
-      cover: track.coverUrl ? WORKERS_API_URL + '/file/' + track.coverUrl : coverUrl,  // 🔥 올바른 커버 URL 저장
-      coverUrl: track.coverUrl  // 🔥 원본 coverUrl 정보 보존
-    });
+  title: track.audio.split('/').pop().replace(/\.[^/.]+$/, ''), // 파일명에서 확장자만 제거
+  folder: '8090gayo',
+  audio: track.audio,
+  cover: track.coverUrl ? 
+       normalizeUrl(WORKERS_API_URL, track.coverUrl) : 
+       normalizeUrl(WORKERS_API_URL, `covers-8090gayo/${track.audio.split('/').pop().replace(/\.[^/.]+$/, '')}.jpg`)
+});
   }
 }
       
@@ -2236,39 +2220,6 @@ setTimeout(function() {
 console.log('🎵 제목 표시 완료');
 
 
-      // 🔥 8090가요는 트랙별 커버 사용, 다른 카테고리는 랜덤 커버 사용
-      var coverUrl;
-      if (track.folder === '8090gayo') {
-        
-        if (track.coverUrl) {
-          // 🔥 원본 coverUrl을 Workers API URL과 연결
-          coverUrl = WORKERS_API_URL + '/file/' + track.coverUrl;
-          console.log('🖼️ 8090가요 트랙별 커버 사용:', coverUrl);
-          console.log('🖼️ 원본 coverUrl:', track.coverUrl);
-          console.log('🖼️ 기존 track.cover:', track.cover);
-        } else {
-          // 🔥 coverUrl이 없으면 기존 cover 사용하되, default-cover.jpg가 아닌 경우만
-          if (track.cover && !track.cover.includes('default-cover.jpg')) {
-            coverUrl = track.cover;
-            console.log('🖼️ 8090가요 기존 커버 사용:', coverUrl);
-          } else {
-            // 🔥 최종 폴백: 첫 번째 8090가요 트랙의 커버 사용
-            var first8090Track = allTracks.find(t => t.folder === '8090gayo' && t.coverUrl);
-            if (first8090Track) {
-              coverUrl = WORKERS_API_URL + '/file/' + first8090Track.coverUrl;
-              console.log('🖼️ 8090가요 첫 번째 트랙 커버 사용:', coverUrl);
-            } else {
-              coverUrl = WORKERS_API_URL + '/file/covers-8090gayo/default-cover.jpg';
-              console.log('🖼️ 8090가요 최종 폴백 커버 사용:', coverUrl);
-            }
-          }
-          console.log('⚠️ track.coverUrl이 없습니다!');
-        }
-      } else {
-        coverUrl = pickRandomCoverUrl(track.cover);
-        console.log('🖼️ 랜덤 커버 선택:', coverUrl);
-      }
-
 // 🔥 미디어 세션 업데이트 (iOS 백그라운드 재생용)
 if (window.updateMediaSession) {
   window.updateMediaSession({
@@ -2277,6 +2228,9 @@ if (window.updateMediaSession) {
   cover: coverUrl
 });
 }
+
+      var coverUrl = track.folder === '8090gayo' ? track.cover : pickRandomCoverUrl(track.cover);
+console.log('🖼️ 선택된 커버 URL:', coverUrl);
 
 // 🔥 먼저 모든 애니메이션 클래스 제거
 thumbnail.classList.remove('blur-hidden', 'blur-start', 'playing', 'slow-zoom');
