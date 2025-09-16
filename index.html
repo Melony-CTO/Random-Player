@@ -1635,9 +1635,11 @@ function cleanTitle(rawTitle) {
         console.log('📥 병렬 다운로드 시작...');
         const startTime = Date.now();
         
-// 🔥 1단계: 핵심 플레이리스트 먼저 로드 (POP, LOFI)
-console.log('🚀 1단계: 핵심 플레이리스트 우선 로드...');
-const [popRes, lofiRes] = await Promise.all([
+const [gayo8090Res, popRes, lofiRes, coversRes] = await Promise.all([
+  fetch(WORKERS_API_URL + '/playlist-8090gayo.json', { 
+    cache: 'force-cache',
+    priority: 'high'
+  }),
   fetch(WORKERS_API_URL + '/playlist-pop.json', { 
     cache: 'force-cache',
     priority: 'high'
@@ -1645,86 +1647,23 @@ const [popRes, lofiRes] = await Promise.all([
   fetch(WORKERS_API_URL + '/playlist-lofi-inst.json', { 
     cache: 'force-cache',
     priority: 'high'
+  }),
+  fetch(WORKERS_API_URL + '/coverlist-lofi.json', { 
+    cache: 'force-cache',
+    priority: 'low'
   })
 ]);
 
-if (!popRes.ok || !lofiRes.ok) {
-  throw new Error(`핵심 플레이리스트 로딩 실패: pop(${popRes.status}) lofi(${lofiRes.status})`);
-}
+        if (!gayo8090Res.ok || !popRes.ok || !lofiRes.ok || !coversRes.ok) {
+        throw new Error(`플레이리스트 로딩 실패: 8090(${gayo8090Res.status}) pop(${popRes.status}) lofi(${lofiRes.status}) covers(${coversRes.status})`);
+        }
 
-// JSON 파싱도 1단계에서 완료
-const [popData, lofiData] = await Promise.all([
-  popRes.json(),
-  lofiRes.json()
-]);
-
-const coreLoadTime = Date.now() - startTime;
-console.log(`⚡ 1단계 완료 (${coreLoadTime}ms): POP ${popData.tracks?.length || 0}곡, LOFI ${lofiData.tracks?.length || 0}곡`);
-
-// 🔥 즉시 플레이어 시작 (8090과 커버는 나중에)
-const quickData = {
-  'pop': popData.tracks || popData,
-  'lofi-inst': lofiData.tracks || lofiData,
-  '8090gayo': [], // 빈 배열로 시작
-  'covers': []   // 빈 배열로 시작
-};
-
-// 빠른 시작을 위한 임시 적용
-applyTrackListQuick(quickData);
-
-// 🔥 2단계: 나머지 데이터 백그라운드 로드
-console.log('🔄 2단계: 나머지 데이터 백그라운드 로드...');
-setTimeout(async function() {
-  try {
-    const [gayo8090Res, coversRes] = await Promise.all([
-      fetch(WORKERS_API_URL + '/playlist-8090gayo.json', { 
-        cache: 'force-cache',
-        priority: 'low'
-      }),
-      fetch(WORKERS_API_URL + '/coverlist-lofi.json', { 
-        cache: 'force-cache',
-        priority: 'low'
-      })
-    ]);
-
-    if (gayo8090Res.ok && coversRes.ok) {
-      const [gayo8090Data, coversData] = await Promise.all([
+        const [gayo8090Data, popData, lofiData, coversData] = await Promise.all([
         gayo8090Res.json(),
+        popRes.json(),
+        lofiRes.json(),
         coversRes.json()
-      ]);
-
-      // 전체 데이터로 완전한 업데이트
-      const completeData = {
-        '8090gayo': gayo8090Data.tracks || gayo8090Data,
-        'pop': popData.tracks || popData,
-        'lofi-inst': lofiData.tracks || lofiData,
-        'covers': coversData.covers || coversData
-      };
-
-      applyTrackListComplete(completeData);
-      
-      const totalTime = Date.now() - startTime;
-      console.log(`🎯 2단계 완료 (${totalTime}ms): 8090 ${gayo8090Data.tracks?.length || 0}곡, 커버 ${coversData.covers?.length || 0}개 추가`);
-      
-      // 캐시 저장은 전체 완료 후에만
-      try {
-        localStorage.setItem(cacheKey, JSON.stringify({
-          data: completeData,
-          expiresAt: Date.now() + cacheTtlMs
-        }));
-        console.log('💾 전체 데이터 캐시 저장 완료');
-      } catch (e) {
-        console.log('캐시 저장 실패:', e);
-      }
-    } else {
-      console.log('⚠️ 2단계 로드 실패, 1단계 데이터로만 동작');
-    }
-  } catch (error) {
-    console.log('🔄 2단계 로딩 오류:', error);
-    console.log('✅ 1단계 데이터로 정상 동작 중');
-  }
-}, 200); // 200ms 후 백그라운드 로드 시작
-
+        ]);
 
         const loadTime = Date.now() - startTime;
         console.log(`⚡ 플레이리스트 로딩 완료: ${loadTime}ms`);
