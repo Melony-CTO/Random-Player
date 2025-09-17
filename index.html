@@ -428,6 +428,7 @@ body::after {
       color: #5c6de0;
     }
 
+
     .bg-sound-section {
       width: 90%;
       margin: 0;
@@ -1033,8 +1034,8 @@ console.log = function() {
       lofi: []
     };
     var currentCategory = 'pop';
-    var musicVolume = 0.8;
-    var effectVolume = 0.7;
+    var musicVolume = 0.7;
+    var effectVolume = 1.0;
     var useRandomCover = true;
     var randomCovers = [];
     var currentPlaylist = [];
@@ -1282,59 +1283,6 @@ function cleanTitle(rawTitle) {
       return shuffled;
      }
 
-     // 🔥 8090가요 데이터 직접 로드 함수
-     function load8090DataDirectly() {
-       return new Promise(function(resolve) {
-         console.log('🔄 8090가요 데이터 직접 로드 시작...');
-         
-         fetch(WORKERS_API_URL + '/playlist-8090gayo.json')
-           .then(function(response) {
-             if (!response.ok) {
-               throw new Error('8090가요 API 오류: ' + response.status);
-             }
-             return response.json();
-           })
-           .then(function(data) {
-             console.log('✅ 8090가요 데이터 로드 성공:', data.tracks ? data.tracks.length + '곡' : '데이터 없음');
-             
-             if (data.tracks && Array.isArray(data.tracks)) {
-               // 기존 allTracks에 8090가요 데이터 추가
-               var existing8090Count = allTracks.filter(t => t.folder === '8090gayo').length;
-               console.log('  - 기존 8090가요 트랙 수:', existing8090Count);
-               
-               if (existing8090Count === 0) {
-                 console.log('  - 8090가요 데이터 추가 중...');
-                 
-                 for (var i = 0; i < data.tracks.length; i++) {
-                   var track = data.tracks[i];
-                   
-                   var cleanTitle = track.title || 'Unknown Track';
-                  
-                 }
-                 
-                 console.log('  - 8090가요 데이터 추가 완료:', data.tracks.length + '곡');
-                 console.log('  - 전체 allTracks 길이:', allTracks.length);
-                 
-                 // 셔플된 플레이리스트 재생성
-                 generateShuffledPlaylists();
-                 
-                 resolve(true);
-               } else {
-                 console.log('  - 8090가요 데이터가 이미 존재함');
-                 resolve(true);
-               }
-             } else {
-               console.error('❌ 8090가요 데이터 형식 오류');
-               resolve(false);
-             }
-           })
-           .catch(function(error) {
-             console.error('❌ 8090가요 데이터 로드 실패:', error);
-             resolve(false);
-           });
-       });
-     }
-
          // 🔥 강화된 셔플된 플레이리스트 생성 - 정확한 카테고리 매칭 및 검증
      function generateShuffledPlaylists() {
        console.log('🔄 셔플된 플레이리스트 생성 시작...');
@@ -1521,19 +1469,7 @@ function cleanTitle(rawTitle) {
                currentPlaylist = [...shuffledTracks[category]];
                console.log('  - 강제 재생성 후:', currentPlaylist.length + '곡');
              } else {
-               // 🔥 최종 최종 폴백: API에서 직접 8090가요 데이터 로드
-               console.log('🔄 최종 최종 폴백: API에서 직접 8090가요 데이터 로드...');
-               load8090DataDirectly().then(function(success) {
-                 if (success) {
-                   console.log('✅ 8090가요 데이터 직접 로드 성공');
-                   updateCurrentPlaylist();
-                   if (currentPlaylist.length > 0) {
-                     loadTrack(0);
-                   }
-                 } else {
-                   console.error('❌ 8090가요 데이터 직접 로드 실패');
-                 }
-               });
+ 
              }
            }
          }
@@ -1611,8 +1547,10 @@ function cleanTitle(rawTitle) {
       title.innerHTML = '<div class="loading"></div>Loading Playlists...';
 
       // 캐시 확인
-      var cacheKey = 'melony_playlist_cache_v5';
-      var cacheTtlMs = 7 * 24 * 60 * 60 * 1000; // 7일로 연장
+      // ✅ 8090 전용 캐시 키 추가
+var cacheKey = 'melony_playlist_cache_v6'; // 버전 업
+
+var cacheTtlMs = 3 * 24 * 60 * 60 * 1000; // 3일로 단축 (더 자주 갱신)
       try {
         var cached = localStorage.getItem(cacheKey);
         if (cached) {
@@ -1621,10 +1559,8 @@ function cleanTitle(rawTitle) {
             console.log('📦 캐시된 플레이리스트 사용');
             applyTrackList(parsed.data);
 
-      // 🔥 백그라운드에서 캐시 갱신 (선택사항)
-      setTimeout(function() {
-        fetchPlaylistsFromAPI(true); // 백그라운드 갱신
-      }, 5000);
+      // 8090은 사용자가 클릭할 때만 로드
+        load8090DataLazy();
 
             return;
           }
@@ -1632,24 +1568,34 @@ function cleanTitle(rawTitle) {
       } catch (e) {}
 
       try {
-        console.log('📥 병렬 다운로드 시작...');
+        console.log('🔥 필수 데이터만 먼저 로딩...');
         const startTime = Date.now();
         
+// ✅ 8090 우선순위 높이고 타임아웃 추가
+const fetchWithTimeout = (url, options, timeout = 8000) => {
+  return Promise.race([
+    fetch(url, options),
+    new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Timeout')), timeout)
+    )
+  ]);
+};
+
 const [gayo8090Res, popRes, lofiRes, coversRes] = await Promise.all([
-  fetch(WORKERS_API_URL + '/playlist-8090gayo.json', { 
-    cache: 'force-cache',
+  fetchWithTimeout(WORKERS_API_URL + '/playlist-8090gayo.json', { 
+    cache: 'default', // force-cache에서 변경
+    priority: 'high'
+  }, 6000), // 8090만 6초 타임아웃
+  fetchWithTimeout(WORKERS_API_URL + '/playlist-pop.json', { 
+    cache: 'default',
     priority: 'high'
   }),
-  fetch(WORKERS_API_URL + '/playlist-pop.json', { 
-    cache: 'force-cache',
+  fetchWithTimeout(WORKERS_API_URL + '/playlist-lofi-inst.json', { 
+    cache: 'default',
     priority: 'high'
   }),
-  fetch(WORKERS_API_URL + '/playlist-lofi-inst.json', { 
-    cache: 'force-cache',
-    priority: 'high'
-  }),
-  fetch(WORKERS_API_URL + '/coverlist-lofi.json', { 
-    cache: 'force-cache',
+  fetchWithTimeout(WORKERS_API_URL + '/coverlist-lofi.json', { 
+    cache: 'default',
     priority: 'low'
   })
 ]);
@@ -1740,73 +1686,11 @@ if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
   for (var i = 0; i < data['8090gayo'].length; i++) {
     var track = data['8090gayo'][i];
     
-    // 🔥 디버깅: 행복한 나를 트랙 확인
-    if (track.title && track.title.includes('행복한 나를')) {
-      console.log('🔍 행복한 나를 트랙 원본 데이터:', track);
-      console.log('  - track.title:', track.title);
-      console.log('  - track.coverUrl:', track.coverUrl);
-      console.log('  - track.audio:', track.audio);
-      console.log('  - 모든 키:', Object.keys(track));
-      console.log('  - 실제 키-값 쌍:');
-      Object.keys(track).forEach(function(key) {
-        console.log('    - ' + key + ':', track[key]);
-      });
-    }
+    // 🔥 간단한 제목 처리로 변경
+    var cleanTitle = track.title || track.audio.split('/').pop().replace(/\.[^/.]+$/, '');
     
-    if (i === 0) {
-      console.log('🎵 8090 트랙 원본 데이터:', track);
-      console.log('  - title:', track.title);
-      console.log('  - audio:', track.audio);
-      console.log('  - 모든 키:', Object.keys(track));
-      console.log('  - 실제 키-값 쌍:');
-      Object.keys(track).forEach(function(key) {
-        console.log('    - ' + key + ':', track[key]);
-      });
-    }
-    // 여기서 중괄호 하나 제거
-    
-    var cleanTitle = null;
-    
-    if (track.title && track.title.trim() !== '') {
-  // 8090 가요는 "   " (3개 공백)으로 아티스트가 구분됨
-  var parts = track.title.split('   ');
-  if (parts.length >= 2) {
-    cleanTitle = parts[0].trim() + ' - ' + parts[1].trim();
-  } else {
-    cleanTitle = track.title.trim();
-  }
-  if (i === 0) console.log('  - ✅ 8090 제목 처리:', track.title, '→', cleanTitle);
-      var bracketMatch = track.title.match(/\[(.*?)\]/);
-      if (bracketMatch && bracketMatch[1]) {
-        cleanTitle = bracketMatch[1].trim();
-        if (i === 0) console.log('  - ✅ 대괄호 내용 추출:', track.title, '→', cleanTitle);
-      } else {
-        cleanTitle = track.title
-          .replace(/\([^)]*\)/g, '')
-          .replace(/_M$/, '')
-          .replace(/\s+/g, ' ')
-          .trim();
-        if (i === 0) console.log('  - ✅ 전체 title 정제:', track.title, '→', cleanTitle);
-      }
-    } else {
-      var fileName = track.audio.split('/').pop();
-      cleanTitle = fileName
-        .replace(/\.(m4a|mp3)$/i, '')
-        .replace(/^\[(.*?)\]\s*/, '$1')
-        .replace(/_M$/, '')
-        .replace(/\([^)]*\)/g, '')
-        .replace(/[_-]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      if (i === 0) console.log('  - 📄 파일명에서 제목 추출:', fileName, '→', cleanTitle);
-    }
-    
-    cleanTitle = cleanTitle || 'Unknown Track';
-    
-    if (i === 0) {
-      console.log('  - 최종 제목:', cleanTitle);
-      console.log('  - 원본 vs 최종:', track.title, '→', cleanTitle);
-    }
+    // 🔥 커버 이미지도 통일된 방식으로 처리
+    var coverUrl = track.coverUrl || track.image || 'covers/default-8090-cover.jpg';
     
     allTracks.push({
   title: track.audio.split('/').pop().replace(/\.[^/.]+$/, ''), // 파일명에서 확장자만 제거
@@ -2053,20 +1937,7 @@ loadTrack(0);
            }
          }
          
-         // 자동 재생 시도 (더 안전하게)
-         if (isPlaying) {
-           setTimeout(function() {
-             console.log('🎵 자동 재생 시도:', currentTrackForHandlers.title);
-             audio.play()
-             .then(function() {
-               console.log('✅ 자동 재생 성공:', currentTrackForHandlers.title);
-               updateDebugInfo('재생 시작!<br>' + currentTrackForHandlers.title);
-             }).catch(function(error) {
-               console.log('❌ 자동 재생 실패:', currentTrackForHandlers.title, error);
-               updateDebugInfo('자동 재생 실패<br>' + error.message);
-             });
-           }, 200); // 200ms로 증가
-         }
+ 
        }
      }
      
@@ -2220,15 +2091,19 @@ loadTrack(0);
          return;
        }
        
-       // 🔥 카테고리 검증 강화
-       var expectedCategory = getSelectedCategories()[0];
-       if (track.folder !== expectedCategory) {
-         console.error('❌ 카테고리 불일치:', track.folder, 'vs', expectedCategory);
-         console.log('  - 트랙:', track.title);
-         console.log('  - 현재 플레이리스트:', currentPlaylist.length + '곡');
-         console.log('  - 플레이리스트 카테고리:', [...new Set(currentPlaylist.map(t => t.folder))]);
-         return;
-       }
+       // ✅ 8090 카테고리 검증 완화
+var expectedCategory = getSelectedCategories()[0];
+if (track.folder !== expectedCategory) {
+  console.warn('⚠ 카테고리 불일치:', track.folder, 'vs', expectedCategory);
+  
+  // 8090가요의 경우 더 관대하게 처리
+  if (track.folder === '8090gayo' && expectedCategory === '8090gayo') {
+    console.log('✅ 8090가요 카테고리 매칭 성공');
+  } else if (track.folder !== '8090gayo') {
+    console.log('  - 트랙:', track.title);
+    return; // 8090가 아닌 경우만 중단
+  }
+}
        
        // 🔥 추가 검증: 플레이리스트에 해당 트랙이 실제로 있는지 확인
        var trackExists = currentPlaylist.some(function(t) {
@@ -2275,19 +2150,11 @@ loadTrack(0);
          // 🔥 새로운 오디오 객체 생성
          audio = new Audio();
          audio.crossOrigin = 'anonymous';
-         audio.preload = 'none'; // 필요할 때만 로드
+         audio.preload = 'metadata'; 
          console.log('🔄 새로운 오디오 객체 생성 완료');
        } else {
          console.log('🔄 일반 로딩 - 기존 오디오 객체 재사용');
        }
-
-       
-
-
-       
-
-       
-
        
        // 오류 루프 상태면 중단
        if (isInErrorLoop) {
@@ -2313,13 +2180,18 @@ loadTrack(0);
       console.log('📁 폴더:', track.folder);
       console.log('🔗 오디오 경로:', track.audio);
       
-      // ✅ 오디오 URL 생성 - Workers API가 자동으로 파일을 찾음
-      var audioUrl = generateAudioUrl(WORKERS_API_URL, track.audio, track.folder);
-      console.log('🎯 최종 오디오 URL:', audioUrl);
-      
-      // 🔥 CORS 테스트를 위한 추가 URL 생성
-      var alternativeUrl = WORKERS_API_URL + '/file/' + track.audio;
-      console.log('🔄 대체 오디오 URL:', alternativeUrl);
+      // ✅ 8090 전용 URL 최적화
+var audioUrl;
+if (track.folder === '8090gayo') {
+  // 8090가요는 직접 경로 우선 사용
+  audioUrl = WORKERS_API_URL + '/file/8090gayo/' + encodeURIComponent(track.audio.split('/').pop());
+} else {
+  audioUrl = generateAudioUrl(WORKERS_API_URL, track.audio, track.folder);
+}
+console.log('🎯 최적화된 오디오 URL:', audioUrl);
+
+// 대체 URL도 8090에 맞게 조정
+var alternativeUrl = WORKERS_API_URL + '/file/' + track.audio;
       
        // 🔥 새로운 오디오 객체이므로 이벤트 리스너 제거 불필요
        console.log('🔄 새로운 오디오 객체 - 이벤트 리스너 제거 불필요');
@@ -2478,22 +2350,7 @@ if (currentTimeDisplay) {
   currentTimeDisplay.textContent = '0:00';
 }
 
-if (isPlaying) {
-  setTimeout(function() {
-    audio.play()
-    .then(function() {
-  // 🔥 재생 시작 시 블러 애니메이션
-thumbnail.classList.add('playing');
-console.log('🎵 재생 시작');
-  
-  
-})
-    .catch(function(error) {
-      console.log('재생 실패:', error);
-      updateDebugInfo('재생 실패<br>' + error.message);
-    });
-  }, 100);
-}
+
        
             // canplaythrough 이벤트는 canplay로 대체됨
      }
@@ -2541,11 +2398,11 @@ function restartPlayer() {
 }
 
 
-
-    // 재생/정지 토글
 // 재생/정지 토글
 function togglePlay() {
   if (!audio.src) return;
+
+  
   
   if (isPlaying) {
     audio.pause();
@@ -2619,13 +2476,20 @@ function nextTrack() {
       // 새 트랙 로드
       loadTrack(newIndex);
       
-      // 1.5초 후 페이드인과 함께 재생
+      // 로딩 완료 후 명확한 재생
       setTimeout(function() {
-        if (audio.src) {
-          console.log('🎵 1.5초 후 다음곡 페이드인 재생');
+        console.log('로딩 완료 확인 후 재생 시도');
+        if (audio.src && audio.readyState >= 2) {
           togglePlay();
+        } else {
+          console.log('오디오 준비 안됨, 추가 대기');
+          setTimeout(function() {
+            if (audio.src && audio.readyState >= 2) {
+              togglePlay();
+            }
+          }, 1000);
         }
-      }, 1500);
+      }, 2000);
     });
   } else {
     // 재생 중이 아니면 바로 로드
@@ -2780,6 +2644,45 @@ function applyPreset(presetName) {
          // 🔥 강화된 카테고리 전환
     function switchCategory(categoryName) {
        console.log('🔄 카테고리 전환 시작:', categoryName);
+
+              // 8090 클릭 시 데이터 확인 및 로딩
+       if (categoryName === '8090') {
+         var gayo8090Tracks = allTracks.filter(function(t) { return t.folder === '8090gayo'; });
+         if (gayo8090Tracks.length === 0) {
+           // 버튼 상태 업데이트
+           var gayo8090Button = document.querySelector("[onclick=\"switchCategory('8090')\"]");
+           if (gayo8090Button) {
+             gayo8090Button.textContent = '로딩중...';
+             gayo8090Button.style.color = '#5c6de0';
+           }
+           
+           title.textContent = '8090 가요 데이터 로딩 중...';
+           console.log('8090 데이터가 아직 준비되지 않음. 즉시 로딩 시도...');
+           
+           // 즉시 로딩 (지연 없이)
+           fetch(WORKERS_API_URL + '/playlist-8090gayo.json')
+             .then(function(response) {
+               if (!response.ok) throw new Error('8090 API 오류: ' + response.status);
+               return response.json();
+             })
+             .then(function(data) {
+               apply8090Data(data.tracks || data);
+               // 로딩 완료 후 실제 카테고리 전환 실행
+               setTimeout(function() {
+                 switchCategory('8090'); // 재귀 호출로 실제 전환
+               }, 500);
+             })
+             .catch(function(error) {
+               console.error('8090 즉시 로딩 실패:', error);
+               if (gayo8090Button) {
+                 gayo8090Button.textContent = '8090 (오류)';
+                 gayo8090Button.style.color = '#e74c3c';
+               }
+               title.textContent = '8090 데이터 로딩 실패';
+             });
+           return;
+         }
+       }
        
        // 🔥 카테고리 전환 플래그 설정
        isCategorySwitching = true;
@@ -3406,6 +3309,13 @@ if (window.useFallbackVisualizer) {
   
    // API에서 음악 데이터 로드
       fetchMusicFromAPI();
+
+    // 8090 버튼 초기 상태 설정
+      var gayo8090Button = document.querySelector("[onclick=\"switchCategory('8090')\"]");
+      if (gayo8090Button) {
+        gayo8090Button.textContent = '8090'; // 로딩 중 표시
+        gayo8090Button.style.color = '#999'; // 회색으로 표시
+      }   
    
   // 커버 목록은 첫 사용자 입력 이후 지연 로드로 초기 부하 감소
       document.addEventListener('pointerdown', function() {
