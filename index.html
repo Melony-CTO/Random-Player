@@ -3435,6 +3435,26 @@ document.addEventListener('dragstart', function(e) {
 
 // 키보드 단축키 (디버깅용)
 document.addEventListener('keydown', function(e) {
+
+   // 효과음 단축키 (1~8번 키)
+  var soundMapping = {
+    '1': 'Rain',
+    '2': 'Bird', 
+    '3': 'Forest',
+    '4': 'Neighborhood',
+    '5': 'Amazon',
+    '6': 'Ocean',
+    '7': 'Crackle',
+    '8': 'Rain2'
+  };
+  
+  if (soundMapping[e.key]) {
+    e.preventDefault();
+    console.log('🎹 키보드 단축키:', e.key, '→', soundMapping[e.key]);
+    toggleBgSound(soundMapping[e.key]);
+    return;
+  }
+
   if (e.key === 'F12' || e.key === 'd') {
     var debug = document.getElementById('debugInfo');
     if (debug.style.display === 'block') {
@@ -3443,6 +3463,12 @@ document.addEventListener('keydown', function(e) {
       debug.style.display = 'block';
       updateDebugInfo('디버그 모드 활성화<br>현재 곡: ' + (currentPlaylist[currentTrackIndex] ? currentPlaylist[currentTrackIndex].title : 'None'));
     }
+  }
+
+    // 스페이스바로 재생/정지 (추가 보너스)
+  if (e.key === ' ') {
+    e.preventDefault();
+    togglePlay();
   }
 });
   </script>
