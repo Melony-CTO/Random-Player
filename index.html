@@ -4,8 +4,6 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <!-- PWA 매니페스트 -->
   <link rel="mainfest" href="./mainfest.json">
   <meta name="theme-color" content="#5c6de0">
@@ -14,7 +12,6 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="application-name" content="Melony Player">
 
-  <meta name="apple-mobile-web-app-title" content="Melony Player">
   <title>Melony Random Player</title>
 
   <style>
@@ -1093,7 +1090,10 @@ function fadeOutAudio(audioElement, duration = 500) {
 }
 
     // DOM 요소
-    var audio, playButton, title, thumbnail, volumeOverlay, leftTouchZone, rightTouchZone, debugInfo;
+    var audio = new Audio();
+audio.crossOrigin = 'anonymous';
+audio.preload = 'none'; // 필요할 때만 로드
+var playButton, title, thumbnail, volumeOverlay, leftTouchZone, rightTouchZone, debugInfo;
 
     // ✅ 개선된 URL 정규화 함수 - Workers API 응답에 맞춤
     function normalizeUrl(baseUrl, path) {
@@ -1550,7 +1550,7 @@ function cleanTitle(rawTitle) {
       // ✅ 8090 전용 캐시 키 추가
 var cacheKey = 'melony_playlist_cache_v6'; // 버전 업
 
-var cacheTtlMs = 3 * 24 * 60 * 60 * 1000; // 3일로 단축 (더 자주 갱신)
+var cacheTtlMs = 1 * 60 * 60 * 60 * 1000; // 1일로 단축 (더 자주 갱신)
       try {
         var cached = localStorage.getItem(cacheKey);
         if (cached) {
@@ -1585,11 +1585,11 @@ const [gayo8090Res, popRes, lofiRes, coversRes] = await Promise.all([
   fetchWithTimeout(WORKERS_API_URL + '/playlist-8090gayo.json', { 
     cache: 'default', // force-cache에서 변경
     priority: 'high'
-  }, 6000), // 8090만 6초 타임아웃
+  }, 3000), // 8090만 3초 타임아웃
   fetchWithTimeout(WORKERS_API_URL + '/playlist-pop.json', { 
     cache: 'default',
     priority: 'high'
-  }),
+  }, 3000),
   fetchWithTimeout(WORKERS_API_URL + '/playlist-lofi-inst.json', { 
     cache: 'default',
     priority: 'high'
@@ -2128,34 +2128,7 @@ if (track.folder !== expectedCategory) {
        var loadStartTime = Date.now();
        track.loadStartTime = loadStartTime;
        
-       // 🔥 기존 오디오 객체 완전 정리 및 새로 생성 (카테고리 전환 시에만)
-       if (isCategorySwitching) {
-         console.log('🔄 카테고리 전환 중 - 기존 오디오 객체 완전 정리 및 새로 생성');
-         
-         if (audio) {
-           // 🔥 기존 오디오 객체의 모든 이벤트 리스너 제거 (전역 함수 사용)
-           audio.removeEventListener('loadstart', handleLoadStart);
-           audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
-           audio.removeEventListener('canplay', handleCanPlay);
-           audio.removeEventListener('canplaythrough', handleCanPlayThrough);
-           audio.removeEventListener('error', handleAudioError);
-           
-           // 기존 오디오 정지 및 정리
-           audio.pause();
-           audio.currentTime = 0;
-           audio.src = '';
-           console.log('🔄 기존 오디오 객체 완전 정리 완료');
-         }
-         
-         // 🔥 새로운 오디오 객체 생성
-         audio = new Audio();
-         audio.crossOrigin = 'anonymous';
-         audio.preload = 'metadata'; 
-         console.log('🔄 새로운 오디오 객체 생성 완료');
-       } else {
-         console.log('🔄 일반 로딩 - 기존 오디오 객체 재사용');
-       }
-       
+
        // 오류 루프 상태면 중단
        if (isInErrorLoop) {
          console.error('🚨 오류 루프 상태 - 재생 중단');
@@ -2304,14 +2277,6 @@ setTimeout(function() {
 console.log('🎵 제목 표시 완료');
 
 
-// 🔥 미디어 세션 업데이트 (iOS 백그라운드 재생용)
-if (window.updateMediaSession) {
-  window.updateMediaSession({
-   title: track.title,
-  folder: track.folder,
-  cover: coverUrl
-});
-}
 
       var coverUrl = track.folder === '8090gayo' ? track.cover : pickRandomCoverUrl(track.cover);
 console.log('🖼️ 선택된 커버 URL:', coverUrl);
@@ -2411,11 +2376,7 @@ function togglePlay() {
     thumbnail.classList.remove('playing', 'slow-zoom');
     stopVisualizer();
 } else {
-  // iOS에서 오디오 컨텍스트 강제 시작
-  if (window.audioContext && window.audioContext.state === 'suspended') {
-    window.audioContext.resume();
-  }
-  
+
     // 🔥 오디오가 로드되지 않았으면 먼저 로드
     if (audio.readyState === 0) {
       audio.load();
@@ -2695,10 +2656,7 @@ function applyPreset(presetName) {
          thumbnail.classList.remove('playing', 'slow-zoom');
          stopVisualizer();
          
-         // iOS Media Session 상태 업데이트
-         if ('mediaSession' in navigator) {
-           navigator.mediaSession.playbackState = 'paused';
-         }
+
        }
        
        // 🔥 오디오 상태 완전 초기화
@@ -2722,11 +2680,11 @@ function applyPreset(presetName) {
          console.log('🔄 기존 오디오 객체 완전 정리 완료');
        }
        
-       // 🔥 새로운 오디오 객체 생성
-       audio = new Audio();
-       audio.crossOrigin = 'anonymous';
-       audio.preload = 'metadata';
-       console.log('🔄 새로운 오디오 객체 생성 완료');
+            if (audio) {
+         audio.pause();
+         audio.currentTime = 0;
+         console.log('오디오 객체 초기화 완료');
+       }
        
        currentCategory = categoryName.toLowerCase();
        
@@ -3306,6 +3264,58 @@ if (window.useFallbackVisualizer) {
       leftTouchZone = document.getElementById('leftTouchZone');
       rightTouchZone = document.getElementById('rightTouchZone');
       debugInfo = document.getElementById('debugInfo');
+
+         // 전역 오디오 이벤트 리스너 한 번만 등록
+   audio.addEventListener('loadstart', handleLoadStart);
+   audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+   audio.addEventListener('canplay', handleCanPlay);
+   audio.addEventListener('canplaythrough', handleCanPlayThrough);
+   audio.addEventListener('error', handleAudioError);
+   
+   audio.addEventListener('ended', function() {
+     console.log('곡 종료 - 다음 곡으로 이동');
+     stopVisualizer();
+     if (currentPlaylist.length > 0) {
+       isPlaying = false;
+       playButton.textContent = '▶';
+       var newIndex = currentTrackIndex + 1;
+       if (newIndex >= currentPlaylist.length) newIndex = 0;
+       loadTrack(newIndex);
+       if (audio.src) {
+         setTimeout(function() { togglePlay(); }, 1000);
+       }
+     }
+   });
+   
+   audio.addEventListener('timeupdate', function() {
+     if (audio.duration && !isNaN(audio.duration) && audio.duration > 0) {
+       var progress = (audio.currentTime / audio.duration) * 100;
+       var progressFill = document.getElementById('progressFill');
+       var currentTimeDisplay = document.getElementById('currentTime');
+       if (progressFill) {
+         progressFill.style.width = Math.min(100, Math.max(0, progress)) + '%';
+       }
+       if (currentTimeDisplay) {
+         currentTimeDisplay.textContent = formatTime(audio.currentTime);
+       }
+     }
+   });
+   
+   audio.addEventListener('durationchange', function() {
+     var durationDisplay = document.getElementById('duration');
+     if (durationDisplay && audio.duration && !isNaN(audio.duration)) {
+       durationDisplay.textContent = formatTime(audio.duration);
+     }
+   });
+   
+   var progressBar = document.getElementById('progressBar');
+   if (progressBar) {
+     progressBar.addEventListener('click', function(e) {
+       var rect = progressBar.getBoundingClientRect();
+       var percent = (e.clientX - rect.left) / rect.width;
+       audio.currentTime = percent * audio.duration;
+     });
+   }
   
    // API에서 음악 데이터 로드
       fetchMusicFromAPI();
@@ -3370,64 +3380,6 @@ if (window.useFallbackVisualizer) {
 
 });
 
-// 🔥 강화된 iOS 백그라운드 재생 지원
-if ('mediaSession' in navigator) {
-  console.log('📱 Media Session API 지원됨');
-  
-  // 메타데이터 설정 함수 강화
-  window.updateMediaSession = function(track) {
-    if (!track) return;
-    
-    try {
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: track.title || 'Unknown Track',
-        artist: 'Melony Player',
-        album: track.folder === 'pop' ? 'POP Collection' : 'LoFi Collection',
-        artwork: [
-          { src: track.cover || '', sizes: '96x96', type: 'image/jpeg' },
-          { src: track.cover || '', sizes: '128x128', type: 'image/jpeg' },
-          { src: track.cover || '', sizes: '192x192', type: 'image/jpeg' },
-          { src: track.cover || '', sizes: '256x256', type: 'image/jpeg' },
-          { src: track.cover || '', sizes: '384x384', type: 'image/jpeg' },
-          { src: track.cover || '', sizes: '512x512', type: 'image/jpeg' }
-        ]
-      });
-      
-      // 플레이백 상태 업데이트
-      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
-      
-      console.log('📱 미디어 세션 업데이트:', track.title);
-    } catch (error) {
-      console.log('📱 Media Session 오류:', error);
-    }
-  };
-  
-  // 미디어 컨트롤 설정
-  navigator.mediaSession.setActionHandler('play', function() {
-    console.log('📱 Media Session: play');
-    if (!isPlaying) togglePlay();
-  });
-  
-  navigator.mediaSession.setActionHandler('pause', function() {
-    console.log('📱 Media Session: pause');
-    if (isPlaying) togglePlay();
-  });
-  
-  navigator.mediaSession.setActionHandler('nexttrack', function() {
-    console.log('📱 Media Session: nexttrack');
-    nextTrack();
-  });
-  
-  navigator.mediaSession.setActionHandler('previoustrack', function() {
-    console.log('📱 Media Session: previoustrack');
-    previousTrack();
-  });
-  
-  console.log('📱 강화된 iOS 백그라운드 재생 설정 완료');
-}
- else {
-  console.log('📱 Media Session API 미지원');
-}
 
 // 🔥 우클릭 금지 및 기타 보안 기능
 document.addEventListener('contextmenu', function(e) {
