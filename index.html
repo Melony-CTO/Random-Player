@@ -864,6 +864,10 @@ body::after {
   </div>
 </div>
 
+<!-- 파일 선택 다이얼로그 (숨김) -->
+<input type="file" id="fileInput" multiple accept="audio/*" style="display: none;">
+<input type="file" id="folderInput" webkitdirectory style="display: none;">
+
     <div class="player-header">
 
       <div class="player-title">
@@ -955,6 +959,7 @@ body::after {
     </div>
     
     <div class="category-switch">
+    <div class="category" onclick="switchCategory('PC')" data-folder="pc">PC</div>  
     <div class="category" onclick="switchCategory('8090')" data-folder="8090gayo">8090</div>
     <div class="category active" onclick="switchCategory('POP')" data-folder="pop">POP</div>
     <div class="category" onclick="switchCategory('LOFI-INST')" data-folder="lofi-inst">lofi-inst</div>
@@ -1030,7 +1035,7 @@ console.log = function() {
       pop: [],
       lofi: []
     };
-    var currentCategory = 'pop';
+    var currentCategory = 'pc';
     var musicVolume = 0.7;
     var effectVolume = 1.0;
     var useRandomCover = true;
@@ -1333,6 +1338,11 @@ function cleanTitle(rawTitle) {
          }
          return isLofi; 
        });
+
+       var pcTracks = allTracks.filter(function(t) { 
+      var isPc = t.folder === 'pc';
+       return isPc; 
+      });
        
        console.log('📊 카테고리별 트랙 분리 결과:');
        console.log('  - 8090gayo:', gayo8090Tracks.length + '곡');
@@ -1344,6 +1354,7 @@ function cleanTitle(rawTitle) {
        shuffledTracks['8090gayo'] = shuffleArray(gayo8090Tracks);
        shuffledTracks.pop = shuffleArray(popTracks);
        shuffledTracks['lofi-inst'] = shuffleArray(lofiTracks);
+       shuffledTracks.pc = shuffleArray(pcTracks);
        
        // 🔥 강력한 카테고리 검증
        var gayo8090Validation = shuffledTracks['8090gayo'].every(function(track) {
@@ -1522,23 +1533,26 @@ function cleanTitle(rawTitle) {
          if (isActive) {
            console.log('🎯 활성 카테고리 발견:', folder);
            
-           if (folder === '8090gayo') {
-             selected.push('8090gayo');
-             console.log('  - 8090가요 플레이리스트 선택됨');
-           } else if (folder === 'pop') {
-             selected.push('pop');
-             console.log('  - POP 플레이리스트 선택됨');
-           } else if (folder === 'lofi-inst') {
-             selected.push('lofi-inst');
-             console.log('  - LOFI-INST 플레이리스트 선택됨');
-           } else {
-             console.warn('⚠️ 알 수 없는 폴더:', folder);
-           }
+           if (folder === 'pc') {
+          selected.push('pc');
+           console.log('  - PC 플레이리스트 선택됨');
+          } else if (folder === '8090gayo') {
+           selected.push('8090gayo');
+           console.log('  - 8090가요 플레이리스트 선택됨');
+          } else if (folder === 'pop') {
+           selected.push('pop');
+           console.log('  - POP 플레이리스트 선택됨');
+          } else if (folder === 'lofi-inst') {
+           selected.push('lofi-inst');
+           console.log('  - LOFI-INST 플레이리스트 선택됨');
+          } else {
+          console.warn('⚠️ 알 수 없는 폴더:', folder);
+          }
          }
        });
        
        console.log('🎯 최종 선택된 카테고리:', selected);
-       return selected.length > 0 ? selected : ['pop']; // 🔥 기본값을 'pop'으로 변경
+       return selected.length > 0 ? selected : ['pc']; // 기본값을 'pc'로 변경
      }
 
     // ✅ 수정된 플레이리스트 로딩
@@ -1860,8 +1874,8 @@ generateShuffledPlaylists();
 // 🔥 초기 플레이리스트를 POP으로만 설정 (카테고리 분리 강화)
 // 🔥 초기 플레이리스트를 8090가요로만 설정 (카테고리 분리 강화)
 // 🔥 초기 플레이리스트를 POP으로만 설정 (카테고리 분리 강화)  
-currentPlaylist = [...shuffledTracks.pop];
-console.log('🎯 초기 플레이리스트 설정: POP', currentPlaylist.length + '곡');
+currentPlaylist = [...shuffledTracks.pc];
+console.log('🎯 초기 플레이리스트 설정: PC', currentPlaylist.length + '곡');
 
 // 🔥 첫 곡 즉시 로딩
 loadTrack(0);
@@ -2052,6 +2066,12 @@ loadTrack(0);
        thumbnail.classList.remove('playing', 'slow-zoom', 'blur-start', 'start-zoom');
        
        var track = currentPlaylist[index];
+
+              // 로컬 파일인 경우 별도 처리
+       if (track && track.isLocalFile) {
+         loadLocalTrack(index);
+         return;
+       }
        
        // 🔥 로딩 시작 전 상태 디버깅
        console.log('🎯 loadTrack 호출:', index, track.title);
@@ -2620,6 +2640,13 @@ function applyPreset(presetName) {
     function switchCategory(categoryName) {
        console.log('🔄 카테고리 전환 시작:', categoryName);
 
+              // PC 카테고리 특별 처리
+       if (categoryName === 'PC') {
+         console.log('💻 PC 로컬 파일 모드 진입');
+         showFileSelector();
+         return;
+       }
+
               // 8090 클릭 시 데이터 확인 및 로딩
        if (categoryName === '8090') {
          var gayo8090Tracks = allTracks.filter(function(t) { return t.folder === '8090gayo'; });
@@ -2723,13 +2750,15 @@ function applyPreset(presetName) {
        }
 
        // 카테고리 이름을 폴더명으로 매핑
-       if (categoryName === '8090') {
-         currentCategory = '8090gayo';
-       } else if (categoryName === 'POP') {
-         currentCategory = 'pop';
-       } else if (categoryName === 'LOFI-INST') {
-         currentCategory = 'lofi-inst';
-       }
+       if (categoryName === 'PC') {
+      currentCategory = 'pc';
+      } else if (categoryName === '8090') {
+       currentCategory = '8090gayo';
+      } else if (categoryName === 'POP') {
+       currentCategory = 'pop';
+      } else if (categoryName === 'LOFI-INST') {
+       currentCategory = 'lofi-inst';
+      }
 
        console.log('🎯 카테고리 매핑:', categoryName, '→', currentCategory);
        
@@ -3348,6 +3377,19 @@ if (window.useFallbackVisualizer) {
   
   // 터치 제스처 설정
   setupTouchGestures();
+
+    setupTouchGestures();
+  
+  document.getElementById('fileInput').addEventListener('change', function(e) {
+    var files = Array.from(e.target.files);
+    processLocalFiles(files, 'files');
+  });
+
+  document.getElementById('folderInput').addEventListener('change', function(e) {
+    var files = Array.from(e.target.files);
+    processLocalFiles(files, 'folder');
+  });
+
   
   // 오디오 이벤트
   var progressBar = document.getElementById('progressBar');
@@ -3400,6 +3442,99 @@ document.addEventListener('contextmenu', function(e) {
   e.preventDefault();
   return false;
 });
+
+// PC 로컬 파일 처리 함수들
+function showFileSelector() {
+  var categories = document.querySelectorAll('.category');
+  categories.forEach(function(cat) {
+    cat.classList.remove('active');
+  });
+
+  var pcButton = document.querySelector("[onclick=\"switchCategory('PC')\"]");
+  if (pcButton) {
+    pcButton.classList.add('active');
+  }
+
+  if (confirm('파일을 선택하시겠습니까?\n\n확인: 개별 음악 파일 선택\n취소: 폴더 전체 선택')) {
+    document.getElementById('fileInput').click();
+  } else {
+    document.getElementById('folderInput').click();
+  }
+}
+
+function processLocalFiles(files, type) {
+  console.log('로컬 파일 처리 시작:', files.length + '개 파일');
+  
+  var audioFiles = files.filter(function(file) {
+    return file.type.startsWith('audio/') || /\.(mp3|m4a|wav|ogg|flac)$/i.test(file.name);
+  });
+
+  if (audioFiles.length === 0) {
+    alert('오디오 파일이 없습니다.');
+    return;
+  }
+
+  if (isPlaying) {
+    audio.pause();
+    playButton.textContent = '▶';
+    isPlaying = false;
+    thumbnail.classList.remove('playing', 'slow-zoom');
+    stopVisualizer();
+  }
+
+  currentPlaylist = audioFiles.map(function(file, index) {
+    return {
+      title: file.name.replace(/\.[^/.]+$/, ''),
+      folder: 'pc',
+      audio: file,
+      cover: pickRandomCoverUrl(),
+      isLocalFile: true
+    };
+  });
+
+  currentCategory = 'pc';
+  currentTrackIndex = 0;
+  
+  console.log('PC 플레이리스트 생성 완료:', currentPlaylist.length + '곡');
+  
+  loadLocalTrack(0);
+  title.textContent = '로컬 파일 로드 완료 (' + currentPlaylist.length + '곡)';
+  
+  setTimeout(function() {
+    togglePlay();
+  }, 1000);
+}
+
+function loadLocalTrack(index) {
+  if (index < 0 || index >= currentPlaylist.length) return;
+  
+  var track = currentPlaylist[index];
+
+  
+  console.log('로컬 트랙 로드:', track.title);
+  
+  if (track.isLocalFile && track.audio instanceof File) {
+    var audioUrl = URL.createObjectURL(track.audio);
+    
+    if (audio.src && audio.src.startsWith('blob:')) {
+      URL.revokeObjectURL(audio.src);
+    }
+    
+    audio.src = audioUrl;
+    audio.volume = musicVolume;
+    title.textContent = track.title;
+    setThumbnailCover(track.cover);
+    
+    if (track.cover) {
+      document.body.style.backgroundImage = "url('" + track.cover + "')";
+    }
+    
+    currentTrackIndex = index;
+    console.log('로컬 트랙 로드 완료:', track.title);
+  }
+}
+
+
 
 // 🔥 개발자도구 관련 키 조합 금지 (선택사항)
 document.addEventListener('keydown', function(e) {
