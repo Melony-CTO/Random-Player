@@ -707,7 +707,7 @@ body::after {
 
 @keyframes fadeOpacity {
   0% { opacity: 1; }
-  50% { opacity: 0.85; }
+  50% { opacity: 0.7; }
   100% { opacity: 1; }
 }
 
@@ -802,7 +802,7 @@ body::after {
 }
 
 .thumbnail.slow-zoom {
-  animation: slowZoomBg 25s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
+  animation: slowZoomBg 20s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
 }
 
 
@@ -2228,17 +2228,31 @@ console.log('🔊 볼륨 설정:', musicVolume);
            
            var newIndex = currentTrackIndex + 1;
            if (newIndex >= currentPlaylist.length) newIndex = 0;
+
+           // 🔥 로딩 상태 초기화 (중요!)
+           isLoading = false;
+           currentLoadingTrack = null;
            
            // 트랙 로드
            loadTrack(newIndex);
            
-           // 즉시 페이드인과 함께 자동 재생
-           if (audio.src) {
-             console.log('🎵 곡 종료 후 즉시 다음곡 자동 재생');
-             togglePlay();
-           }
-         }
-       });
+               // 🔥 충분한 지연 후 재생 (경쟁 조건 방지)
+    setTimeout(function() {
+      if (audio.readyState >= 2) { // 로딩 완료 확인
+        togglePlay();
+        console.log('🎵 자동 재생 시작');
+      } else {
+        // 로딩이 안 됐으면 더 기다림
+        setTimeout(function() {
+          if (audio.readyState >= 2) {
+            togglePlay();
+            console.log('🎵 지연된 자동 재생 시작');
+          }
+        }, 1000);
+      }
+    }, 2000); // 2초 지연
+  }
+});
        
        // 🔥 progressBar 클릭 이벤트 리스너 추가 (프로그레스 바 클릭으로 재생 위치 이동)
        var progressBar = document.getElementById('progressBar');
