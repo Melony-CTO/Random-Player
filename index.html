@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <head>
@@ -219,7 +219,7 @@ body::after {
       height: 100%;
       border-radius: 30px;
       background-size: 110%;
-      background-position: center;
+      background-position: center bottom;
       background-repeat: no-repeat;
       box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       transition: background-size 0.6s ease;
@@ -682,7 +682,7 @@ body::after {
 }
 
     thumbnail.blur-start.playing {
-  animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
+  animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite, panUpCover 30s ease-in-out infinite !important;
 }
 
 .thumbnail.blur-hidden {
@@ -692,31 +692,49 @@ body::after {
 
 @keyframes slowZoomBg {
   0% { 
-    background-size: 110% !important;
+    background-size: 100% !important;
     transform: scale(1);
   }
   50% { 
-    background-size: 130% !important;
+    background-size: 160% !important;
     transform: scale(1.05);
   }
   100% { 
-    background-size: 110% !important;
+    background-size: 100% !important;
     transform: scale(1);
+  }
+}
+@keyframes panUpCover {
+  0% { 
+    background-position: center bottom !important;
+  }
+  50% { 
+    background-position: center center !important;
+  }
+  100% { 
+    background-position: center top !important;
   }
 }
 
 @keyframes fadeOpacity {
   0% { opacity: 1; }
-  50% { opacity: 0.7; }
+  50% { opacity: 0.8; }
   100% { opacity: 1; }
 }
-
+@keyframes saturateChange {
+  0% { filter: saturate(1.0) blur(0px); }
+  50% { filter: saturate(1.3) blur(0px); }
+  100% { filter: saturate(1.0) blur(0px); }
+}
     .thumbnail.blur-start.slow-zoom {  
-      animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacit 10s ease-in-out infinite;
+      animation: blurStart 1.5s ease-out, slowZoomBg 20s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
     }
 .thumbnail.blur-start.playing {
-  animation: blurStart 1.5s ease-out, slowZoomBg 30s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite !important;
-}
+    animation: blurStart 1.5s ease-out, 
+             slowZoomBg 30s ease-in-out infinite 1.5s, 
+             fadeOpacity 12s ease-in-out infinite 3s, 
+             saturateChange 15s ease-in-out infinite 2s !important;
+             }
     .loading {
       display: inline-block;
       width: 20px;
@@ -802,7 +820,7 @@ body::after {
 }
 
 .thumbnail.slow-zoom {
-  animation: slowZoomBg 20s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
+  animation: slowZoomBg 16s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
 }
 
 
@@ -1170,13 +1188,16 @@ function cleanTitle(rawTitle) {
   // 이벤트 핸들러를 여기로 이동
   img.onload = function() {
     thumbnail.style.backgroundImage = "url('" + img.src + "')";
-    thumbnail.style.backgroundSize = "120%";
+    thumbnail.style.backgroundSize = "100%";
+    thumbnail.style.backgroundPosition = "center center"; // 가운데에서 시작
     
-    // 블러 효과 시작
-    console.log('이미지 로딩 완료, 블러 효과 시작');
+      // 블러 효과 시작 (약간의 지연으로 부드러운 전환)
+  console.log('이미지 로딩 완료, 블러 효과 시작');
+  setTimeout(function() {
     thumbnail.classList.remove('blur-hidden');
     thumbnail.classList.add('blur-start', 'playing');
-  };
+  }, 100);
+};
   
   img.onerror = function() {
     tryNext();
@@ -2315,11 +2336,15 @@ console.log('🎵 제목 표시 완료');
       var coverUrl = track.folder === '8090gayo' ? track.cover : pickRandomCoverUrl(track.cover);
 console.log('🖼️ 선택된 커버 URL:', coverUrl);
 
-// 🔥 먼저 모든 애니메이션 클래스 제거
-thumbnail.classList.remove('blur-hidden', 'blur-start', 'playing', 'slow-zoom');
+// 부드러운 전환을 위한 단계적 클래스 제거
+thumbnail.classList.remove('playing', 'slow-zoom');
 
-thumbnail.classList.add('blur-hidden');
-setThumbnailCover(coverUrl);
+// 잠시 후 블러 상태로 전환
+setTimeout(function() {
+  thumbnail.classList.remove('blur-start');
+  thumbnail.classList.add('blur-hidden');
+  setThumbnailCover(coverUrl);
+}, 200);
 
 
 
@@ -2430,6 +2455,7 @@ audio.play()
     
     // 기존 비주얼라이저 및 애니메이션 코드
 thumbnail.classList.add('playing', 'slow-zoom');
+startCoverPanAnimation(); 
 startVisualizer();
 console.log('🎵 수동 재생');
   })
@@ -2695,6 +2721,7 @@ function applyPreset(presetName) {
          playButton.textContent = '▶';
          isPlaying = false;
          thumbnail.classList.remove('playing', 'slow-zoom');
+         stopCoverPanAnimation();
          stopVisualizer();
          
 
@@ -3158,7 +3185,60 @@ if (window.useFallbackVisualizer) {
         bars[i].style.height = '2px';
       }
     }
+// 커버 이미지 팬 애니메이션 변수
+var panInterval = null;
+var animationStep = 0; // 0: 아래로, 1: 위로, 2: 정지
 
+function startCoverPanAnimation() {
+  if (panInterval) clearInterval(panInterval);
+  
+  var thumbnail = document.getElementById('thumbnail');
+  if (!thumbnail) return;
+  
+    // CSS 애니메이션에 맡기고 JavaScript는 간섭하지 않음
+  console.log('커버 팬 애니메이션은 CSS로 처리됨');
+
+  // 필요시 추가 효과만 여기서 처리
+  animationStep = 1;
+  
+  // 첫 번째 애니메이션 즉시 시작 (현재 → 아래)
+  setTimeout(function() {
+    thumbnail.style.transition = 'background-position 30s ease-in-out';
+    thumbnail.style.backgroundPosition = 'center bottom';
+    animationStep = 1;
+  }, 1000);
+  
+  // 30초마다 다음 단계 실행
+  panInterval = setInterval(function() {
+    if (animationStep === 1) {
+      // 두 번째: 아래에서 위 80% 지점으로
+      thumbnail.style.transition = 'background-position 30s ease-in-out';
+      thumbnail.style.backgroundPosition = 'center 20%'; // 80% 지점 (20%는 위에서 20% 아래)
+      animationStep = 2;
+    } else if (animationStep === 2) {
+      // 세 번째: 정지 상태 유지
+      clearInterval(panInterval);
+      panInterval = null;
+    }
+  }, 30000); // 30초마다 실행
+}
+
+function stopCoverPanAnimation() {
+  if (panInterval) {
+    clearInterval(panInterval);
+    panInterval = null;
+      // CSS 애니메이션은 그대로 두고 상태만 리셋
+  animationStep = 0;
+  }
+  
+  var thumbnail = document.getElementById('thumbnail');
+  if (thumbnail) {
+    thumbnail.style.transition = '';
+    thumbnail.style.backgroundPosition = 'center center';
+  }
+  
+  animationStep = 0;
+}
     // 터치 제스처 설정
     function setupTouchGestures() {
       var isAdjustingVolume = false;
