@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <head>
@@ -1269,33 +1269,51 @@ function cleanTitle(rawTitle) {
        return true;
      }
     
-    function pickRandomCoverUrl(fallbackUrl) {
-      if (!useRandomCover) return fallbackUrl;
-      
-      // 🔥 셔플된 커버 이미지 사용
-      if (coverList.shuffledCovers && coverList.shuffledCovers.length > 0) {
-        var cover = coverList.shuffledCovers[coverList.currentCoverIndex % coverList.shuffledCovers.length];
-        coverList.currentCoverIndex++;
-        
-        console.log('🖼️ 셔플된 커버 선택:', cover);
-        
-        if (typeof cover === 'string') {
-          return WORKERS_API_URL + '/file/covers/' + cover;
-        } else if (cover && cover.filename) {
-          return WORKERS_API_URL + '/file/covers/' + cover.filename;
-        } else if (cover && cover.url) {
-          var cleanUrl = cover.url.replace(/^\/file\/covers\//, '');
-          return WORKERS_API_URL + '/file/covers/' + cleanUrl;
-        }
-      }
-      
-      if (Array.isArray(randomCovers) && randomCovers.length > 0) {
-        var idx = Math.floor(Math.random() * randomCovers.length);
-        return randomCovers[idx];
-      }
-      
-      return fallbackUrl;
+    function pickRandomCoverUrl(fallbackUrl, folderType) {
+  if (!useRandomCover) return fallbackUrl;
+  
+  // 🔥 카테고리별로 다른 커버 리스트 사용
+  var usePopCovers = (folderType === '8090gayo' || folderType === 'pc' || folderType === 'pop');
+  
+  if (usePopCovers && coverList.shuffledPopCovers && coverList.shuffledPopCovers.length > 0) {
+    // pop 커버 사용
+    var cover = coverList.shuffledPopCovers[coverList.currentPopCoverIndex % coverList.shuffledPopCovers.length];
+    coverList.currentPopCoverIndex++;
+    
+    console.log('🖼️ pop 커버 선택:', cover, '(카테고리:', folderType + ')');
+    
+    if (typeof cover === 'string') {
+      return WORKERS_API_URL + '/file/covers-pop/' + cover;
+    } else if (cover && cover.filename) {
+      return WORKERS_API_URL + '/file/covers-pop/' + cover.filename;
+    } else if (cover && cover.url) {
+      var cleanUrl = cover.url.replace(/^\/file\/covers(-pop)?\//, '');
+      return WORKERS_API_URL + '/file/covers-pop/' + cleanUrl;
     }
+  } else if (coverList.shuffledCovers && coverList.shuffledCovers.length > 0) {
+    // lofi 커버 사용 (기존 로직)
+    var cover = coverList.shuffledCovers[coverList.currentCoverIndex % coverList.shuffledCovers.length];
+    coverList.currentCoverIndex++;
+    
+    console.log('🖼️ lofi 커버 선택:', cover, '(카테고리:', folderType + ')');
+    
+    if (typeof cover === 'string') {
+      return WORKERS_API_URL + '/file/covers/' + cover;
+    } else if (cover && cover.filename) {
+      return WORKERS_API_URL + '/file/covers/' + cover.filename;
+    } else if (cover && cover.url) {
+      var cleanUrl = cover.url.replace(/^\/file\/covers\//, '');
+      return WORKERS_API_URL + '/file/covers/' + cleanUrl;
+    }
+  }
+  
+  if (Array.isArray(randomCovers) && randomCovers.length > 0) {
+    var idx = Math.floor(Math.random() * randomCovers.length);
+    return randomCovers[idx];
+  }
+  
+  return fallbackUrl;
+}
 
     // 배열 셔플 함수
     function shuffleArray(array) {
@@ -1577,15 +1595,109 @@ function cleanTitle(rawTitle) {
      }
 
     // ✅ 수정된 플레이리스트 로딩
-    async function fetchMusicFromAPI() {
-      console.log('🚀 플레이리스트 로딩 시작...');
-      title.innerHTML = '<div class="loading"></div>Loading Playlists...';
+    async function fetchCategoryData(category) {
+  console.log('🚀 카테고리별 로드 시작:', category);
+  title.innerHTML = '<div class="loading"></div>Loading ' + category + '...';
 
-      // 캐시 확인
-      // ✅ 8090 전용 캐시 키 추가
+      try {
+    var endpoint = '';
+    var coverEndpoint = '';
+    
+    switch(category) {
+      case '8090gayo':
+        endpoint = '/playlist-8090gayo.json';
+        break;
+      case 'pop':
+        endpoint = '/playlist-pop.json';
+        coverEndpoint = '/coverlist-pop.json';
+        break;
+      case 'lofi-inst':
+        endpoint = '/playlist-lofi-inst.json';
+        coverEndpoint = '/coverlist-lofi.json';
+        break;
+      default:
+        throw new Error('알 수 없는 카테고리: ' + category);
+    }
+
+    var requests = [fetch(WORKERS_API_URL + endpoint)];
+    if (coverEndpoint) {
+      requests.push(fetch(WORKERS_API_URL + coverEndpoint));
+    }
+
+    var responses = await Promise.all(requests);
+    
+    if (!responses[0].ok) {
+      throw new Error('플레이리스트 로드 실패: ' + responses[0].status);
+    }
+
+    var playlistData = await responses[0].json();
+    var coverData = null;
+    
+    if (responses[1] && responses[1].ok) {
+      coverData = await responses[1].json();
+    }
+
+    return {
+      tracks: playlistData.tracks || playlistData,
+      covers: coverData ? (coverData.covers || coverData) : null
+    };
+
+  } catch (error) {
+    console.error('❌ 카테고리 로드 실패:', category, error);
+    title.textContent = category + ' 로드 실패';
+    throw error;
+  }
+}
+
+// 🔥 초기 로드를 POP으로 단순화
+async function initializePlayer() {
+  console.log('🚀 플레이어 초기화 시작...');
+  
+  try {
+    var popData = await fetchCategoryData('pop');
+    
+    allTracks = [];
+    shuffledTracks = {};
+    
+    applyCategoryData('pop', popData);
+    
+    currentPlaylist = [...shuffledTracks.pop];
+    currentTrackIndex = 0;
+    
+    console.log('✅ 초기 로드 완료:', currentPlaylist.length + '곡');
+    
+    loadTrack(0);
+    
+    setTimeout(function() {
+      if (audio.src && audio.readyState >= 2) {
+        togglePlay();
+        console.log('🎵 자동 재생 시작');
+      } else {
+        setTimeout(function() {
+          if (audio.src && audio.readyState >= 2) {
+            togglePlay();
+            console.log('🎵 지연된 자동 재생 시작');
+          }
+        }, 1000);
+      }
+    }, 1500);
+    
+  } catch (error) {
+    console.error('❌ 초기화 실패:', error);
+    title.textContent = '초기화 실패 - 새로고침 필요';
+  }
+}
+
+// 🔥 기존 fetchMusicFromAPI 함수는 더 이상 사용하지 않음
+async function fetchMusicFromAPI() {
+  console.log('🚀 플레이리스트 로드 시작...');
+  title.innerHTML = '<div class="loading"></div>Loading Playlists...';
+
+  // 캐시 확인
 var cacheKey = 'melony_playlist_cache_v6'; // 버전 업
 
 var cacheTtlMs = 1 * 60 * 60 * 60 * 1000; // 1일로 단축 (더 자주 갱신)
+
       try {
         var cached = localStorage.getItem(cacheKey);
         if (cached) {
@@ -1616,7 +1728,7 @@ const fetchWithTimeout = (url, options, timeout = 8000) => {
   ]);
 };
 
-const [gayo8090Res, popRes, lofiRes, coversRes] = await Promise.all([
+const [gayo8090Res, popRes, lofiRes, coversRes, popCoversRes] = await Promise.all([
   fetchWithTimeout(WORKERS_API_URL + '/playlist-8090gayo.json', { 
     cache: 'default', // force-cache에서 변경
     priority: 'high'
@@ -1632,19 +1744,27 @@ const [gayo8090Res, popRes, lofiRes, coversRes] = await Promise.all([
   fetchWithTimeout(WORKERS_API_URL + '/coverlist-lofi.json', { 
     cache: 'default',
     priority: 'low'
+  }),
+  fetchWithTimeout(WORKERS_API_URL + '/coverlist-pop.json', { 
+    cache: 'default',
+    priority: 'low'
   })
 ]);
 
-        if (!gayo8090Res.ok || !popRes.ok || !lofiRes.ok || !coversRes.ok) {
-        throw new Error(`플레이리스트 로딩 실패: 8090(${gayo8090Res.status}) pop(${popRes.status}) lofi(${lofiRes.status}) covers(${coversRes.status})`);
+        if (!gayo8090Res.ok || !popRes.ok || !lofiRes.ok || !coversRes.ok || !popCoversRes.ok) {
+        throw new Error(`플레이리스트 로딩 실패: 8090(${gayo8090Res.status}) pop(${popRes.status}) lofi(${lofiRes.status}) covers(${coversRes.status}) popCovers(${popCoversRes.status})`);
         }
 
-        const [gayo8090Data, popData, lofiData, coversData] = await Promise.all([
+        const [gayo8090Data, popData, lofiData, coversData, popCoversData] = await Promise.all([
         gayo8090Res.json(),
         popRes.json(),
         lofiRes.json(),
-        coversRes.json()
+        coversRes.json(),
+        popCoversRes.json()
         ]);
+
+                console.log('Debug - popCoversData:', popCoversData);
+        console.log('Debug - popCoversData.covers:', popCoversData ? popCoversData.covers : 'undefined');
 
         const loadTime = Date.now() - startTime;
         console.log(`⚡ 플레이리스트 로딩 완료: ${loadTime}ms`);
@@ -1653,8 +1773,11 @@ const [gayo8090Res, popRes, lofiRes, coversRes] = await Promise.all([
         '8090gayo': gayo8090Data.tracks || gayo8090Data,
         pop: popData.tracks || popData,
         'lofi-inst': lofiData.tracks || lofiData,
-        covers: coversData.covers || coversData
+        covers: coversData.covers || coversData, 
+        popCovers: popCoversData ? (popCoversData.covers || popCoversData) : []
         };
+                console.log('Debug - popCoversData:', popCoversData);
+        console.log('Debug - combinedData.popCovers:', combinedData.popCovers);
         
         // 🔥 병합된 데이터 검증
         console.log('🔍 병합된 데이터 검증:');
@@ -1700,6 +1823,76 @@ const [gayo8090Res, popRes, lofiRes, coversRes] = await Promise.all([
           updateDebugInfo('API 연결 실패<br>서버 상태를 확인해주세요');
         });
     }
+// 🔥 카테고리별 데이터 적용 함수
+function applyCategoryData(category, data) {
+  console.log('📁 카테고리 데이터 적용:', category);
+  
+  var tracks = data.tracks || [];
+  var categoryTracks = [];
+  
+  for (var i = 0; i < tracks.length; i++) {
+    var track = tracks[i];
+    var cleanTitle = track.title || track.audio.split('/').pop().replace(/\.[^/.]+$/, '');
+    
+    if (category === 'pop') {
+      var bracketMatch = track.title ? track.title.match(/\[(.*?)\]/) : null;
+      if (bracketMatch && bracketMatch[1]) {
+        cleanTitle = bracketMatch[1].trim();
+      } else if (track.title) {
+        cleanTitle = track.title.replace(/\([^)]*\)/g, '').replace(/_M$/, '').replace(/\s+/g, ' ').trim();
+      }
+    } else if (category === 'lofi-inst') {
+      var bracketMatch = track.title ? track.title.match(/\[(.*?)\]/) : null;
+      if (bracketMatch && bracketMatch[1]) {
+        cleanTitle = bracketMatch[1].trim();
+      } else if (track.title) {
+        cleanTitle = track.title.trim();
+      }
+    }
+    
+    var coverUrl = '';
+    if (category === '8090gayo') {
+      coverUrl = normalizeUrl(WORKERS_API_URL, `covers-8090gayo/${track.audio.split('/').pop().replace(/\.[^/.]+$/, '')}.jpg`);
+    } else {
+      coverUrl = normalizeUrl(WORKERS_API_URL, track.image || 'covers/default-cover.jpg');
+    }
+    
+    categoryTracks.push({
+      title: cleanTitle,
+      folder: category,
+      audio: track.audio,
+      cover: coverUrl
+    });
+  }
+  
+  var existingTitles = allTracks.map(function(t) { return t.title + t.folder; });
+  for (var j = 0; j < categoryTracks.length; j++) {
+    var newTrack = categoryTracks[j];
+    var trackKey = newTrack.title + newTrack.folder;
+    if (existingTitles.indexOf(trackKey) === -1) {
+      allTracks.push(newTrack);
+      existingTitles.push(trackKey);
+    }
+  }
+  
+  shuffledTracks[category] = shuffleArray(categoryTracks);
+  
+  if (data.covers && Array.isArray(data.covers)) {
+    if (category === 'pop') {
+      coverList.popCovers = data.covers;
+      coverList.shuffledPopCovers = shuffleArray([...data.covers]);
+      coverList.currentPopCoverIndex = 0;
+      console.log('🖼️ pop 커버 로드:', data.covers.length + '개');
+    } else if (category === 'lofi-inst') {
+      coverList.covers = data.covers;
+      coverList.shuffledCovers = shuffleArray([...data.covers]);
+      coverList.currentCoverIndex = 0;
+      console.log('🖼️ lofi 커버 로드:', data.covers.length + '개');
+    }
+  }
+  
+  console.log('✅ ' + category + ' 데이터 적용 완료:', categoryTracks.length + '곡');
+}
 
     // ✅ 간소화된 트랙 리스트 적용 - Workers API 응답 처리
     function applyTrackList(data) {
@@ -1876,6 +2069,22 @@ allTracks.push({
       }
 
       console.log('🎵 총 ' + allTracks.length + '개 트랙 로드 완료');
+
+      // 🔥 새로 추가: pop 커버 처리
+if (data.popCovers && Array.isArray(data.popCovers)) {
+  coverList.popCovers = data.popCovers;
+  console.log('🖼️ coverlist-pop.json 로드 완료:', data.popCovers.length + '개 pop 커버');
+  
+  // 🔥 pop 커버 이미지 셔플 시스템 구현
+  var shuffledPopCovers = shuffleArray([...data.popCovers]);
+  coverList.shuffledPopCovers = shuffledPopCovers;
+  coverList.currentPopCoverIndex = 0;
+  
+  console.log('🔄 pop 커버 이미지 셔플 완료:', shuffledPopCovers.length + '개');
+  console.log('  - pop 커버 첫 5개:', shuffledPopCovers.slice(0, 5));
+} else {
+  console.warn('⚠️ popCovers 데이터가 없습니다:', data.popCovers);
+}
       
       // 🔥 allTracks 최종 검증
       console.log('🔍 allTracks 최종 검증:');
@@ -1895,8 +2104,8 @@ generateShuffledPlaylists();
 // 🔥 초기 플레이리스트를 POP으로만 설정 (카테고리 분리 강화)
 // 🔥 초기 플레이리스트를 8090가요로만 설정 (카테고리 분리 강화)
 // 🔥 초기 플레이리스트를 POP으로만 설정 (카테고리 분리 강화)  
-currentPlaylist = [...shuffledTracks.pc];
-console.log('🎯 초기 플레이리스트 설정: PC', currentPlaylist.length + '곡');
+currentPlaylist = [...shuffledTracks.pop];
+console.log('🎯 초기 플레이리스트 설정: POP', currentPlaylist.length + '곡');
 
 // 🔥 첫 곡 즉시 로딩
 loadTrack(0);
@@ -2333,8 +2542,8 @@ console.log('🎵 제목 표시 완료');
 
 
 
-      var coverUrl = track.folder === '8090gayo' ? track.cover : pickRandomCoverUrl(track.cover);
-console.log('🖼️ 선택된 커버 URL:', coverUrl);
+     var coverUrl = track.folder === '8090gayo' ? track.cover : pickRandomCoverUrl(track.cover, track.folder);
+console.log('🖼️ 선택된 커버 URL:', coverUrl, '(폴더:', track.folder + ')');
 
 // 부드러운 전환을 위한 단계적 클래스 제거
 thumbnail.classList.remove('playing', 'slow-zoom');
@@ -2803,11 +3012,68 @@ function applyPreset(presetName) {
        console.log('  - shuffledTracks[pop]:', shuffledTracks.pop ? shuffledTracks.pop.length + '곡' : 'undefined');
        console.log('  - shuffledTracks[lofi-inst]:', shuffledTracks['lofi-inst'] ? shuffledTracks['lofi-inst'].length + '곡' : 'undefined');
        
-       updateCurrentPlaylist();
-       currentTrackIndex = 0;
-       
-       // 🔥 플레이리스트 검증
-       console.log('🎯 카테고리 전환 후 플레이리스트:', currentPlaylist.length + '곡');
+       // 🔥 해당 카테고리 데이터가 없으면 로드
+if (!shuffledTracks[currentCategory] || shuffledTracks[currentCategory].length === 0) {
+  console.log('📡 카테고리 데이터 로드 필요:', currentCategory);
+  
+  var categoryButton = document.querySelector("[onclick=\"switchCategory('" + categoryName + "')\"]");
+  if (categoryButton) {
+    categoryButton.textContent = '로딩중...';
+    categoryButton.style.color = '#5c6de0';
+  }
+  
+  title.textContent = categoryName + ' 데이터 로딩 중...';
+  
+  fetchCategoryData(currentCategory)
+    .then(function(data) {
+      applyCategoryData(currentCategory, data);
+      
+      currentPlaylist = [...shuffledTracks[currentCategory]];
+      currentTrackIndex = 0;
+      
+      loadTrack(0);
+      
+      if (categoryButton) {
+        categoryButton.textContent = categoryName;
+        categoryButton.style.color = '';
+      }
+      
+      setTimeout(function() {
+        if (audio.src && audio.readyState >= 2) {
+          togglePlay();
+          console.log('🎵 카테고리 변경 후 자동 재생');
+        } else {
+          setTimeout(function() {
+            if (audio.src && audio.readyState >= 2) {
+              togglePlay();
+            }
+          }, 1000);
+        }
+      }, 1000);
+      
+      console.log('✅ 카테고리 변경 완료:', categoryName, currentPlaylist.length + '곡');
+    })
+    .catch(function(error) {
+      console.error('❌ 카테고리 로드 실패:', error);
+      if (categoryButton) {
+        categoryButton.textContent = categoryName + ' (오류)';
+        categoryButton.style.color = '#e74c3c';
+      }
+    });
+  
+  return;
+} else {
+  updateCurrentPlaylist();
+  currentTrackIndex = 0;
+  
+  setTimeout(function() {
+    togglePlay();
+  }, 1000);
+}
+
+// 🔥 플레이리스트 검증
+console.log('🎯 카테고리 전환 후 플레이리스트:', currentPlaylist.length + '곡');
+
        if (currentPlaylist.length > 0) {
          var categories = [...new Set(currentPlaylist.map(t => t.folder))];
          console.log('  - 포함된 폴더:', categories);
@@ -3441,7 +3707,7 @@ function stopCoverPanAnimation() {
    }
   
    // API에서 음악 데이터 로드
-      fetchMusicFromAPI();
+      initializePlayer();
 
     // 8090 버튼 초기 상태 설정
       var gayo8090Button = document.querySelector("[onclick=\"switchCategory('8090')\"]");
