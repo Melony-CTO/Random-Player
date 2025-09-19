@@ -219,7 +219,7 @@ body::after {
       height: 100%;
       border-radius: 30px;
       background-size: 110%;
-      background-position: center bottom;
+      background-position: center top;
       background-repeat: no-repeat;
       box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       transition: background-size 0.6s ease;
@@ -706,13 +706,16 @@ body::after {
 }
 @keyframes panUpCover {
   0% { 
-    background-position: center bottom !important;
+    background-position: center top !important; /* 시작을 상단으로 */
   }
-  50% { 
+  30% { 
     background-position: center center !important;
   }
+  60% { 
+    background-position: center bottom !important;
+  }
   100% { 
-    background-position: center top !important;
+    background-position: center top !important; /* 다시 상단으로 */
   }
 }
 
@@ -1187,12 +1190,11 @@ function cleanTitle(rawTitle) {
   
   // 이벤트 핸들러를 여기로 이동
   img.onload = function() {
-    thumbnail.style.backgroundImage = "url('" + img.src + "')";
-    thumbnail.style.backgroundSize = "100%";
-    thumbnail.style.backgroundPosition = "center center"; // 가운데에서 시작
-    
-      // 블러 효과 시작 (약간의 지연으로 부드러운 전환)
-  console.log('이미지 로딩 완료, 블러 효과 시작');
+  thumbnail.style.backgroundImage = "url('" + img.src + "')";
+  thumbnail.style.backgroundSize = "100%";
+  thumbnail.style.backgroundPosition = "center top"; // 모든 이미지 상단 시작 통일
+  
+  console.log('이미지 로딩 완료, 상단 시작 위치 설정');
   setTimeout(function() {
     thumbnail.classList.remove('blur-hidden');
     thumbnail.classList.add('blur-start', 'playing');
