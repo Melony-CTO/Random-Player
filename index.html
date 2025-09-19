@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
+<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- PWA 매니페스트 -->
-  <link rel="mainfest" href="./mainifest.json">
+  <link rel="mainfest" href="./mainfest.json">
   <meta name="theme-color" content="#5c6de0">
 
   <!-- 추가 PWA 설정 -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="application-name" content="Melony Player">
-
+<!-- Google Fonts 추가 -->
+<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&display=swap" rel="stylesheet">
   <title>Melony Random Player</title>
 
   <style>
@@ -97,8 +99,9 @@ body::after {
   gap: 8px;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.25), rgba(255, 255, 255, 0.1));
   color: #2d3748;
-  padding: 16px 32px;
-  border-radius: 30px;
+  padding: 10px 28px;
+  line-height: 1.05;     
+  border-radius: 20px;
   font-size: 18px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -207,24 +210,43 @@ body::after {
   50% { background-position: 100% 50%; }
 }
 
-    .thumbnail-container {
-      position: relative;
-      width: 90%;
-      aspect-ratio: 16 / 9;
-    }
+
+  /* 기본은 바탕 숨김 */
+.thumbnail-container {
+  position: relative;
+  width: 90%;
+  aspect-ratio: 16 / 9;
+  border-radius: 30px;
+  overflow: hidden;
+  /* 바탕 없음 (transparent) */
+  background: none;
+}
+
+/* 커버가 준비되면(로드 완료)만 바탕을 켠다 */
+.thumbnail-container.cover-ready {
+  background: linear-gradient(45deg, #fff8b0 0%, #ffffe0 40%, #fff8b0 70%, #fff8b0 100%);
+  background-size: 200% 200%;
+  animation: gradientBreath 8s ease-in-out infinite;
+}
+
+@keyframes gradientBreath {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
 
     .thumbnail {
       width: 100%;
       height: 100%;
       border-radius: 30px;
       background-size: 110%;
-      background-position: center top;
+      background-position: center 20%;
       background-repeat: no-repeat;
       box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       transition: background-size 0.6s ease;
       overflow: hidden;
       position: relative;
-      transform-origin: center center;
+      transform-origin: center 80%;
     }
 
     .touch-zones {
@@ -298,8 +320,8 @@ body::after {
 
     .song-info {
       text-align: center;
-      margin: -10px 0 0 0; /* 위쪽 마진을 -10px로 (커버에 더 가깝게) */
-      min-height: 45px;
+      margin: -20px 0 0 0; /* 위쪽 마진을 -10px로 (커버에 더 가깝게) */
+      min-height: 35px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -314,7 +336,7 @@ body::after {
 
     .progress-container {
       width: 90%;
-      margin: 0;
+      margin: -13px 0 0 0; /* 위쪽 간격을 줄임 */
     }
 
     .progress-bar {
@@ -346,7 +368,7 @@ body::after {
       display: flex;
       justify-content: center;
       align-items: center;
-      margin-top: -2px; /* 플레이바에 더 가깝게 */
+      margin-top: -25px; /* 플레이바에 더 가깝게 */
       gap: 25px;
     }
 
@@ -695,7 +717,7 @@ body::after {
     transform: scale(1);
   }
   50% { 
-    background-size: 180% !important;
+    background-size: 160% !important;
     transform: scale(1.05);
   }
   100% { 
@@ -704,40 +726,37 @@ body::after {
   }
 }
 @keyframes panUpCover {
-  0% { 
-    background-position: center 20% !important; /* 시작을 상단으로 */
-  }
-  30% { 
-    background-position: center center !important;
-  }
-  60% { 
-    background-position: center bottom !important;
-  }
-  100% { 
-    background-position: center 10% !important; /* 다시 상단으로 */
-  }
+  0%   { background-position: center 20%; }  /* 위(20%)에서 시작 */
+  100% { background-position: center 90%; }  /* 아래(90%)까지 이동 */
+
 }
 
 @keyframes fadeOpacity {
-  0% { opacity: 1; }
-  50% { opacity: 0.8; }
+  0%   { opacity: 1; }
+  50%  { opacity: 0.85; }
   100% { opacity: 1; }
 }
+
 @keyframes saturateChange {
   0% { filter: saturate(1.0) blur(0px); }
-  50% { filter: saturate(1.3) blur(0px); }
+  50% { filter: saturate(1.15) blur(0px); }
   100% { filter: saturate(1.0) blur(0px); }
 }
     .thumbnail.blur-start.slow-zoom {  
       animation: blurStart 1.5s ease-out, slowZoomBg 20s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
     }
 .thumbnail.blur-start.playing {
-    animation: blurStart 1.5s ease-out, 
-             slowZoomBg 20s ease-in-out infinite 1.5s, 
-             panUpCover 60s ease-in-out infinite 2s,
-             fadeOpacity 12s ease-in-out infinite 3s, 
-             saturateChange 15s ease-in-out infinite 2s !important;
-             }
+  animation:
+    blurStart 1.5s ease-out,
+    slowZoomBg 25s ease-in-out infinite,          /* 배경 천천히 줌 */
+    panUpCover 30s ease-in-out infinite alternate,       /* 위아래 패닝 */
+    fadeOpacity 12s ease-in-out infinite 3s,      /* ✅ 숨쉬는 투명도 (기존 키프레임) */
+    saturateChange 15s ease-in-out infinite 2s !important; /* 채도 펌핑 */
+    }
+
+    /* 부드럽게 */
+.thumbnail { will-change: background-position; }
+
     .loading {
       display: inline-block;
       width: 20px;
@@ -753,6 +772,70 @@ body::after {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+
+    /* 음악 제목 모자이크 3D 효과 (Comfortaa + 보라색) */
+.title.mosaic-show {
+  font-family: 'Comfortaa', sans-serif !important;
+  font-weight: 300 !important;
+  font-size: 12px !important;  /* 이 줄 추가 - 원하는 크기로 변경 */
+  letter-spacing: 1px !important;
+  background: linear-gradient(40deg, #8B00FF, #9370DB, #BA55D3, #DA70D6, #DDA0DD, #E6E6FA) !important;
+  background-size: 200% 200% !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  animation: 
+             mosaicTitleOut 1s 35s ease-in forwards !important;
+}
+/* 기존 제목 숨기기 */
+.title.hide-original {
+  color: transparent !important;
+}
+
+@keyframes mosaicTitleIn {
+  0% {
+    opacity: 0;
+    filter: blur(15px) brightness(0.5);
+    transform: scale(0.5) rotateX(90deg) rotateY(45deg);
+    background-position: 0% 50%;
+  }
+  50% {
+    opacity: 0.7;
+    filter: blur(8px) brightness(0.8);
+    transform: scale(0.8) rotateX(45deg) rotateY(22deg);
+    background-position: 50% 50%;
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0px) brightness(1);
+    transform: scale(1) rotateX(0deg) rotateY(0deg);
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes purpleTitleGlow {
+  0%, 100% { 
+    background-position: 0% 50%;
+    text-shadow: 0 0 10px rgba(139, 0, 255, 0.5);
+  }
+  50% { 
+    background-position: 100% 50%;
+    text-shadow: 0 0 20px rgba(186, 85, 211, 0.8), 0 0 30px rgba(147, 112, 219, 0.6);
+  }
+}
+
+@keyframes mosaicTitleOut {
+  0% {
+    opacity: 1;
+    filter: blur(0px) brightness(1);
+    transform: scale(1) rotateX(0deg) rotateY(0deg);
+  }
+  100% {
+    opacity: 0;
+    filter: blur(20px) brightness(0.3);
+    transform: scale(1.2) rotateX(-90deg) rotateY(-45deg);
+  }
+}
 
     .audio-visualizer {
       position: absolute;
@@ -816,11 +899,6 @@ body::after {
        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
      }
 
-
-
-.thumbnail.blur-start.playing {
-  animation: blurStart 1.5s ease-out, slowZoomBg 25s ease-in-out infinite;
-}
 
 .thumbnail.slow-zoom {
   animation: slowZoomBg 16s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
@@ -908,6 +986,7 @@ body::after {
           </div>
         </div>
         <div class="volume-overlay" id="volumeOverlay">🔊 50%</div>
+        
         
         <div class="audio-visualizer" id="audioVisualizer">
           <div class="visualizer-bar"></div>
@@ -1050,6 +1129,8 @@ console.log = function() {
     var isShuffle = true;
     var currentTrackIndex = 0;
     var currentBgSound = null;
+    var shouldAutoPlay = false; 
+    var autoPlayReason = ''; 
     var allTracks = [];
     var shuffledTracks = {
       all: [],
@@ -1118,7 +1199,7 @@ function fadeOutAudio(audioElement, duration = 500) {
     // DOM 요소
     var audio = new Audio();
 audio.crossOrigin = 'anonymous';
-audio.preload = 'none'; // 필요할 때만 로드
+audio.preload = 'metadata'; // 필요할 때만 로드
 var playButton, title, thumbnail, volumeOverlay, leftTouchZone, rightTouchZone, debugInfo;
 
     // ✅ 개선된 URL 정규화 함수 - Workers API 응답에 맞춤
@@ -1177,6 +1258,9 @@ function cleanTitle(rawTitle) {
       var candidates = Array.isArray(urlOrUrls) ? urlOrUrls.slice() : [urlOrUrls];
 
       var img = new Image();
+      var container = document.querySelector('.thumbnail-container');
+       // 로딩 시작 시엔 바탕 숨김
+       if (container) container.classList.remove('cover-ready');
 
       function tryNext() {
   if (candidates.length === 0) {
@@ -1190,11 +1274,13 @@ function cleanTitle(rawTitle) {
   
   // 이벤트 핸들러를 여기로 이동
   img.onload = function() {
-  thumbnail.style.backgroundImage = "url('" + img.src + "')";
-  thumbnail.style.backgroundSize = "100%";
-  thumbnail.style.backgroundPosition = "center top"; // 모든 이미지 상단 시작 통일
-  
-  console.log('이미지 로딩 완료, 상단 시작 위치 설정');
+    thumbnail.style.backgroundImage = "url('" + img.src + "')";
+    thumbnail.style.backgroundSize = "100%";
+    thumbnail.style.backgroundPosition = "center 20%"; 
+    
+        // ✅ 커버가 준비되었으니 이제 바탕을 켠다
+      if (container) container.classList.add('cover-ready');
+
   setTimeout(function() {
     thumbnail.classList.remove('blur-hidden');
     thumbnail.classList.add('blur-start', 'playing');
@@ -1608,11 +1694,17 @@ function cleanTitle(rawTitle) {
     switch(category) {
       case '8090gayo':
         endpoint = '/playlist-8090gayo.json';
+        coverEndpoint = '/coverlist-8090gayo.json'; 
         break;
       case 'pop':
         endpoint = '/playlist-pop.json';
         coverEndpoint = '/coverlist-pop.json';
         break;
+      case 'pc':
+        endpoint = '/playlist-pc.json';
+        coverEndpoint = '/coverlist-pc.json';
+        break;
+
       case 'lofi-inst':
         endpoint = '/playlist-lofi-inst.json';
         coverEndpoint = '/coverlist-lofi.json';
@@ -1730,7 +1822,7 @@ const fetchWithTimeout = (url, options, timeout = 8000) => {
   ]);
 };
 
-const [gayo8090Res, popRes, lofiRes, coversRes, popCoversRes] = await Promise.all([
+const [gayo8090Res, popRes, lofiRes, coversRes, popCoversRes ] = await Promise.all([
   fetchWithTimeout(WORKERS_API_URL + '/playlist-8090gayo.json', { 
     cache: 'default', // force-cache에서 변경
     priority: 'high'
@@ -1957,7 +2049,7 @@ if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
         // 대괄호가 없으면 전체 title 사용하되 정제
         cleanTitle = track.title
           .replace(/\([^)]*\)/g, '') // (내용) 제거
-          .replace(/_M$/, '') // _M 접미사 제거
+          .replace(/_M$|^M$|-M$/g, '')  // _M 접미사 제거
           .replace(/\s+/g, ' ') // 연속된 공백을 하나로
           .trim();
         if (i === 0) console.log('  - ✅ 전체 title 정제:', track.title, '→', cleanTitle);
@@ -1968,7 +2060,7 @@ if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
       cleanTitle = fileName
         .replace(/\.(m4a|mp3)$/i, '') // 확장자 제거
         .replace(/^\[(.*?)\]\s*/, '$1') // [태그] 제거
-        .replace(/_M$/, '') // _M 접미사 제거
+        .replace(/_M$|^M$|-M$/g, '')  // _M 접미사 제거
         .replace(/\([^)]*\)/g, '') // (내용) 제거
         .replace(/[_-]/g, ' ') // 언더스코어, 하이픈을 공백으로
         .replace(/\s+/g, ' ') // 연속된 공백을 하나로
@@ -2026,7 +2118,7 @@ if (track2.title && track2.title.trim() !== '') {
   cleanTitle = fileName
     .replace(/\.(m4a|mp3)$/i, '') // 확장자 제거
     .replace(/^\[(.*?)\]\s*/, '$1') // [태그] 제거
-    .replace(/_M$/, '') // _M 접미사 제거
+    .replace(/_M$|^M$|-M$/g, '')  // _M 접미사 제거
     .replace(/_remake$/i, '') // _remake 접미사 제거
     .replace(/good$/i, '') // good 접미사 제거
     .replace(/\([0-9]+\)/g, '') // (1), (2) 등 제거
@@ -2182,9 +2274,21 @@ loadTrack(0);
              console.log('  - 로딩 소요 시간:', loadTime + 'ms');
            }
          }
-         
- 
        }
+          // 자동재생 체크 및 실행
+    if (shouldAutoPlay && !isPlaying) {
+      console.log('🎵 자동재생 시작:', autoPlayReason);
+      shouldAutoPlay = false; // 플래그 리셋
+      autoPlayReason = '';
+      
+      setTimeout(function() {
+        if (!isPlaying && audio.readyState >= 2) {
+          togglePlay();
+          console.log('✅ 자동재생 성공');
+        }
+      }, 100);
+    }
+   
      }
      
      function handleCanPlayThrough() {
@@ -2488,21 +2592,14 @@ console.log('🔊 볼륨 설정:', musicVolume);
            // 트랙 로드
            loadTrack(newIndex);
            
-               // 🔥 충분한 지연 후 재생 (경쟁 조건 방지)
-    setTimeout(function() {
-      if (audio.readyState >= 2) { // 로딩 완료 확인
-        togglePlay();
-        console.log('🎵 자동 재생 시작');
-      } else {
-        // 로딩이 안 됐으면 더 기다림
-        setTimeout(function() {
-          if (audio.readyState >= 2) {
-            togglePlay();
-            console.log('🎵 지연된 자동 재생 시작');
-          }
-        }, 1000);
-      }
-    }, 2000); // 2초 지연
+               // 자동재생 플래그 설정
+shouldAutoPlay = true;
+autoPlayReason = '곡 종료 후 자동 전환';
+
+setTimeout(function() {
+  console.log('🔄 곡 종료 후 다음곡 대기 중...');
+  // handleCanPlay에서 자동재생이 처리됨
+}, 1000);
   }
 });
        
@@ -2542,6 +2639,8 @@ setTimeout(function() {
 
 console.log('🎵 제목 표시 완료');
 
+// 모자이크 3D 효과 시작 (이 부분 추가)
+startTitleMosaicEffect();
 
 
      var coverUrl = track.folder === '8090gayo' ? track.cover : pickRandomCoverUrl(track.cover, track.folder);
@@ -2708,20 +2807,14 @@ function nextTrack() {
       // 새 트랙 로드
       loadTrack(newIndex);
       
-      // 로딩 완료 후 명확한 재생
-      setTimeout(function() {
-        console.log('로딩 완료 확인 후 재생 시도');
-        if (audio.src && audio.readyState >= 2) {
-          togglePlay();
-        } else {
-          console.log('오디오 준비 안됨, 추가 대기');
-          setTimeout(function() {
-            if (audio.src && audio.readyState >= 2) {
-              togglePlay();
-            }
-          }, 1000);
-        }
-      }, 2000);
+     // 자동재생 플래그 설정
+shouldAutoPlay = true;
+autoPlayReason = '다음곡 버튼';
+
+setTimeout(function() {
+  console.log('🔄 다음곡 로딩 대기 중...');
+  // handleCanPlay에서 자동재생이 처리됨
+}, 1000);
     });
   } else {
     // 재생 중이 아니면 바로 로드
@@ -2875,15 +2968,19 @@ function applyPreset(presetName) {
 
          // 🔥 강화된 카테고리 전환
     function switchCategory(categoryName) {
+      
        console.log('🔄 카테고리 전환 시작:', categoryName);
 
               // PC 카테고리 특별 처리
        if (categoryName === 'PC') {
+        // 서버에 PC 데이터가 있는지 먼저 확인
+        var pcTracks = allTracks.filter(function(t) { return t.folder === 'pc'; });
+       if (pcTracks.length === 0) {
          console.log('💻 PC 로컬 파일 모드 진입');
          showFileSelector();
          return;
        }
-
+      }
               // 8090 클릭 시 데이터 확인 및 로딩
        if (categoryName === '8090') {
          var gayo8090Tracks = allTracks.filter(function(t) { return t.folder === '8090gayo'; });
@@ -2905,7 +3002,13 @@ function applyPreset(presetName) {
                return response.json();
              })
              .then(function(data) {
-               apply8090Data(data.tracks || data);
+               applyCategoryData('8090gayo', { tracks: data.tracks || data });  // 🔥 기존 함수 사용
+                  // 버튼 상태 복구
+  if (gayo8090Button) {
+    gayo8090Button.textContent = '8090';
+    gayo8090Button.style.color = '';
+  }
+
                // 로딩 완료 후 실제 카테고리 전환 실행
                setTimeout(function() {
                  switchCategory('8090'); // 재귀 호출로 실제 전환
@@ -3083,20 +3186,20 @@ console.log('🎯 카테고리 전환 후 플레이리스트:', currentPlaylist.
        }
        
        // 잠시 대기 후 새 트랙 로드
-       setTimeout(function() {
-         try {
-           loadTrack(0);
-           console.log('🔄 카테고리 전환 완료: ' + categoryName + ' (' + currentPlaylist.length + '곡)');
-           
-           // 🔥 카테고리 전환 후 자동 재생 (가장 간단한 방법)
-           setTimeout(function() {
-             togglePlay(); // 기존 함수 그대로 사용
-           }, 1000);
-           
-         } catch (error) {
-           console.error('❌ 카테고리 전환 오류:', error);
-         }
-       }, 500);
+setTimeout(function() {
+  try {
+    // 자동재생 플래그 설정
+    shouldAutoPlay = true;
+    autoPlayReason = '카테고리 전환: ' + categoryName;
+    
+    loadTrack(0);
+    console.log('🔄 카테고리 전환 완료: ' + categoryName + ' (' + currentPlaylist.length + '곡)');
+    
+  } catch (error) {
+    console.error('⚠️ 카테고리 전환 오류:', error);
+    shouldAutoPlay = false; // 오류 시 플래그 리셋
+  }
+}, 500);
        
        // 🔥 카테고리 전환 플래그 해제
        setTimeout(function() {
@@ -3472,7 +3575,7 @@ function startCoverPanAnimation() {
   // 첫 번째 애니메이션 즉시 시작 (현재 → 아래)
   setTimeout(function() {
     thumbnail.style.transition = 'background-position 30s ease-in-out';
-    thumbnail.style.backgroundPosition = 'center bottom';
+    thumbnail.style.backgroundPosition = 'center 20%';
     animationStep = 1;
   }, 1000);
   
@@ -3481,7 +3584,7 @@ function startCoverPanAnimation() {
     if (animationStep === 1) {
       // 두 번째: 아래에서 위 80% 지점으로
       thumbnail.style.transition = 'background-position 30s ease-in-out';
-      thumbnail.style.backgroundPosition = 'center 20%'; // 80% 지점 (20%는 위에서 20% 아래)
+      thumbnail.style.backgroundPosition = 'center 20%'; 
       animationStep = 2;
     } else if (animationStep === 2) {
       // 세 번째: 정지 상태 유지
@@ -3502,7 +3605,7 @@ function stopCoverPanAnimation() {
   var thumbnail = document.getElementById('thumbnail');
   if (thumbnail) {
     thumbnail.style.transition = '';
-    thumbnail.style.backgroundPosition = 'center center';
+    thumbnail.style.backgroundPosition = 'center 20%';
   }
   
   animationStep = 0;
@@ -3831,14 +3934,37 @@ function processLocalFiles(files, type) {
   }
 
   currentPlaylist = audioFiles.map(function(file, index) {
-    return {
-      title: file.name.replace(/\.[^/.]+$/, ''),
-      folder: 'pc',
-      audio: file,
-      cover: pickRandomCoverUrl(),
-      isLocalFile: true
-    };
-  });
+  var fileName = file.name.replace(/\.[^/.]+$/, ''); // 확장자 제거
+  var cleanTitle = null;
+  
+  // POP과 동일한 제목 정제 로직 적용
+  // 대괄호 내용만 추출하여 제목으로 사용
+  var bracketMatch = fileName.match(/\[(.*?)\]/);
+  if (bracketMatch && bracketMatch[1]) {
+    cleanTitle = bracketMatch[1].trim(); // 대괄호 안의 내용만 사용
+    console.log('PC 파일 대괄호 내용 추출:', fileName, '→', cleanTitle);
+  } else {
+    // 대괄호가 없으면 전체 파일명 사용하되 정제
+    cleanTitle = fileName
+      .replace(/\([^)]*\)/g, '') // (내용) 제거
+      .replace(/_M$|^M$|-M$/g, '')// _M 접미사 제거
+      .replace(/[_-]/g, ' ') // 언더스코어, 하이픈을 공백으로
+      .replace(/\s+/g, ' ') // 연속된 공백을 하나로
+      .trim();
+    console.log('PC 파일 전체 파일명 정제:', fileName, '→', cleanTitle);
+  }
+  
+  // 최종 제목 설정
+  cleanTitle = cleanTitle || 'Unknown Track';
+  
+  return {
+    title: cleanTitle, // 정제된 제목 사용
+    folder: 'pc',
+    audio: file,
+    cover: pickRandomCoverUrl(null, 'pc'),
+    isLocalFile: true
+  };
+});
 
   currentCategory = 'pc';
   currentTrackIndex = 0;
@@ -3877,12 +4003,40 @@ function loadLocalTrack(index) {
       document.body.style.backgroundImage = "url('" + track.cover + "')";
     }
     
+        // 커버 위 제목 설정 및 효과 시작 (이 부분 추가)
+    var coverTitleElement = document.getElementById('coverTitleText');
+    if (coverTitleElement) {
+      coverTitleElement.textContent = track.title;
+      startCoverTitleMosaicEffect();
+    }
     currentTrackIndex = index;
     console.log('로컬 트랙 로드 완료:', track.title);
   }
 }
 
+// 제목 모자이크 3D 효과 시작
+function startTitleMosaicEffect() {
+  var titleElement = document.getElementById('title');
+  
+  // 기존 효과 클래스 제거
+  titleElement.classList.remove('mosaic-show');
+  titleElement.classList.remove('hide-original');
 
+    // 기존 제목 숨기기
+  titleElement.classList.add('hide-original');
+  
+  // 1초 후 효과 시작
+  setTimeout(function() {
+    titleElement.classList.add('mosaic-show');
+    console.log('제목 모자이크 3D 효과 시작');
+  }, 1000);
+  
+  // 11초 후 페이드아웃으로 효과 제거
+  setTimeout(function() {
+    titleElement.classList.remove('mosaic-show');
+    console.log('제목 모자이크 3D 효과 페이드아웃 시작');
+  }, 35000);
+}
 
 // 🔥 개발자도구 관련 키 조합 금지 (선택사항)
 document.addEventListener('keydown', function(e) {
