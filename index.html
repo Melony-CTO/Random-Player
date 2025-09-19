@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <!-- PWA 매니페스트 -->
-  <link rel="manifest" href="./manifest.json">
+  <link rel="mainfest" href="./mainifest.json">
   <meta name="theme-color" content="#5c6de0">
 
   <!-- 추가 PWA 설정 -->
@@ -696,7 +695,7 @@ body::after {
     transform: scale(1);
   }
   50% { 
-    background-size: 160% !important;
+    background-size: 180% !important;
     transform: scale(1.05);
   }
   100% { 
@@ -706,7 +705,7 @@ body::after {
 }
 @keyframes panUpCover {
   0% { 
-    background-position: center top !important; /* 시작을 상단으로 */
+    background-position: center 20% !important; /* 시작을 상단으로 */
   }
   30% { 
     background-position: center center !important;
@@ -715,7 +714,7 @@ body::after {
     background-position: center bottom !important;
   }
   100% { 
-    background-position: center top !important; /* 다시 상단으로 */
+    background-position: center 10% !important; /* 다시 상단으로 */
   }
 }
 
@@ -734,7 +733,8 @@ body::after {
     }
 .thumbnail.blur-start.playing {
     animation: blurStart 1.5s ease-out, 
-             slowZoomBg 30s ease-in-out infinite 1.5s, 
+             slowZoomBg 20s ease-in-out infinite 1.5s, 
+             panUpCover 60s ease-in-out infinite 2s,
              fadeOpacity 12s ease-in-out infinite 3s, 
              saturateChange 15s ease-in-out infinite 2s !important;
              }
