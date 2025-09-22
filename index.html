@@ -1145,7 +1145,8 @@ console.log = function() {
     var currentPlaylist = [];
     var coverList = { covers: [] };
     var isCategorySwitching = false; // 🔥 카테고리 전환 중 플래그
-
+var isTrackSwitching = false;
+var isSettingCover = false;
     var audioContext;
     var analyser;
     var dataArray;
@@ -1254,7 +1255,17 @@ function cleanTitle(rawTitle) {
 
     // 썸네일 이미지 로드
     function setThumbnailCover(urlOrUrls) {
-      if (!thumbnail) return;
+      if (isSettingCover) {
+        console.log('이미 커버 설정 중 - 중복 방지');
+        return;
+      }
+      
+      isSettingCover = true;
+      
+      if (!thumbnail) {
+        isSettingCover = false;
+        return;
+      }
       var candidates = Array.isArray(urlOrUrls) ? urlOrUrls.slice() : [urlOrUrls];
 
       var img = new Image();
@@ -1267,6 +1278,7 @@ function cleanTitle(rawTitle) {
     thumbnail.style.backgroundImage = '';
     thumbnail.style.backgroundColor = '#9b83f1';
     thumbnail.style.background = 'linear-gradient(135deg, #9b83f1, #5c6de0)';
+    isSettingCover = false;
     return;
   }
   var next = candidates.shift();
@@ -1285,6 +1297,7 @@ function cleanTitle(rawTitle) {
   setTimeout(function() {
     thumbnail.classList.remove('blur-hidden');
     thumbnail.classList.add('blur-start', 'playing');
+    isSettingCover = false;
   }, 100);
 };
   
@@ -2476,6 +2489,11 @@ if (track.folder !== expectedCategory) {
          console.log('  - 플레이리스트 길이:', currentPlaylist.length);
          return;
        }
+              // 트랙 전환 중복 방지
+       if (!isTrackSwitching && isLoading) {
+         console.log('이미 로딩 중:', currentLoadingTrack ? currentLoadingTrack.title : 'unknown');
+         return;
+       }
        
        // 🔥 로딩 상태 설정 (강화)
        isLoading = true;
@@ -2576,43 +2594,7 @@ console.log('🔊 볼륨 설정:', musicVolume);
          }
        });
        
-       // 🔥 ended 이벤트 리스너 추가 (곡 종료 시 다음 곡으로 이동)
-       audio.addEventListener('ended', function() {
-         console.log('🎵 곡 종료 - 다음 곡으로 이동');
-         stopVisualizer();
-         
-         // 🔥 자동으로 다음 곡 전환 (페이드 효과 포함)
-         if (currentPlaylist.length > 0) {
-           isPlaying = false;
-           playButton.textContent = '▶';
-           
-           var newIndex = currentTrackIndex + 1;
-           if (newIndex >= currentPlaylist.length) newIndex = 0;
-
-           // 🔥 로딩 상태 초기화 (중요!)
-           isLoading = false;
-           currentLoadingTrack = null;
-           shouldAutoPlay = false; // 일시적으로 false로 설정
-           
-           // 트랙 로드
-           loadTrack(newIndex);
-           
-   // 로드 완료 후 자동재생 설정
-    setTimeout(function() {
-      shouldAutoPlay = true;
-      autoPlayReason = '곡 종료 후 자동 전환';
-      console.log('자동재생 플래그 설정됨');
-      
-      // 추가 확인 후 재생 시도
-      setTimeout(function() {
-        if (audio.readyState >= 2 && !isPlaying) {
-          console.log('강제 자동재생 시도');
-          togglePlay();
-        }
-      }, 1500);
-    }, 500);
-  }
-});
+ 
        
        // 🔥 progressBar 클릭 이벤트 리스너 추가 (프로그레스 바 클릭으로 재생 위치 이동)
        var progressBar = document.getElementById('progressBar');
@@ -2795,7 +2777,19 @@ console.log('🎵 수동 재생');
     function previousTrack() {
       var newIndex = currentTrackIndex - 1;
       if (newIndex < 0) newIndex = currentPlaylist.length - 1;
-      loadTrack(newIndex);
+      
+      // PC 로컬 파일인 경우 메모리 정리
+      if (currentCategory === 'pc' && currentPlaylist[currentTrackIndex] && currentPlaylist[currentTrackIndex].blobUrl) {
+        URL.revokeObjectURL(currentPlaylist[currentTrackIndex].blobUrl);
+        currentPlaylist[currentTrackIndex].blobUrl = null;
+        console.log('이전곡 전환 - 기존곡 메모리 해제');
+      }
+      
+      if (currentCategory === 'pc') {
+        loadLocalTrack(newIndex);
+      } else {
+        loadTrack(newIndex);
+      }
     }
 
 function nextTrack() {
@@ -3775,18 +3769,40 @@ function stopCoverPanAnimation() {
    audio.addEventListener('canplaythrough', handleCanPlayThrough);
    audio.addEventListener('error', handleAudioError);
    
-   audio.addEventListener('ended', function() {
+  audio.addEventListener('ended', function() {
+     if (isTrackSwitching) {
+       console.log('이미 트랙 전환 중 - 중복 방지');
+       return;
+     }
+     
      console.log('곡 종료 - 다음 곡으로 이동');
+     isTrackSwitching = true;
+     
      stopVisualizer();
      if (currentPlaylist.length > 0) {
        isPlaying = false;
        playButton.textContent = '▶';
        var newIndex = currentTrackIndex + 1;
        if (newIndex >= currentPlaylist.length) newIndex = 0;
+       
+       isLoading = false;
+       currentLoadingTrack = null;
+       
        loadTrack(newIndex);
-       if (audio.src) {
-         setTimeout(function() { togglePlay(); }, 1000);
-       }
+       
+       setTimeout(function() {
+         shouldAutoPlay = true;
+         autoPlayReason = '곡 종료 후 자동 전환';
+         
+         setTimeout(function() {
+           if (audio.readyState >= 2 && !isPlaying) {
+             togglePlay();
+           }
+           isTrackSwitching = false;
+         }, 1500);
+       }, 500);
+     } else {
+       isTrackSwitching = false;
      }
    });
    
@@ -3942,43 +3958,56 @@ function processLocalFiles(files, type) {
     stopVisualizer();
   }
 
-  currentPlaylist = audioFiles.map(function(file, index) {
-  var fileName = file.name.replace(/\.[^/.]+$/, ''); // 확장자 제거
-  var cleanTitle = null;
-  
-  // POP과 동일한 제목 정제 로직 적용
-  // 대괄호 내용만 추출하여 제목으로 사용
-  var bracketMatch = fileName.match(/\[(.*?)\]/);
-  if (bracketMatch && bracketMatch[1]) {
-    cleanTitle = bracketMatch[1].trim(); // 대괄호 안의 내용만 사용
-    console.log('PC 파일 대괄호 내용 추출:', fileName, '→', cleanTitle);
-  } else {
-    // 대괄호가 없으면 전체 파일명 사용하되 정제
-    cleanTitle = fileName
-      .replace(/\([^)]*\)/g, '') // (내용) 제거
-      .replace(/_M$|^M$|-M$/g, '')// _M 접미사 제거
-      .replace(/[_-]/g, ' ') // 언더스코어, 하이픈을 공백으로
-      .replace(/\s+/g, ' ') // 연속된 공백을 하나로
-      .trim();
-    console.log('PC 파일 전체 파일명 정제:', fileName, '→', cleanTitle);
+  // 기존 Blob URL들 정리
+  if (currentPlaylist) {
+    currentPlaylist.forEach(function(track) {
+      if (track.blobUrl) {
+        URL.revokeObjectURL(track.blobUrl);
+      }
+    });
   }
   
-  // 최종 제목 설정
-  cleanTitle = cleanTitle || 'Unknown Track';
-  
-  return {
-    title: cleanTitle, // 정제된 제목 사용
-    folder: 'pc',
-    audio: file,
-    cover: pickRandomCoverUrl(null, 'pc'),
-    isLocalFile: true
-  };
-});
+  if (audio.src && audio.src.startsWith('blob:')) {
+    URL.revokeObjectURL(audio.src);
+  }
 
+  currentPlaylist = audioFiles.map(function(file, index) {
+    var fileName = file.name.replace(/\.[^/.]+$/, '');
+    var cleanTitle = null;
+    
+    var bracketMatch = fileName.match(/\[(.*?)\]/);
+    if (bracketMatch && bracketMatch[1]) {
+      cleanTitle = bracketMatch[1].trim();
+    } else {
+      cleanTitle = fileName
+        .replace(/\([^)]*\)/g, '')
+        .replace(/_M$|^M$|-M$/g, '')
+        .replace(/[_-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+    
+    cleanTitle = cleanTitle || 'Unknown Track';
+    
+    return {
+      title: cleanTitle,
+      folder: 'pc',
+      fileReference: file, // File 객체 참조만 저장
+      fileName: file.name,
+      fileSize: file.size,
+      cover: pickRandomCoverUrl(null, 'pc'),
+      isLocalFile: true,
+      blobUrl: null // 재생 시에만 생성
+    };
+  });
+
+  // 셔플
+  currentPlaylist = shuffleArray(currentPlaylist);
+  
   currentCategory = 'pc';
   currentTrackIndex = 0;
   
-  console.log('PC 플레이리스트 생성 완료:', currentPlaylist.length + '곡');
+  console.log('PC 플레이리스트 생성 완료:', currentPlaylist.length + '곡 (메모리 최적화)');
   
   loadLocalTrack(0);
   title.textContent = '로컬 파일 로드 완료 (' + currentPlaylist.length + '곡)';
@@ -3992,42 +4021,52 @@ function loadLocalTrack(index) {
   if (index < 0 || index >= currentPlaylist.length) return;
   
   var track = currentPlaylist[index];
-
-  
   console.log('로컬 트랙 로드:', track.title);
   
-  if (track.isLocalFile && track.audio instanceof File) {
-    var audioUrl = URL.createObjectURL(track.audio);
+  if (track.isLocalFile && track.fileReference instanceof File) {
     
+    // 이전 곡의 Blob URL이 있으면 메모리에서 해제
     if (audio.src && audio.src.startsWith('blob:')) {
+      console.log('이전 곡 메모리 해제:', audio.src);
       URL.revokeObjectURL(audio.src);
     }
     
-    audio.src = audioUrl;
+    // 이전 트랙들의 Blob URL도 정리 (현재 트랙 제외)
+    currentPlaylist.forEach(function(t) {
+      if (t.blobUrl && t !== track) {
+        URL.revokeObjectURL(t.blobUrl);
+        t.blobUrl = null;
+        console.log('이전 트랙 메모리 정리:', t.title);
+      }
+    });
+    
+    // 현재 곡만 메모리에 로드
+    console.log('현재 곡 메모리 로드 시작:', track.fileName);
+    track.blobUrl = URL.createObjectURL(track.fileReference);
+    
+    audio.src = track.blobUrl;
     audio.volume = musicVolume;
-    // 제목 설정 강화
-    console.log('제목 업데이트 시도:', track.title);
+    
+    // 제목 설정
     title.textContent = track.title;
-    title.innerHTML = track.title; // 추가 보장
-
-        // 모자이크 3D 효과 시작 (일반 트랙과 동일하게)
+    title.innerHTML = track.title;
+    
+    // 모자이크 3D 효과 시작
     startTitleMosaicEffect();
-
+    
     setThumbnailCover(track.cover);
     
     if (track.cover) {
       document.body.style.backgroundImage = "url('" + track.cover + "')";
     }
 
-        currentTrackIndex = index;
-    console.log('로컬 트랙 로드 완료:', track.title);
+    currentTrackIndex = index;
+    console.log('현재 곡 로드 완료. 메모리 사용: 1곡분만');
     
     // 제목 업데이트 확인
     setTimeout(function() {
-      console.log('업데이트 후 제목:', title.textContent);
       if (title.textContent !== track.title) {
-        console.error('제목 업데이트 실패!');
-        title.textContent = track.title; // 재시도
+        title.textContent = track.title;
       }
     }, 100);
   }
@@ -4129,12 +4168,48 @@ if (e.key === '0') {
     }
   }
 
-    // 스페이스바로 재생/정지 (추가 보너스)
+   // 스페이스바로 재생/정지 (추가 보너스)
   if (e.key === ' ') {
     e.preventDefault();
     togglePlay();
   }
 });
+
+// 페이지 종료 시 모든 Blob URL 정리
+window.addEventListener('beforeunload', function() {
+  if (currentPlaylist) {
+    currentPlaylist.forEach(function(track) {
+      if (track.blobUrl) {
+        URL.revokeObjectURL(track.blobUrl);
+      }
+    });
+  }
+  
+  if (audio.src && audio.src.startsWith('blob:')) {
+    URL.revokeObjectURL(audio.src);
+  }
+  
+  console.log('페이지 종료 - 모든 메모리 정리 완료');
+});
+
+// 수동 메모리 정리 함수
+window.cleanupUnusedMemory = function() {
+  var currentBlobUrl = audio.src;
+  var cleanedCount = 0;
+  
+  if (currentPlaylist) {
+    currentPlaylist.forEach(function(track) {
+      if (track.blobUrl && track.blobUrl !== currentBlobUrl) {
+        URL.revokeObjectURL(track.blobUrl);
+        track.blobUrl = null;
+        cleanedCount++;
+      }
+    });
+  }
+  
+  console.log('수동 메모리 정리 완료:', cleanedCount + '개 트랙 정리');
+};
+
   </script>
 </body>
 </html>
