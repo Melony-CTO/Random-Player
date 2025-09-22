@@ -785,7 +785,7 @@ body::after {
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
   animation: 
-             mosaicTitleOut 1s 66s ease-in forwards !important;
+             mosaicTitleOut 1s 125s ease-in forwards !important;
 }
 /* 기존 제목 숨기기 */
 .title.hide-original {
@@ -2063,7 +2063,7 @@ if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
         // 대괄호가 없으면 전체 title 사용하되 정제
         cleanTitle = track.title
           .replace(/\([^)]*\)/g, '') // (내용) 제거
-          .replace(/_M$|^M$|-M$/g, '')  // _M 접미사 제거
+          .replace(/_M$|^M$|-M$|\s+M$/g, '')  // _M, -M, 공백+M 접미사 제거
           .replace(/\s+/g, ' ') // 연속된 공백을 하나로
           .trim();
         if (i === 0) console.log('  - ✅ 전체 title 정제:', track.title, '→', cleanTitle);
@@ -2074,7 +2074,7 @@ if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
       cleanTitle = fileName
         .replace(/\.(m4a|mp3)$/i, '') // 확장자 제거
         .replace(/^\[(.*?)\]\s*/, '$1') // [태그] 제거
-        .replace(/_M$|^M$|-M$/g, '')  // _M 접미사 제거
+        .replace(/_M$|^M$|-M$|\s+M$/g, '')  // _M, -M, 공백+M 접미사 제거
         .replace(/\([^)]*\)/g, '') // (내용) 제거
         .replace(/[_-]/g, ' ') // 언더스코어, 하이픈을 공백으로
         .replace(/\s+/g, ' ') // 연속된 공백을 하나로
@@ -2132,7 +2132,7 @@ if (track2.title && track2.title.trim() !== '') {
   cleanTitle = fileName
     .replace(/\.(m4a|mp3)$/i, '') // 확장자 제거
     .replace(/^\[(.*?)\]\s*/, '$1') // [태그] 제거
-    .replace(/_M$|^M$|-M$/g, '')  // _M 접미사 제거
+    .replace(/_M$|^M$|-M$|\s+M$/g, '')  // _M, -M, 공백+M 접미사 제거
     .replace(/_remake$/i, '') // _remake 접미사 제거
     .replace(/good$/i, '') // good 접미사 제거
     .replace(/\([0-9]+\)/g, '') // (1), (2) 등 제거
@@ -2258,12 +2258,13 @@ loadTrack(0);
      }
      
      function handleLoadedMetadata() {
-       if (currentTrackForHandlers) {
-         console.log('📊 오디오 메타데이터 로드:', currentTrackForHandlers.title);
-         console.log('  - 지속시간:', audio.duration, '초');
-         console.log('  - 파일 크기:', audio.src);
-       }
-     }
+  if (currentTrackForHandlers) {
+    console.log('📊 오디오 메타데이터 로드:', currentTrackForHandlers.title);
+    console.log('  - 모드:', currentCategory === 'pc' ? 'PC 로컬' : '온라인');
+    console.log('  - 지속시간:', audio.duration, '초');
+    console.log('  - 소스:', currentCategory === 'pc' ? '로컬 Blob' : '온라인 URL');
+  }
+}
      
      function handleCanPlay() {
        if (currentTrackForHandlers) {
@@ -3788,7 +3789,11 @@ function stopCoverPanAnimation() {
        isLoading = false;
        currentLoadingTrack = null;
        
-       loadTrack(newIndex);
+       if (currentCategory === 'pc') {
+         loadLocalTrack(newIndex);
+       } else {
+         loadTrack(newIndex);
+       }
        
        setTimeout(function() {
          shouldAutoPlay = true;
@@ -3981,7 +3986,7 @@ function processLocalFiles(files, type) {
     } else {
       cleanTitle = fileName
         .replace(/\([^)]*\)/g, '')
-        .replace(/_M$|^M$|-M$/g, '')
+        .replace(/_M$|^M$|-M$|\s+M$/g, '')// _M, -M, 공백+M 접미사 제거
         .replace(/[_-]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
@@ -4046,6 +4051,11 @@ function loadLocalTrack(index) {
     
     audio.src = track.blobUrl;
     audio.volume = musicVolume;
+
+        // 전역 핸들러가 로컬 트랙을 참조하도록 업데이트
+    currentTrackForHandlers = track;
+    currentTrackForHandlers.audioUrl = track.blobUrl;
+    console.log('전역 핸들러 업데이트 - 로컬 트랙:', track.title);
     
     // 제목 설정
     title.textContent = track.title;
@@ -4072,6 +4082,7 @@ function loadLocalTrack(index) {
   }
 }
 
+
 // 제목 모자이크 3D 효과 시작
 function startTitleMosaicEffect() {
   var titleElement = document.getElementById('title');
@@ -4093,7 +4104,7 @@ function startTitleMosaicEffect() {
   setTimeout(function() {
     titleElement.classList.remove('mosaic-show');
     console.log('제목 모자이크 3D 효과 페이드아웃 시작');
-  }, 66000);
+  }, 125000);
 }
 
 // 🔥 개발자도구 관련 키 조합 금지 (선택사항)
