@@ -31,7 +31,7 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
-  transition: background-image 1.5s ease;
+  transition: background-image 0.5s ease;
 }
 
 /* 🔥 배경 블러 오버레이 */
@@ -214,8 +214,8 @@ body::after {
   /* 기본은 바탕 숨김 */
 .thumbnail-container {
   position: relative;
-  width: 90%;
-  aspect-ratio: 16 / 9;
+  width: 100%;
+  aspect-ratio: 16 / 10;
   border-radius: 30px;
   overflow: hidden;
   /* 바탕 없음 (transparent) */
@@ -239,8 +239,8 @@ body::after {
       width: 100%;
       height: 100%;
       border-radius: 30px;
-      background-size: 110%;
-      background-position: center 20%;
+      background-size: 100%;
+      background-position: center 10%;
       background-repeat: no-repeat;
       box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       transition: background-size 0.6s ease;
@@ -717,7 +717,7 @@ body::after {
     transform: scale(1);
   }
   50% { 
-    background-size: 140% !important;
+    background-size: 150% !important;
     transform: scale(1.1);
   }
   100% { 
@@ -726,14 +726,14 @@ body::after {
   }
 }
 @keyframes panUpCover {
-  0%   { background-position: center 20%; }  /* 위(20%)에서 시작 */
+  0%   { background-position: center 10%; }  /* 위(10%)에서 시작 */
   50%  { background-position: center 90%; }  /* 중간에 아래(90%)로 이동 */
-  100% { background-position: center 20%; }  /* 다시 위(20%)로 돌아옴 */
+  100% { background-position: center 10%; }  /* 다시 위(20%)로 돌아옴 */
 }
 
 @keyframes fadeOpacity {
   0%   { opacity: 1; }
-  50%  { opacity: 0.85; }
+  50%  { opacity: 0.8; }
   100% { opacity: 1; }
 }
 
@@ -777,7 +777,7 @@ body::after {
 .title.mosaic-show {
   font-family: 'Comfortaa', sans-serif !important;
   font-weight: 300 !important;
-  font-size: 12px !important;  /* 이 줄 추가 - 원하는 크기로 변경 */
+  font-size: 13px !important;  /* 이 줄 추가 - 원하는 크기로 변경 */
   letter-spacing: 1px !important;
   background: linear-gradient(40deg, #8B00FF, #9370DB, #BA55D3, #DA70D6, #DDA0DD, #E6E6FA) !important;
   background-size: 200% 200% !important;
@@ -785,7 +785,7 @@ body::after {
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
   animation: 
-             mosaicTitleOut 1s 35s ease-in forwards !important;
+             mosaicTitleOut 1s 66s ease-in forwards !important;
 }
 /* 기존 제목 숨기기 */
 .title.hide-original {
@@ -1277,7 +1277,7 @@ function cleanTitle(rawTitle) {
     
     thumbnail.style.backgroundImage = "url('" + img.src + "')";
     thumbnail.style.backgroundSize = "100%";
-    thumbnail.style.backgroundPosition = "center 20%"; 
+    thumbnail.style.backgroundPosition = "center 10%"; 
     
         // ✅ 커버가 준비되었으니 이제 바탕을 켠다
       if (container) container.classList.add('cover-ready');
@@ -3584,7 +3584,7 @@ function startCoverPanAnimation() {
   // 첫 번째 애니메이션 즉시 시작 (현재 → 아래)
   setTimeout(function() {
     thumbnail.style.transition = 'background-position 30s ease-in-out';
-    thumbnail.style.backgroundPosition = 'center 20%';
+    thumbnail.style.backgroundPosition = 'center 10%';
     animationStep = 1;
   }, 1000);
   
@@ -3593,7 +3593,7 @@ function startCoverPanAnimation() {
     if (animationStep === 1) {
       // 두 번째: 아래에서 위 80% 지점으로
       thumbnail.style.transition = 'background-position 30s ease-in-out';
-      thumbnail.style.backgroundPosition = 'center 20%'; 
+      thumbnail.style.backgroundPosition = 'center 10%'; 
       animationStep = 2;
     } else if (animationStep === 2) {
       // 세 번째: 정지 상태 유지
@@ -3614,7 +3614,7 @@ function stopCoverPanAnimation() {
   var thumbnail = document.getElementById('thumbnail');
   if (thumbnail) {
     thumbnail.style.transition = '';
-    thumbnail.style.backgroundPosition = 'center 20%';
+    thumbnail.style.backgroundPosition = 'center 10%';
   }
   
   animationStep = 0;
@@ -4054,7 +4054,7 @@ function startTitleMosaicEffect() {
   setTimeout(function() {
     titleElement.classList.remove('mosaic-show');
     console.log('제목 모자이크 3D 효과 페이드아웃 시작');
-  }, 35000);
+  }, 66000);
 }
 
 // 🔥 개발자도구 관련 키 조합 금지 (선택사항)
@@ -4111,6 +4111,14 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
+  // 0번 키로 다음곡
+if (e.key === '0') {
+  e.preventDefault();
+  console.log('🎹 키보드 단축키: 0 → 다음곡');
+  nextTrack();
+  return;
+}
+
   if (e.key === 'F12' || e.key === 'd') {
     var debug = document.getElementById('debugInfo');
     if (debug.style.display === 'block') {
@@ -4130,3 +4138,4 @@ document.addEventListener('keydown', function(e) {
   </script>
 </body>
 </html>
+
