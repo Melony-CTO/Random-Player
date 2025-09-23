@@ -31,7 +31,7 @@ body {
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
-  transition: background-image 0.5s ease;
+  transition: background-image 1.5s ease;
 }
 
 /* 🔥 배경 블러 오버레이 */
@@ -239,8 +239,8 @@ body::after {
       width: 100%;
       height: 100%;
       border-radius: 30px;
-      background-size: 100%;
-      background-position: center 10%;
+      background-size: 110%;
+      background-position: center 20%;
       background-repeat: no-repeat;
       box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       transition: background-size 0.6s ease;
@@ -717,7 +717,7 @@ body::after {
     transform: scale(1);
   }
   50% { 
-    background-size: 150% !important;
+    background-size: 140% !important;
     transform: scale(1.1);
   }
   100% { 
@@ -726,20 +726,20 @@ body::after {
   }
 }
 @keyframes panUpCover {
-  0%   { background-position: center 10%; }  /* 위(10%)에서 시작 */
+  0%   { background-position: center 20%; }  /* 위(20%)에서 시작 */
   50%  { background-position: center 90%; }  /* 중간에 아래(90%)로 이동 */
-  100% { background-position: center 10%; }  /* 다시 위(20%)로 돌아옴 */
+  100% { background-position: center 20%; }  /* 다시 위(20%)로 돌아옴 */
 }
 
 @keyframes fadeOpacity {
   0%   { opacity: 1; }
-  50%  { opacity: 0.8; }
+  50%  { opacity: 0.85; }
   100% { opacity: 1; }
 }
 
 @keyframes saturateChange {
   0% { filter: saturate(1.0) blur(0px); }
-  50% { filter: saturate(1.18) blur(0px); }
+  50% { filter: saturate(1.15) blur(0px); }
   100% { filter: saturate(1.0) blur(0px); }
 }
     .thumbnail.blur-start.slow-zoom {  
@@ -751,7 +751,7 @@ body::after {
     slowZoomBg 20s ease-in-out infinite 2s,       /* 배경 천천히 줌 - 2초 지연 */
     panUpCover 60s ease-in-out 1s,                /* 위아래 패닝 - 1초 지연, 한 번만 */
     fadeOpacity 12s ease-in-out infinite 3s,      /* ✅ 숨쉬는 투명도 (기존 키프레임) */
-    saturateChange 8s ease-in-out infinite 4s;   /* 채도 펌핑 - 4초 지연 */
+    saturateChange 15s ease-in-out infinite 4s;   /* 채도 펌핑 - 4초 지연 */
 }
 
     /* 부드럽게 */
@@ -777,7 +777,7 @@ body::after {
 .title.mosaic-show {
   font-family: 'Comfortaa', sans-serif !important;
   font-weight: 300 !important;
-  font-size: 13px !important;  /* 이 줄 추가 - 원하는 크기로 변경 */
+  font-size: 12px !important;  /* 이 줄 추가 - 원하는 크기로 변경 */
   letter-spacing: 1px !important;
   background: linear-gradient(40deg, #8B00FF, #9370DB, #BA55D3, #DA70D6, #DDA0DD, #E6E6FA) !important;
   background-size: 200% 200% !important;
@@ -785,7 +785,7 @@ body::after {
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
   animation: 
-             mosaicTitleOut 1s 125s ease-in forwards !important;
+             mosaicTitleOut 1s 35s ease-in forwards !important;
 }
 /* 기존 제목 숨기기 */
 .title.hide-original {
@@ -1145,8 +1145,7 @@ console.log = function() {
     var currentPlaylist = [];
     var coverList = { covers: [] };
     var isCategorySwitching = false; // 🔥 카테고리 전환 중 플래그
-var isTrackSwitching = false;
-var isSettingCover = false;
+
     var audioContext;
     var analyser;
     var dataArray;
@@ -1255,17 +1254,7 @@ function cleanTitle(rawTitle) {
 
     // 썸네일 이미지 로드
     function setThumbnailCover(urlOrUrls) {
-      if (isSettingCover) {
-        console.log('이미 커버 설정 중 - 중복 방지');
-        return;
-      }
-      
-      isSettingCover = true;
-      
-      if (!thumbnail) {
-        isSettingCover = false;
-        return;
-      }
+      if (!thumbnail) return;
       var candidates = Array.isArray(urlOrUrls) ? urlOrUrls.slice() : [urlOrUrls];
 
       var img = new Image();
@@ -1278,7 +1267,6 @@ function cleanTitle(rawTitle) {
     thumbnail.style.backgroundImage = '';
     thumbnail.style.backgroundColor = '#9b83f1';
     thumbnail.style.background = 'linear-gradient(135deg, #9b83f1, #5c6de0)';
-    isSettingCover = false;
     return;
   }
   var next = candidates.shift();
@@ -1289,7 +1277,7 @@ function cleanTitle(rawTitle) {
     
     thumbnail.style.backgroundImage = "url('" + img.src + "')";
     thumbnail.style.backgroundSize = "100%";
-    thumbnail.style.backgroundPosition = "center 10%"; 
+    thumbnail.style.backgroundPosition = "center 20%"; 
     
         // ✅ 커버가 준비되었으니 이제 바탕을 켠다
       if (container) container.classList.add('cover-ready');
@@ -1297,7 +1285,6 @@ function cleanTitle(rawTitle) {
   setTimeout(function() {
     thumbnail.classList.remove('blur-hidden');
     thumbnail.classList.add('blur-start', 'playing');
-    isSettingCover = false;
   }, 100);
 };
   
@@ -2063,7 +2050,7 @@ if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
         // 대괄호가 없으면 전체 title 사용하되 정제
         cleanTitle = track.title
           .replace(/\([^)]*\)/g, '') // (내용) 제거
-          .replace(/_M$|^M$|-M$|\s+M$/g, '')  // _M, -M, 공백+M 접미사 제거
+          .replace(/_M$|^M$|-M$/g, '')  // _M 접미사 제거
           .replace(/\s+/g, ' ') // 연속된 공백을 하나로
           .trim();
         if (i === 0) console.log('  - ✅ 전체 title 정제:', track.title, '→', cleanTitle);
@@ -2074,7 +2061,7 @@ if (data['8090gayo'] && Array.isArray(data['8090gayo'])) {
       cleanTitle = fileName
         .replace(/\.(m4a|mp3)$/i, '') // 확장자 제거
         .replace(/^\[(.*?)\]\s*/, '$1') // [태그] 제거
-        .replace(/_M$|^M$|-M$|\s+M$/g, '')  // _M, -M, 공백+M 접미사 제거
+        .replace(/_M$|^M$|-M$/g, '')  // _M 접미사 제거
         .replace(/\([^)]*\)/g, '') // (내용) 제거
         .replace(/[_-]/g, ' ') // 언더스코어, 하이픈을 공백으로
         .replace(/\s+/g, ' ') // 연속된 공백을 하나로
@@ -2132,7 +2119,7 @@ if (track2.title && track2.title.trim() !== '') {
   cleanTitle = fileName
     .replace(/\.(m4a|mp3)$/i, '') // 확장자 제거
     .replace(/^\[(.*?)\]\s*/, '$1') // [태그] 제거
-    .replace(/_M$|^M$|-M$|\s+M$/g, '')  // _M, -M, 공백+M 접미사 제거
+    .replace(/_M$|^M$|-M$/g, '')  // _M 접미사 제거
     .replace(/_remake$/i, '') // _remake 접미사 제거
     .replace(/good$/i, '') // good 접미사 제거
     .replace(/\([0-9]+\)/g, '') // (1), (2) 등 제거
@@ -2258,13 +2245,12 @@ loadTrack(0);
      }
      
      function handleLoadedMetadata() {
-  if (currentTrackForHandlers) {
-    console.log('📊 오디오 메타데이터 로드:', currentTrackForHandlers.title);
-    console.log('  - 모드:', currentCategory === 'pc' ? 'PC 로컬' : '온라인');
-    console.log('  - 지속시간:', audio.duration, '초');
-    console.log('  - 소스:', currentCategory === 'pc' ? '로컬 Blob' : '온라인 URL');
-  }
-}
+       if (currentTrackForHandlers) {
+         console.log('📊 오디오 메타데이터 로드:', currentTrackForHandlers.title);
+         console.log('  - 지속시간:', audio.duration, '초');
+         console.log('  - 파일 크기:', audio.src);
+       }
+     }
      
      function handleCanPlay() {
        if (currentTrackForHandlers) {
@@ -2490,11 +2476,6 @@ if (track.folder !== expectedCategory) {
          console.log('  - 플레이리스트 길이:', currentPlaylist.length);
          return;
        }
-              // 트랙 전환 중복 방지
-       if (!isTrackSwitching && isLoading) {
-         console.log('이미 로딩 중:', currentLoadingTrack ? currentLoadingTrack.title : 'unknown');
-         return;
-       }
        
        // 🔥 로딩 상태 설정 (강화)
        isLoading = true;
@@ -2595,7 +2576,43 @@ console.log('🔊 볼륨 설정:', musicVolume);
          }
        });
        
- 
+       // 🔥 ended 이벤트 리스너 추가 (곡 종료 시 다음 곡으로 이동)
+       audio.addEventListener('ended', function() {
+         console.log('🎵 곡 종료 - 다음 곡으로 이동');
+         stopVisualizer();
+         
+         // 🔥 자동으로 다음 곡 전환 (페이드 효과 포함)
+         if (currentPlaylist.length > 0) {
+           isPlaying = false;
+           playButton.textContent = '▶';
+           
+           var newIndex = currentTrackIndex + 1;
+           if (newIndex >= currentPlaylist.length) newIndex = 0;
+
+           // 🔥 로딩 상태 초기화 (중요!)
+           isLoading = false;
+           currentLoadingTrack = null;
+           shouldAutoPlay = false; // 일시적으로 false로 설정
+           
+           // 트랙 로드
+           loadTrack(newIndex);
+           
+   // 로드 완료 후 자동재생 설정
+    setTimeout(function() {
+      shouldAutoPlay = true;
+      autoPlayReason = '곡 종료 후 자동 전환';
+      console.log('자동재생 플래그 설정됨');
+      
+      // 추가 확인 후 재생 시도
+      setTimeout(function() {
+        if (audio.readyState >= 2 && !isPlaying) {
+          console.log('강제 자동재생 시도');
+          togglePlay();
+        }
+      }, 1500);
+    }, 500);
+  }
+});
        
        // 🔥 progressBar 클릭 이벤트 리스너 추가 (프로그레스 바 클릭으로 재생 위치 이동)
        var progressBar = document.getElementById('progressBar');
@@ -2778,19 +2795,7 @@ console.log('🎵 수동 재생');
     function previousTrack() {
       var newIndex = currentTrackIndex - 1;
       if (newIndex < 0) newIndex = currentPlaylist.length - 1;
-      
-      // PC 로컬 파일인 경우 메모리 정리
-      if (currentCategory === 'pc' && currentPlaylist[currentTrackIndex] && currentPlaylist[currentTrackIndex].blobUrl) {
-        URL.revokeObjectURL(currentPlaylist[currentTrackIndex].blobUrl);
-        currentPlaylist[currentTrackIndex].blobUrl = null;
-        console.log('이전곡 전환 - 기존곡 메모리 해제');
-      }
-      
-      if (currentCategory === 'pc') {
-        loadLocalTrack(newIndex);
-      } else {
-        loadTrack(newIndex);
-      }
+      loadTrack(newIndex);
     }
 
 function nextTrack() {
@@ -3579,7 +3584,7 @@ function startCoverPanAnimation() {
   // 첫 번째 애니메이션 즉시 시작 (현재 → 아래)
   setTimeout(function() {
     thumbnail.style.transition = 'background-position 30s ease-in-out';
-    thumbnail.style.backgroundPosition = 'center 10%';
+    thumbnail.style.backgroundPosition = 'center 20%';
     animationStep = 1;
   }, 1000);
   
@@ -3588,7 +3593,7 @@ function startCoverPanAnimation() {
     if (animationStep === 1) {
       // 두 번째: 아래에서 위 80% 지점으로
       thumbnail.style.transition = 'background-position 30s ease-in-out';
-      thumbnail.style.backgroundPosition = 'center 10%'; 
+      thumbnail.style.backgroundPosition = 'center 20%'; 
       animationStep = 2;
     } else if (animationStep === 2) {
       // 세 번째: 정지 상태 유지
@@ -3609,7 +3614,7 @@ function stopCoverPanAnimation() {
   var thumbnail = document.getElementById('thumbnail');
   if (thumbnail) {
     thumbnail.style.transition = '';
-    thumbnail.style.backgroundPosition = 'center 10%';
+    thumbnail.style.backgroundPosition = 'center 20%';
   }
   
   animationStep = 0;
@@ -3770,44 +3775,18 @@ function stopCoverPanAnimation() {
    audio.addEventListener('canplaythrough', handleCanPlayThrough);
    audio.addEventListener('error', handleAudioError);
    
-  audio.addEventListener('ended', function() {
-     if (isTrackSwitching) {
-       console.log('이미 트랙 전환 중 - 중복 방지');
-       return;
-     }
-     
+   audio.addEventListener('ended', function() {
      console.log('곡 종료 - 다음 곡으로 이동');
-     isTrackSwitching = true;
-     
      stopVisualizer();
      if (currentPlaylist.length > 0) {
        isPlaying = false;
        playButton.textContent = '▶';
        var newIndex = currentTrackIndex + 1;
        if (newIndex >= currentPlaylist.length) newIndex = 0;
-       
-       isLoading = false;
-       currentLoadingTrack = null;
-       
-       if (currentCategory === 'pc') {
-         loadLocalTrack(newIndex);
-       } else {
-         loadTrack(newIndex);
+       loadTrack(newIndex);
+       if (audio.src) {
+         setTimeout(function() { togglePlay(); }, 1000);
        }
-       
-       setTimeout(function() {
-         shouldAutoPlay = true;
-         autoPlayReason = '곡 종료 후 자동 전환';
-         
-         setTimeout(function() {
-           if (audio.readyState >= 2 && !isPlaying) {
-             togglePlay();
-           }
-           isTrackSwitching = false;
-         }, 1500);
-       }, 500);
-     } else {
-       isTrackSwitching = false;
      }
    });
    
@@ -3963,56 +3942,43 @@ function processLocalFiles(files, type) {
     stopVisualizer();
   }
 
-  // 기존 Blob URL들 정리
-  if (currentPlaylist) {
-    currentPlaylist.forEach(function(track) {
-      if (track.blobUrl) {
-        URL.revokeObjectURL(track.blobUrl);
-      }
-    });
-  }
-  
-  if (audio.src && audio.src.startsWith('blob:')) {
-    URL.revokeObjectURL(audio.src);
-  }
-
   currentPlaylist = audioFiles.map(function(file, index) {
-    var fileName = file.name.replace(/\.[^/.]+$/, '');
-    var cleanTitle = null;
-    
-    var bracketMatch = fileName.match(/\[(.*?)\]/);
-    if (bracketMatch && bracketMatch[1]) {
-      cleanTitle = bracketMatch[1].trim();
-    } else {
-      cleanTitle = fileName
-        .replace(/\([^)]*\)/g, '')
-        .replace(/_M$|^M$|-M$|\s+M$/g, '')// _M, -M, 공백+M 접미사 제거
-        .replace(/[_-]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    }
-    
-    cleanTitle = cleanTitle || 'Unknown Track';
-    
-    return {
-      title: cleanTitle,
-      folder: 'pc',
-      fileReference: file, // File 객체 참조만 저장
-      fileName: file.name,
-      fileSize: file.size,
-      cover: pickRandomCoverUrl(null, 'pc'),
-      isLocalFile: true,
-      blobUrl: null // 재생 시에만 생성
-    };
-  });
-
-  // 셔플
-  currentPlaylist = shuffleArray(currentPlaylist);
+  var fileName = file.name.replace(/\.[^/.]+$/, ''); // 확장자 제거
+  var cleanTitle = null;
   
+  // POP과 동일한 제목 정제 로직 적용
+  // 대괄호 내용만 추출하여 제목으로 사용
+  var bracketMatch = fileName.match(/\[(.*?)\]/);
+  if (bracketMatch && bracketMatch[1]) {
+    cleanTitle = bracketMatch[1].trim(); // 대괄호 안의 내용만 사용
+    console.log('PC 파일 대괄호 내용 추출:', fileName, '→', cleanTitle);
+  } else {
+    // 대괄호가 없으면 전체 파일명 사용하되 정제
+    cleanTitle = fileName
+      .replace(/\([^)]*\)/g, '') // (내용) 제거
+      .replace(/_M$|^M$|-M$/g, '')// _M 접미사 제거
+      .replace(/[_-]/g, ' ') // 언더스코어, 하이픈을 공백으로
+      .replace(/\s+/g, ' ') // 연속된 공백을 하나로
+      .trim();
+    console.log('PC 파일 전체 파일명 정제:', fileName, '→', cleanTitle);
+  }
+  
+  // 최종 제목 설정
+  cleanTitle = cleanTitle || 'Unknown Track';
+  
+  return {
+    title: cleanTitle, // 정제된 제목 사용
+    folder: 'pc',
+    audio: file,
+    cover: pickRandomCoverUrl(null, 'pc'),
+    isLocalFile: true
+  };
+});
+
   currentCategory = 'pc';
   currentTrackIndex = 0;
   
-  console.log('PC 플레이리스트 생성 완료:', currentPlaylist.length + '곡 (메모리 최적화)');
+  console.log('PC 플레이리스트 생성 완료:', currentPlaylist.length + '곡');
   
   loadLocalTrack(0);
   title.textContent = '로컬 파일 로드 완료 (' + currentPlaylist.length + '곡)';
@@ -4026,62 +3992,46 @@ function loadLocalTrack(index) {
   if (index < 0 || index >= currentPlaylist.length) return;
   
   var track = currentPlaylist[index];
+
+  
   console.log('로컬 트랙 로드:', track.title);
   
-  if (track.isLocalFile && track.fileReference instanceof File) {
+  if (track.isLocalFile && track.audio instanceof File) {
+    var audioUrl = URL.createObjectURL(track.audio);
     
-    // 이전 곡의 Blob URL이 있으면 메모리에서 해제
     if (audio.src && audio.src.startsWith('blob:')) {
-      console.log('이전 곡 메모리 해제:', audio.src);
       URL.revokeObjectURL(audio.src);
     }
     
-    // 이전 트랙들의 Blob URL도 정리 (현재 트랙 제외)
-    currentPlaylist.forEach(function(t) {
-      if (t.blobUrl && t !== track) {
-        URL.revokeObjectURL(t.blobUrl);
-        t.blobUrl = null;
-        console.log('이전 트랙 메모리 정리:', t.title);
-      }
-    });
-    
-    // 현재 곡만 메모리에 로드
-    console.log('현재 곡 메모리 로드 시작:', track.fileName);
-    track.blobUrl = URL.createObjectURL(track.fileReference);
-    
-    audio.src = track.blobUrl;
+    audio.src = audioUrl;
     audio.volume = musicVolume;
-
-        // 전역 핸들러가 로컬 트랙을 참조하도록 업데이트
-    currentTrackForHandlers = track;
-    currentTrackForHandlers.audioUrl = track.blobUrl;
-    console.log('전역 핸들러 업데이트 - 로컬 트랙:', track.title);
-    
-    // 제목 설정
+    // 제목 설정 강화
+    console.log('제목 업데이트 시도:', track.title);
     title.textContent = track.title;
-    title.innerHTML = track.title;
-    
-    // 모자이크 3D 효과 시작
+    title.innerHTML = track.title; // 추가 보장
+
+        // 모자이크 3D 효과 시작 (일반 트랙과 동일하게)
     startTitleMosaicEffect();
-    
+
     setThumbnailCover(track.cover);
     
     if (track.cover) {
       document.body.style.backgroundImage = "url('" + track.cover + "')";
     }
 
-    currentTrackIndex = index;
-    console.log('현재 곡 로드 완료. 메모리 사용: 1곡분만');
+        currentTrackIndex = index;
+    console.log('로컬 트랙 로드 완료:', track.title);
     
     // 제목 업데이트 확인
     setTimeout(function() {
+      console.log('업데이트 후 제목:', title.textContent);
       if (title.textContent !== track.title) {
-        title.textContent = track.title;
+        console.error('제목 업데이트 실패!');
+        title.textContent = track.title; // 재시도
       }
     }, 100);
   }
 }
-
 
 // 제목 모자이크 3D 효과 시작
 function startTitleMosaicEffect() {
@@ -4104,7 +4054,7 @@ function startTitleMosaicEffect() {
   setTimeout(function() {
     titleElement.classList.remove('mosaic-show');
     console.log('제목 모자이크 3D 효과 페이드아웃 시작');
-  }, 125000);
+  }, 35000);
 }
 
 // 🔥 개발자도구 관련 키 조합 금지 (선택사항)
@@ -4161,14 +4111,6 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  // 0번 키로 다음곡
-if (e.key === '0') {
-  e.preventDefault();
-  console.log('🎹 키보드 단축키: 0 → 다음곡');
-  nextTrack();
-  return;
-}
-
   if (e.key === 'F12' || e.key === 'd') {
     var debug = document.getElementById('debugInfo');
     if (debug.style.display === 'block') {
@@ -4179,48 +4121,12 @@ if (e.key === '0') {
     }
   }
 
-   // 스페이스바로 재생/정지 (추가 보너스)
+    // 스페이스바로 재생/정지 (추가 보너스)
   if (e.key === ' ') {
     e.preventDefault();
     togglePlay();
   }
 });
-
-// 페이지 종료 시 모든 Blob URL 정리
-window.addEventListener('beforeunload', function() {
-  if (currentPlaylist) {
-    currentPlaylist.forEach(function(track) {
-      if (track.blobUrl) {
-        URL.revokeObjectURL(track.blobUrl);
-      }
-    });
-  }
-  
-  if (audio.src && audio.src.startsWith('blob:')) {
-    URL.revokeObjectURL(audio.src);
-  }
-  
-  console.log('페이지 종료 - 모든 메모리 정리 완료');
-});
-
-// 수동 메모리 정리 함수
-window.cleanupUnusedMemory = function() {
-  var currentBlobUrl = audio.src;
-  var cleanedCount = 0;
-  
-  if (currentPlaylist) {
-    currentPlaylist.forEach(function(track) {
-      if (track.blobUrl && track.blobUrl !== currentBlobUrl) {
-        URL.revokeObjectURL(track.blobUrl);
-        track.blobUrl = null;
-        cleanedCount++;
-      }
-    });
-  }
-  
-  console.log('수동 메모리 정리 완료:', cleanedCount + '개 트랙 정리');
-};
-
   </script>
 </body>
 </html>
