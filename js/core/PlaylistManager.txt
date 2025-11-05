@@ -1,0 +1,4 @@
+. PlaylistManager 강화 ✅
+applyCategoryData() 메서드 추가: 2025-09-22.html의 카테고리 데이터 처리 로직 통합
+제목 정제 로직 (대괄호, 괄호 제거 등)
+카테고리별 트랙 셔플 처리

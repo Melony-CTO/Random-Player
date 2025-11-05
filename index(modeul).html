@@ -1,0 +1,195 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- PWA 매니페스트 (CORS 오류 방지를 위해 임시 주석 처리) -->
+    <!-- <link rel="manifest" href="./manifest.json"> -->
+    <meta name="theme-color" content="#5c6de0">
+
+    <!-- 추가 PWA 설정 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="Melony Player">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <!-- CoverManager 우선순위 최대 강화 -->
+    <link rel="preload" href="js/ui/CoverManager.js" as="script" fetchpriority="high">
+    <link rel="dns-prefetch" href="https://melony-music-api.zepplinn25.workers.dev">
+    <link rel="preconnect" href="https://melony-music-api.zepplinn25.workers.dev" crossorigin>
+
+    <title>Melony Random Player</title>
+
+    <!-- CSS 스타일 -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="debug-info" id="debugInfo"></div>
+
+<div class="container">
+    <!-- 이퀄라이저 버튼 -->
+    <div class="equalizer-button" id="equalizerButton">🎛️</div>
+
+    <!-- 이퀄라이저 패널 -->
+    <div class="equalizer-panel" id="equalizerPanel">
+        <div class="equalizer-header">
+            <h3>6-Band Equalizer</h3>
+            <button class="close-eq" id="closeEqualizer">×</button>
+        </div>
+
+        <div class="equalizer-presets">
+            <button class="preset-btn active" data-preset="flat">Flat</button>
+            <button class="preset-btn" data-preset="rock">Rock</button>
+            <button class="preset-btn" data-preset="pop">Pop</button>
+            <button class="preset-btn" data-preset="jazz">Jazz</button>
+            <button class="preset-btn" data-preset="classical">Classical</button>
+            <button class="preset-btn" data-preset="electronic">Electronic</button>
+        </div>
+
+        <div class="equalizer-controls">
+            <div class="eq-band">
+                <label>60Hz</label>
+                <input type="range" class="eq-slider" id="eq60" min="-12" max="12" value="0" step="0.5">
+                <span class="eq-value">0dB</span>
+            </div>
+            <div class="eq-band">
+                <label>170Hz</label>
+                <input type="range" class="eq-slider" id="eq170" min="-12" max="12" value="0" step="0.5">
+                <span class="eq-value">0dB</span>
+            </div>
+            <div class="eq-band">
+                <label>350Hz</label>
+                <input type="range" class="eq-slider" id="eq350" min="-12" max="12" value="0" step="0.5">
+                <span class="eq-value">0dB</span>
+            </div>
+            <div class="eq-band">
+                <label>1kHz</label>
+                <input type="range" class="eq-slider" id="eq1000" min="-12" max="12" value="0" step="0.5">
+                <span class="eq-value">0dB</span>
+            </div>
+            <div class="eq-band">
+                <label>3kHz</label>
+                <input type="range" class="eq-slider" id="eq3000" min="-12" max="12" value="0" step="0.5">
+                <span class="eq-value">0dB</span>
+            </div>
+            <div class="eq-band">
+                <label>6kHz</label>
+                <input type="range" class="eq-slider" id="eq6000" min="-12" max="12" value="0" step="0.5">
+                <span class="eq-value">0dB</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 파일 선택 다이얼로그 (숨김) -->
+    <input type="file" id="fileInput" multiple accept="audio/*" style="display: none;">
+    <input type="file" id="folderInput" webkitdirectory style="display: none;">
+
+    <!-- 플레이어 헤더 -->
+    <div class="player-header">
+        <div class="player-title">
+            <a href="https://blog.naver.com/plipli4989" target="_blank" class="title-icon-link">🎧</a>
+            <span class="title-text">Melony Music Player</span>
+        </div>
+    </div>
+
+    <!-- 썸네일 컨테이너 -->
+    <div class="thumbnail-container">
+        <div class="thumbnail" id="thumbnail">
+            <div class="touch-zones">
+                <div class="touch-zone left" id="leftTouchZone">
+                    <span>🔊 효과음</span>
+                </div>
+                <div class="touch-zone right" id="rightTouchZone">
+                    <span>🎵 음악</span>
+                </div>
+            </div>
+            <div class="volume-overlay" id="volumeOverlay">🔊 50%</div>
+
+            <!-- 오디오 비주얼라이저 -->
+            <div class="audio-visualizer" id="audioVisualizer">
+                <!-- 비주얼라이저 바들은 JavaScript에서 동적으로 생성 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 곡 정보 -->
+    <div class="song-info">
+        <div class="title" id="title">Loading...</div>
+    </div>
+
+    <!-- 진행바 -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="time-display">
+            <span id="currentTime">0:00</span>
+            <span id="duration">0:00</span>
+        </div>
+    </div>
+
+    <!-- 컨트롤 버튼 -->
+    <div class="controls">
+        <button class="control-button" id="previousButton">⏮</button>
+        <button class="control-button play-button" id="playButton">▶</button>
+        <button class="control-button" id="nextButton">⏭</button>
+    </div>
+
+    <!-- 재시작 버튼 -->
+    <div class="restart-section" id="restartSection" style="display: none;">
+        <button class="restart-button" id="restartButton">🔄 재시작</button>
+    </div>
+
+    <!-- 카테고리 스위치 -->
+    <div class="category-switch">
+        <div class="category" data-folder="pc">PC</div>
+        <div class="category" data-folder="kpop">KPOP</div>
+        <div class="category active" data-folder="pop">POP</div>
+        <div class="category" data-folder="lofi-inst">LOFI-INST</div>
+    </div>
+
+    <!-- 배경음 섹션 -->
+    <div class="bg-sound-section">
+        <div class="bg-sound-grid">
+            <div class="bg-button" data-sound="Rain">Rain</div>
+            <div class="bg-button" data-sound="Bird">Bird</div>
+            <div class="bg-button" data-sound="Forest">Forest</div>
+            <div class="bg-button" data-sound="Neighborhood">Neighbor</div>
+            <div class="bg-button" data-sound="Amazon">Amazon</div>
+            <div class="bg-button" data-sound="Ocean">Ocean</div>
+            <div class="bg-button" data-sound="Crackle">Crackle</div>
+            <div class="bg-button" data-sound="Rain2">Rain2</div>
+        </div>
+    </div>
+
+    <!-- 오디오 요소 -->
+    <audio id="player" preload="auto" crossorigin="anonymous">
+        Your browser does not support the audio element.
+    </audio>
+</div>
+
+<!-- 방문 통계 -->
+<div class="visit-stats" id="visitStats"></div>
+
+<!-- JavaScript 모듈 로드 (순서대로 로딩) -->
+<script src="js/utils/Utils.js"></script>
+<script src="js/utils/Config.js"></script>
+<script src="js/utils/Cache.js"></script>
+<script src="js/utils/API.js"></script>
+<script src="js/utils/effect_sound.js"></script>
+
+<script src="js/core/AudioManager.js"></script>
+<script src="js/core/PlaylistManager.js"></script>
+<script src="js/core/UIManager.js"></script>
+
+<script src="js/ui/Visualizer.js"></script>
+<script src="js/ui/Equalizer.js"></script>
+<script src="js/ui/CoverManager.js"></script>
+<script src="js/ui/TouchHandler.js"></script>
+
+<script src="js/main.js"></script>
+</body>
+</html>
