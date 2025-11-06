@@ -31,11 +31,12 @@ class Equalizer {
   /**
    * 이벤트 리스너 설정
    */
-  setupEventListeners() {
-    // 이퀄라이저 버튼
-    const equalizerButton = document.getElementById('equalizerButton');
+setupEventListeners() {
+    // 이퀄라이저 버튼 (헤더)
+    const equalizerButton = document.getElementById('titleEqualizerButton');
     if (equalizerButton) {
-      equalizerButton.addEventListener('click', () => {
+      equalizerButton.addEventListener('click', (e) => {
+        e.stopPropagation();
         this.toggle();
       });
     }
@@ -43,7 +44,8 @@ class Equalizer {
     // 닫기 버튼
     const closeButton = document.querySelector('.close-eq');
     if (closeButton) {
-      closeButton.addEventListener('click', () => {
+      closeButton.addEventListener('click', (e) => {
+        e.stopPropagation();
         this.hide();
       });
     }
@@ -68,6 +70,14 @@ class Equalizer {
         });
       }
     });
+
+    // 패널 클릭 시 이벤트 전파 방지
+    const panel = document.getElementById('equalizerPanel');
+    if (panel) {
+      panel.addEventListener('click', (e) => {
+        e.stopPropagation();
+      });
+    }
 
     console.log('🎛️ 이퀄라이저 이벤트 리스너 설정 완료');
   }
@@ -108,8 +118,7 @@ class Equalizer {
     }
   }
 
-  /**
-   * 이퀄라이저 설정
+
   /**
    * 이퀄라이저 설정
    */
