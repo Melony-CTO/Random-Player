@@ -80,6 +80,7 @@ _normalizeUrl(url) {
   }
 
   /**
+  /**
    * 현재 audio에 걸린 이벤트와 src를 싹 정리하고
    * 새 audio로 교체
    */
@@ -98,6 +99,15 @@ _normalizeUrl(url) {
         ? this.audio.volume
         : this.musicVolume;
 
+    // ✅ 이전 audio 정리 (메모리 누수 방지)
+    if (this.audio) {
+      try {
+        this.audio.pause();
+        this.audio.src = '';
+        this.audio.load();
+      } catch (_) {}
+    }
+
     const a = new Audio();
     a.crossOrigin = 'anonymous';
     a.preload = 'auto';
@@ -105,6 +115,8 @@ _normalizeUrl(url) {
     a.load();
 
     this.audio = a;
+    
+    // ✅ source는 null로 만들되, 다음 재생 시 재연결되도록 플래그만 해제
     this.source = null;
     this.sourceConnected = false;
   }
@@ -375,6 +387,12 @@ _normalizeUrl(url) {
           if (window.melonyPlayer && window.melonyPlayer.visualizer) {
             window.melonyPlayer.visualizer.start();
             console.log('🎨 비주얼라이저 시작됨');
+          }
+          
+          // ✅ 이퀄라이저 재연결 (트랙 변경 시)
+          if (window.melonyPlayer && window.melonyPlayer.equalizer && window.melonyPlayer.equalizer.filters.length > 0) {
+            window.melonyPlayer.equalizer.setupEqualizer();
+            console.log('🎛️ 이퀄라이저 재연결됨');
           }
         } catch (error) {
           if (error.name === 'NotAllowedError') {
