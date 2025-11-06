@@ -129,17 +129,7 @@ body::after {
   transition-duration: 0.1s;
 }
 
-/* 음악 아이콘 추가 */
-.player-title::after {
-  content: '🎵';
-  font-size: 16px;
-  animation: musicNote 2s ease-in-out infinite;
-}
 
-@keyframes musicNote {
-  0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.8; }
-  50% { transform: translateY(-3px) rotate(5deg); opacity: 1; }
-}
 
 .title-icon-link {
   font-size: 20px;
@@ -181,6 +171,45 @@ body::after {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   animation: gradientShift 4s ease-in-out infinite;
+}
+
+/* 헤더 이퀄라이저 버튼 */
+.title-equalizer-button {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 8px;
+  animation: equalizerPulse 2s ease-in-out infinite;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+}
+
+.title-equalizer-button:hover {
+  transform: scale(1.2);
+  animation-duration: 1s;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.title-equalizer-button:active {
+  transform: scale(1.05);
+}
+
+@keyframes equalizerPulse {
+  0%, 100% { 
+    transform: scale(1) rotate(0deg); 
+    opacity: 0.85; 
+  }
+  50% { 
+    transform: scale(1.1) rotate(5deg); 
+    opacity: 1; 
+  }
 }
 
 @keyframes iconPulse {
@@ -489,37 +518,12 @@ footer {
   backdrop-filter: blur(6px);
 }
 
-.equalizer-button {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(92, 109, 224, 0.5);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 18px;
-  color: white;
-  cursor: pointer;
-  opacity: 0.05;
-  transition: all 0.3s ease;
-  z-index: 1000;
-}
-
-.equalizer-button:hover {
-  background: rgba(92, 109, 224, 0.8);
-  opacity: 1.0;
-  transform: scale(1.1);
-}
 
 .equalizer-panel {
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(0.9);
   width: 90%;
   max-width: 400px;
   background: rgba(255, 255, 255, 0.95);
@@ -528,14 +532,15 @@ footer {
   padding: 20px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.3);
   z-index: 2000;
-  display: none;
+  visibility: hidden;
   opacity: 0;
   transition: all 0.3s ease;
 }
 
 .equalizer-panel.show {
-  display: block;
+  visibility: visible;
   opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .equalizer-header {
@@ -820,4 +825,50 @@ footer {
 
 .thumbnail.slow-zoom {
   animation: slowZoomBg 16s ease-in-out infinite, fadeOpacity 10s ease-in-out infinite;
+}
+/* 효과음 버튼 로딩 상태 */
+.bg-button.loading {
+  position: relative;
+  pointer-events: none;
+}
+
+.bg-button.loading::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #5c6de0;
+  border-radius: 50%;
+  animation: buttonSpin 0.6s linear infinite;
+}
+
+@keyframes buttonSpin {
+  0% { transform: translate(-50%, -50%) rotate(0deg); }
+  100% { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* 효과음 버튼 활성화 상태 개선 */
+.bg-button.active {
+  background: linear-gradient(135deg, rgba(92, 109, 224, 0.95), rgba(155, 131, 241, 0.95));
+  border-color: #5c6de0;
+  color: white;
+  font-weight: bold;
+  box-shadow: 0 4px 15px rgba(92, 109, 224, 0.4), 0 0 20px rgba(92, 109, 224, 0.2);
+  transform: scale(1.05);
+}
+
+/* 효과음 버튼 호버 개선 */
+.bg-button:not(.loading):hover {
+  background: rgba(255, 255, 255, 1);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.bg-button:not(.loading):active {
+  transform: scale(0.98);
+  transition-duration: 0.1s;
 }
