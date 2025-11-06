@@ -45,8 +45,8 @@ class UIManager {
       // 비주얼라이저
       audioVisualizer: document.getElementById('audioVisualizer'),
       
-      // 이퀄라이저
-      equalizerButton: document.getElementById('equalizerButton'),
+// 이퀄라이저
+      equalizerButton: document.getElementById('titleEqualizerButton'),
       equalizerPanel: document.getElementById('equalizerPanel'),
       
       // 컨트롤 버튼
@@ -106,12 +106,7 @@ class UIManager {
       });
     }
 
-    // 이퀄라이저 버튼
-    if (this.elements.equalizerButton) {
-      this.elements.equalizerButton.addEventListener('click', () => {
-        this.emit('equalizerToggle');
-      });
-    }
+  
 
     // 카테고리 버튼
     this.elements.categories.forEach(category => {
