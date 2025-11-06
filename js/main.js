@@ -17,6 +17,7 @@ class MelonyPlayer {
         this.touchHandler = null;
         this.coverManager = null;
         this.effectSoundManager = null;
+        this.titleFormatter = null;
 
         this.isInitialized = false;
         this.startTime = Date.now();
@@ -79,6 +80,9 @@ class MelonyPlayer {
         // API 관리자
         this.api = new API(this.config, this.cache);
 
+        // 제목 포맷터
+        this.titleFormatter = new TitleFormatter({ debug: false });
+
         console.log('✅ 핵심 모듈 초기화 완료');
     }
 
@@ -97,8 +101,7 @@ class MelonyPlayer {
         }
         this.coverManager = new CoverManager(this.api);
 
-        // 터치 핸들러
-        this.touchHandler = new TouchHandler(this.uiManager, this.audioManager, this.effectSoundManager);
+
 
         console.log('✅ UI 시스템 초기화 완료');
     }
@@ -329,7 +332,6 @@ class MelonyPlayer {
             this.audioManager.hasUserInteracted = true;
             this.handleCategorySwitch(category);
         });
-        this.uiManager.on('bgSoundToggle', (sound) => this.handleBgSoundToggle(sound));
         this.uiManager.on('equalizerToggle', () => this.handleEqualizerToggle());
         this.uiManager.on('progressBarClick', (percent) => this.handleProgressBarClick(percent));
         this.uiManager.on('localFilesSelected', (files, type) => this.processLocalFiles(files, type));
@@ -513,26 +515,6 @@ class MelonyPlayer {
         }
     }
 
-    /**
-     * 배경음 토글
-     */
-    handleBgSoundToggle(event) {
-        try {
-            const soundType = typeof event === 'string' ? event : event.detail || event;
-
-            this.effectSoundManager.toggleBgSound(soundType)
-                .then(result => {
-                    this.uiManager.updateBgSoundButtons(result);
-                })
-                .catch(error => {
-                    console.error('❌ 효과음 재생 실패:', error);
-                });
-
-        } catch (error) {
-            console.error('배경음 토글 오류:', error);
-        }
-    }
-
     handleEqualizerToggle() {
         this.equalizer.toggle();
     }
@@ -618,7 +600,12 @@ class MelonyPlayer {
             }
 
             this.setupAudioEventListeners();
-            this.uiManager.updateTitle(track.title);
+
+            // ✅ 제목 포맷 적용
+            const formattedTitle = this.titleFormatter.format(track.title || filename, { 
+                category: folder 
+            });
+            this.uiManager.updateTitle(formattedTitle);
 
             // ✅ 재생 중이면 비주얼라이저 시작
             if (this.audioManager.isPlaying) {
@@ -673,7 +660,12 @@ class MelonyPlayer {
                 });
 
                 this.setupAudioEventListeners();
-                this.uiManager.updateTitle(track.title);
+                
+                // ✅ 제목 포맷 적용
+                const formattedTitle = this.titleFormatter.format(track.title, { 
+                    category: track.folder || 'pop' 
+                });
+                this.uiManager.updateTitle(formattedTitle);
 
             } catch (error) {
                 console.error('❌ 로컬 트랙 로드 실패:', error);
@@ -749,10 +741,14 @@ class MelonyPlayer {
         const s = Math.floor(sec % 60).toString().padStart(2, '0');
         return `${m}:${s}`;
     }
+
+  /**
+
+   */
+
 }
 
-// 전역 변수
-let melonyPlayer = null;
+
 
 // 페이지 로드 시 초기화
 window.addEventListener('load', async () => {
