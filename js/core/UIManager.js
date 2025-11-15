@@ -15,7 +15,7 @@ class UIManager {
     this.initializeElements();
     this.setupEventListeners();
     this.isInitialized = true;
-  }
+  } 
 
   /**
    * DOM 요소 초기화
@@ -527,3 +527,4 @@ class UIManager {
 
 // 전역으로 내보내기
 window.UIManager = UIManager;
+
