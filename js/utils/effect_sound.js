@@ -196,7 +196,7 @@ class EffectSoundManager {
             clickedButton.classList.add('active');
         }
 
-        // ✅ 재생 (개선된 에러 처리)
+        // ✅ 재생
         const playPromise = effectAudio.play();
 
         if (playPromise !== undefined) {
@@ -205,18 +205,14 @@ class EffectSoundManager {
                     console.log('✅ 효과음 재생 성공:', soundType);
                 })
                 .catch((error) => {
-                    // 실제 에러만 로그
-                    if (effectAudio.readyState < 2) {
-                        console.log('⏳ 효과음 로딩 중...', soundType);
-                        // 로딩 완료 후 자동 재생
+                    // ✅ 로딩되지 않은 경우에만 대기
+                    if (effectAudio.readyState === 0) {
+                        // 완전히 로드되지 않은 경우만 canplay 이벤트 대기
                         effectAudio.addEventListener('canplay', () => {
-                            effectAudio.play()
-                                .then(() => console.log('✅ 효과음 재생 성공 (지연):', soundType))
-                                .catch(() => {});
+                            effectAudio.play().catch(() => {});
                         }, { once: true });
-                    } else {
-                        console.warn('⚠️ 효과음 재생 실패:', soundType, error.message);
                     }
+                    // ✅ 프리로드된 오디오는 에러 무시 (브라우저 정책 등으로 인한 일시적 에러)
                 });
         }
     }

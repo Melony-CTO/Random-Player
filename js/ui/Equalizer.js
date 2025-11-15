@@ -148,7 +148,19 @@ setupEventListeners() {
     // ✅ localStorage에서 저장된 설정 로드
     this.loadSettings();
 
-    // 기존 필터들 초기화
+    // ✅ 필터가 이미 존재하면 gain 값만 업데이트 (재연결하지 않음)
+    if (this.filters.length === 6) {
+      console.log('♻️ 기존 이퀄라이저 필터 재사용 - gain 값만 업데이트');
+      for (let i = 0; i < 6; i++) {
+        if (this.filters[i]) {
+          this.filters[i].gain.value = this.gains[i];
+        }
+      }
+      this.updateUISliders();
+      return; // ✅ 재연결하지 않고 종료
+    }
+
+    // ✅ 필터가 없을 때만 새로 생성
     this.filters = [];
 
     // 6개 밴드 필터 생성 (저장된 gains 값 사용)
