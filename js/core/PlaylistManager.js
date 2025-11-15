@@ -12,6 +12,7 @@ class PlaylistManager {
       pop: [],
       'kpop': [],
       'lofi-inst': [],
+      'ambient': [],
       pc: []
     };
     this.currentCategory = 'pop';
@@ -59,6 +60,10 @@ class PlaylistManager {
       const audioPath = t.audio || '';
       return audioPath.includes('lofi-inst/') || t.folder === 'lofi-inst' || t.category === 'lofi-inst' || t.type === 'lofi-inst';
     });
+    const ambientTracks = this.allTracks.filter(t => {
+      const audioPath = t.audio || '';
+      return audioPath.includes('Ambient/') || t.folder === 'ambient' || t.category === 'ambient' || t.type === 'ambient';
+    });
     const pcTracks = this.allTracks.filter(t => {
       const audioPath = t.audio || '';
       return audioPath.includes('pc/') || t.folder === 'pc' || t.category === 'pc' || t.type === 'pc';
@@ -68,6 +73,7 @@ class PlaylistManager {
     console.log('  - kpop:', kpopTracks.length + '곡');
     console.log('  - pop:', popTracks.length + '곡');
     console.log('  - lofi-inst:', lofiTracks.length + '곡');
+    console.log('  - ambient:', ambientTracks.length + '곡');
     console.log('  - pc:', pcTracks.length + '곡');
     
     // 셔플된 플레이리스트 생성
@@ -75,11 +81,13 @@ class PlaylistManager {
     this.shuffledTracks['kpop'] = this.shuffleArray([...kpopTracks]);
     this.shuffledTracks.pop = this.shuffleArray([...popTracks]);
     this.shuffledTracks['lofi-inst'] = this.shuffleArray([...lofiTracks]);
+    this.shuffledTracks['ambient'] = this.shuffleArray([...ambientTracks]);
     this.shuffledTracks.pc = this.shuffleArray([...pcTracks]);
     
     // 모든 트랙이 특정 카테고리에 속하지 않는 경우, 전체를 pop으로 분류
     if (kpopTracks.length === 0 && popTracks.length === 0 && 
-        lofiTracks.length === 0 && pcTracks.length === 0 && this.allTracks.length > 0) {
+        lofiTracks.length === 0 && ambientTracks.length === 0 && 
+        pcTracks.length === 0 && this.allTracks.length > 0) {
       console.log('⚠️ 카테고리 분류 실패, 모든 트랙을 pop으로 분류');
       this.shuffledTracks.pop = this.shuffleArray([...this.allTracks]);
     }
