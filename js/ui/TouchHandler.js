@@ -170,18 +170,16 @@ class TouchHandler {
    * @param {MouseEvent} e - 마우스 이벤트
    * @param {string} zone - 마우스 영역 ('left' 또는 'right')
    */
-  handleMouseStart(e, zone) {
-    this.isAdjustingVolume = true;
-    this.initialY = e.clientY;
-    this.currentZone = zone;
+    handleMouseStart(e, zone) {
+        this.isAdjustingVolume = true;
+        this.initialY = e.clientY;
+        this.currentZone = zone;
 
-    const touchZone = this.uiManager.getElement(zone + 'TouchZone');
-    if (touchZone) {
-      touchZone.classList.add('active');
+        const touchZone = this.uiManager.getElement(zone + 'TouchZone');
+        if (touchZone) {
+            touchZone.classList.add('active');
+        }
     }
-
-    console.log('👆 마우스 시작:', zone, 'Y:', this.initialY);
-  }
 
       /**
        * 마우스 이동 처리
@@ -224,18 +222,16 @@ class TouchHandler {
    * 마우스 종료 처리
    * @param {MouseEvent} e - 마우스 이벤트
    */
-  handleMouseEnd(e) {
-    this.isAdjustingVolume = false;
-    this.currentZone = null;
+        handleMouseEnd(e) {
+        this.isAdjustingVolume = false;
+        this.currentZone = null;
 
-    const leftTouchZone = this.uiManager.getElement('leftTouchZone');
-    const rightTouchZone = this.uiManager.getElement('rightTouchZone');
+        const leftTouchZone = this.uiManager.getElement('leftTouchZone');
+        const rightTouchZone = this.uiManager.getElement('rightTouchZone');
 
-    if (leftTouchZone) leftTouchZone.classList.remove('active');
-    if (rightTouchZone) rightTouchZone.classList.remove('active');
-
-    console.log('👆 마우스 종료');
-  }
+        if (leftTouchZone) leftTouchZone.classList.remove('active');
+        if (rightTouchZone) rightTouchZone.classList.remove('active');
+    }
 
       /**
        * 볼륨 조절
@@ -243,23 +239,47 @@ class TouchHandler {
        * @param {number} sensitivity - 감도
        * @returns {boolean} 볼륨이 실제로 변경되었는지 여부
        */
-      adjustVolume(deltaY, sensitivity) {
+adjustVolume(deltaY, sensitivity) {
         if (this.currentZone === 'left') {
           // 효과음 볼륨 조절
-          if (this.effectSoundManager) {
-            const currentVolume = this.effectSoundManager.getVolume();
-            const newVolume = Math.max(0, Math.min(1, currentVolume + (deltaY * sensitivity)));
+          // ✅ 재생 중인 모든 효과음을 찾아서 볼륨 조절
+          const effectAudios = document.querySelectorAll('audio[id^="effect-"]');
+          let adjusted = false;
+          
+          // ✅ EffectSoundManager에서 현재 재생 중인 효과음 확인
+          const currentSound = this.effectSoundManager?.getCurrentSound();
+          
+          if (currentSound) {
+            const effectAudio = document.getElementById('effect-' + currentSound);
+            
+            if (effectAudio && !effectAudio.paused) {
+              const currentVolume = effectAudio.volume ?? 1.0;
+              const newVolume = Math.max(0, Math.min(1, currentVolume + (deltaY * sensitivity)));
 
-            // ✅ 볼륨이 실제로 변경된 경우에만 업데이트
-            if (Math.abs(newVolume - currentVolume) >= 0.001) {
-              this.effectSoundManager.setVolume(newVolume);
-              this.uiManager.showVolumeOverlay('🔊 ' + Math.round(newVolume * 100) + '%');
-              console.log('👆 효과음 볼륨 조절:', Math.round(newVolume * 100) + '%');
-              return true;
+              if (Math.abs(newVolume - currentVolume) >= 0.001) {
+                effectAudio.volume = newVolume;
+                
+                // effectSoundManager에도 저장
+                if (this.effectSoundManager && this.effectSoundManager.setVolume) {
+                  this.effectSoundManager.setVolume(newVolume);
+                }
+                  
+                this.uiManager.showVolumeOverlay('🔊 ' + Math.round(newVolume * 100) + '%');
+                return true;
+              }
+              return false;
+            } else {
+              console.warn('⚠️ 효과음 요소를 찾을 수 없음');
+              this.uiManager.showVolumeOverlay('🔊 효과음 먼저 재생');
+              return false;
             }
+          } else {
+            console.warn('⚠️ 재생 중인 효과음 없음');
+            this.uiManager.showVolumeOverlay('🔊 효과음 먼저 재생');
             return false;
           }
-        } else if (this.currentZone === 'right') {
+        }
+        else if (this.currentZone === 'right') {
           // 음악 볼륨 조절
           if (!this.audioManager || !this.audioManager.audio) {
             console.warn('⚠️ AudioManager 또는 audio 요소가 없습니다');
@@ -271,11 +291,12 @@ class TouchHandler {
 
             const newVolume = Math.max(0, Math.min(1, currentVolume + (deltaY * sensitivity)));
 
-          // ✅ 볼륨이 실제로 변경된 경우에만 업데이트
+       // ✅ 볼륨이 실제로 변경된 경우에만 업데이트
           if (Math.abs(newVolume - currentVolume) >= 0.001) {
             this.audioManager.audio.volume = newVolume;
+            // ✅ musicVolume도 함께 업데이트 (다음 곡에도 적용)
+            this.audioManager.musicVolume = newVolume;
             this.uiManager.showVolumeOverlay('🎵 ' + Math.round(newVolume * 100) + '%');
-            console.log('👆 음악 볼륨 조절:', Math.round(newVolume * 100) + '%');
             return true;
           }
           return false;
