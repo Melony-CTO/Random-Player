@@ -477,10 +477,10 @@ class UIManager {
    * @param {string} eventName - 이벤트 이름
    * @param {*} data - 이벤트 데이터
    */
-  emit(eventName, data) {
-    const event = new CustomEvent(eventName, { detail: data });
+  emit(eventName, ...args) {
+    const event = new CustomEvent(eventName, { detail: args });
     document.dispatchEvent(event);
-  }
+}
 
   /**
    * 이벤트 리스너 추가
@@ -488,8 +488,15 @@ class UIManager {
    * @param {Function} callback - 콜백 함수
    */
   on(eventName, callback) {
-    document.addEventListener(eventName, callback);
-  }
+    document.addEventListener(eventName, (event) => {
+        if (event.detail && Array.isArray(event.detail)) {
+            // 배열을 펼쳐서 전달
+            callback(...event.detail);
+        } else {
+            callback(event.detail);
+        }
+    });
+}
 
   /**
    * 이벤트 리스너 제거
