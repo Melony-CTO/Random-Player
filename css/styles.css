@@ -862,7 +862,7 @@ footer {
 }
 
 /* 효과음 버튼 호버 개선 */
-.bg-button:not(.loading):hover {
+.bg-button:not(.loading):not(.active):hover {
   background: rgba(255, 255, 255, 1);
   transform: translateY(-2px) scale(1.02);
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
@@ -871,4 +871,36 @@ footer {
 .bg-button:not(.loading):active {
   transform: scale(0.98);
   transition-duration: 0.1s;
+}
+
+/* YouTube를 썸네일 박스 안에서 꽉 차게 크롭 */
+#youtubeContainer {
+  position: absolute;  /* index.html에 있는 인라인 스타일과 같게 맞춤 */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;    /* 넘친 부분은 자르기 = 크롭 */
+  z-index: 1;
+}
+
+#youtubePlayer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 177.78%;      /* 16:9 영상을 16:10 박스보다 가로로 크게 → 위아래 검은줄 안 보이게 */
+  height: 100%;
+  transform: translate(-50%, -50%);
+  border: none;
+  pointer-events: none; /* 원래 index.html에 있던 거 그대로 유지 */
+}
+
+#youtubeContainer {
+  pointer-events: none;  /* 위에 떠도 클릭 막지 말아라 */
+}
+
+/* PC에서 띄우는 유튜브를 가장 뒤로 보냄 */
+#youtubeContainer {
+  z-index: 0 !important;  /* 썸네일(기본), 터치존(z=5), 볼륨(z=10)보다 아래 */
+  pointer-events: none;   /* 터치/드래그는 뒤에 있는 터치존으로 보내기 */
 }
