@@ -5,7 +5,7 @@
 class Visualizer {
     constructor(audioManager) {
         this.audioManager = audioManager;
-        this.isRunning = false; // ✅ isActive → isRunning 으로 변경
+        this.isRunning = false;
         this.animationId = null;
         this.lastFrameTime = 0;
         this.targetFPS = 30;
@@ -38,7 +38,7 @@ class Visualizer {
             const bar = document.createElement('div');
             bar.className = 'visualizer-bar';
             bar.style.height = '2px';
-            bar.style.opacity = '1'; // 완전 불투명
+            bar.style.opacity = '1';
             audioVisualizer.appendChild(bar);
         }
 
@@ -49,6 +49,18 @@ class Visualizer {
      * 비주얼라이저 시작
      */
     start() {
+        // ✅ PC 카테고리 체크 - 어디서 호출되든 PC에서는 작동 안 함
+        const isPcCategory = window.melonyPlayer && 
+                            window.melonyPlayer.playlistManager && 
+                            window.melonyPlayer.playlistManager.currentCategory === 'pc';
+        
+        if (isPcCategory) {
+            console.log('🛑 PC 카테고리에서는 비주얼라이저 사용 안 함');
+            // 혹시 화면에 남아있는 막대는 초기화
+            this.resetBars();
+            return;
+        }
+
         if (this.isRunning) {
             console.log('⚠️ 비주얼라이저 이미 실행 중');
             return;
@@ -80,7 +92,6 @@ class Visualizer {
             this.animationId = null;
         }
 
-        // 바 초기화
         this.resetBars();
     }
 
@@ -103,7 +114,7 @@ class Visualizer {
     }
 
     /**
-     * 비주얼라이저 바 업데이트 (원본 로직 적용)
+     * 비주얼라이저 바 업데이트
      */
     updateBars() {
         const audioVisualizer = document.getElementById('audioVisualizer');
@@ -116,7 +127,6 @@ class Visualizer {
             return;
         }
 
-        // 주파수 데이터 가져오기
         const frequencyData = this.audioManager.getFrequencyData();
 
         if (!frequencyData || frequencyData.length === 0) {
@@ -125,32 +135,28 @@ class Visualizer {
             return;
         }
 
-        // ✨ 원본 로직: 전체 활동성 체크
+        // ✨ 원본 로직
         let totalActivity = 0;
         for (let i = 0; i < frequencyData.length; i++) {
             totalActivity += frequencyData[i];
         }
         const avgActivity = totalActivity / frequencyData.length;
 
-        // 실제 오디오 데이터로 업데이트
         const barCount = bars.length;
 
         for (let barIndex = 0; barIndex < barCount; barIndex++) {
             let value = 0;
 
             if (avgActivity > 2) {
-                // ✨ 원본 로직: 주파수 범위 10%~72% 사용
                 const startFreq = Math.floor(frequencyData.length * 0.10);
                 const endFreq = Math.floor(frequencyData.length * 0.72);
                 const usableRange = endFreq - startFreq;
 
-                // ✨ 원본 로직: 오버랩 1.3배로 부드러운 연결
                 const overlap = 1.3;
                 const barWidth = (usableRange / barCount) * overlap;
                 const myStartFreq = startFreq + Math.floor(barIndex * (usableRange / barCount));
                 const myEndFreq = Math.min(myStartFreq + Math.floor(barWidth), frequencyData.length - 1);
 
-                // ✨ 원본 로직: 최대값과 평균값 계산
                 let maxVal = 0;
                 let sum = 0;
                 let count = 0;
@@ -164,19 +170,16 @@ class Visualizer {
 
                 const avgVal = count > 0 ? sum / count : 0;
 
-                // ✨ 원본 로직: 최대값 80% + 평균값 15%
                 value = (maxVal * 0.80) + (avgVal * 0.15);
-                value *= 1.1; // 전체 1.1배 증폭
+                value *= 1.1;
 
-                // ✨ 원본 로직: 오른쪽 바 증폭 (고음역 강화)
                 if (barIndex >= 30) {
-                    value *= 1.5; // 오른쪽 10개 1.5배
+                    value *= 1.5;
                 } else if (barIndex >= 25) {
-                    value *= 1.2; // 25~29번 1.2배
+                    value *= 1.2;
                 }
             }
 
-            // ✨ 원본 로직: 높이 계산 (2px ~ 30px)
             const height = Math.max(2, Math.min(30, (value / 255) * 28 + 2));
             bars[barIndex].style.height = height + 'px';
             bars[barIndex].style.opacity = '1';
@@ -184,7 +187,7 @@ class Visualizer {
     }
 
     /**
-     * 폴백 애니메이션 (오디오 데이터 없을 때)
+     * 폴백 애니메이션
      */
     updateBarsWithFallback(bars) {
         const time = Date.now() / 1000;
@@ -194,7 +197,7 @@ class Visualizer {
             const height = Math.max(2, wave * 60);
 
             bar.style.height = height + '%';
-            bar.style.opacity = '1'; // 완전 불투명
+            bar.style.opacity = '1';
         });
     }
 
@@ -208,13 +211,10 @@ class Visualizer {
         const bars = audioVisualizer.querySelectorAll('.visualizer-bar');
         bars.forEach(bar => {
             bar.style.height = '2px';
-            bar.style.opacity = '1'; // 완전 불투명
+            bar.style.opacity = '1';
         });
     }
 
-    /**
-     * 재생 토글
-     */
     async togglePlay() {
         if (this.isRunning) {
             this.stop();
@@ -223,9 +223,6 @@ class Visualizer {
         }
     }
 
-    /**
-     * 정리
-     */
     cleanup() {
         this.stop();
         console.log('🎨 Visualizer 정리 완료');
