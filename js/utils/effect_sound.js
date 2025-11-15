@@ -76,7 +76,7 @@ class EffectSoundManager {
         audio.crossOrigin = 'anonymous';
         audio.src = effectPath;
         audio.loop = true;
-        audio.volume = 0; // 무음으로 프리로드
+        audio.volume = this.effectVolume; // ✅ 실제 볼륨으로 프리로드
 
         audio.addEventListener('canplaythrough', () => {
             console.log(`✅ 효과음 프리로드 완료: ${soundType}`);
@@ -87,7 +87,7 @@ class EffectSoundManager {
             console.log(`⚠️ 효과음 프리로드 실패 (무시): ${soundType}`);
         }, { once: true });
 
-        // 메타데이터만 로드 시도
+        // 메타데이터 로드
         audio.load();
     }
 
@@ -148,7 +148,7 @@ class EffectSoundManager {
             }
         }
 
-       // ✅ 프리로드된 오디오 사용
+       // ✅ 프리로드된 오디오 또는 새 오디오 가져오기
         if (!effectAudio) {
             // 프리로드된 오디오가 있으면 재사용
             if (this.preloadedAudio[soundType]) {
@@ -181,7 +181,7 @@ class EffectSoundManager {
             }
         }
 
-        // 새 효과음 재생
+        // ✅ 재생 준비
         effectAudio.volume = this.effectVolume;
         effectAudio.loop = true;
 
@@ -190,19 +190,35 @@ class EffectSoundManager {
         if (this.audioManager) {
             this.audioManager.currentBgSound = soundType;
         }
-            const clickedButton = document.querySelector(`[data-sound="${soundType}"]`);
+
+        const clickedButton = document.querySelector(`[data-sound="${soundType}"]`);
         if (clickedButton) {
             clickedButton.classList.add('active');
         }
 
-                // ✅ 간단하게 재생
-        effectAudio.play()
-            .then(() => {
-                console.log('✅ 효과음 재생:', soundType);
-            })
-            .catch(() => {
-                console.log('⏳ 효과음 로딩 중...', soundType);
-            });
+        // ✅ 재생 (개선된 에러 처리)
+        const playPromise = effectAudio.play();
+
+        if (playPromise !== undefined) {
+            playPromise
+                .then(() => {
+                    console.log('✅ 효과음 재생 성공:', soundType);
+                })
+                .catch((error) => {
+                    // 실제 에러만 로그
+                    if (effectAudio.readyState < 2) {
+                        console.log('⏳ 효과음 로딩 중...', soundType);
+                        // 로딩 완료 후 자동 재생
+                        effectAudio.addEventListener('canplay', () => {
+                            effectAudio.play()
+                                .then(() => console.log('✅ 효과음 재생 성공 (지연):', soundType))
+                                .catch(() => {});
+                        }, { once: true });
+                    } else {
+                        console.warn('⚠️ 효과음 재생 실패:', soundType, error.message);
+                    }
+                });
+        }
     }
 
 /**

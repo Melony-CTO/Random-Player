@@ -702,6 +702,14 @@ error: (e) => {
 
             this.setupAudioEventListeners();
 
+            // ✅ 이퀄라이저 자동 재설정 (저장된 설정 적용)
+            if (this.equalizer) {
+                setTimeout(() => {
+                    this.equalizer.setupEqualizer();
+                    console.log('🎛️ 이퀄라이저 자동 재적용 완료');
+                }, 100);
+            }
+
             // ✅ 제목 포맷 적용
             const formattedTitle = this.titleFormatter.format(track.title || filename, { 
                 category: folder 
@@ -817,7 +825,15 @@ error: (e) => {
             });
 
             this.setupAudioEventListeners();
-        
+
+            // ✅ 이퀄라이저 자동 재설정 (저장된 설정 적용)
+            if (this.equalizer) {
+                setTimeout(() => {
+                    this.equalizer.setupEqualizer();
+                    console.log('🎛️ 이퀄라이저 자동 재적용 완료');
+                }, 100);
+            }
+
             // ✅ 제목 포맷 적용
             const formattedTitle = this.titleFormatter.format(track.title, { 
                 category: track.folder || 'pop' 

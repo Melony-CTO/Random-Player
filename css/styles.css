@@ -454,8 +454,11 @@ body::after {
 
 /* ✅ LOFI-INST 버튼 글자 크기 축소 (한 줄 표시) */
 .category[data-folder="lofi-inst"] {
-  font-size: 13px;
-  letter-spacing: -0.3px;
+  font-size: 13px !important;
+  letter-spacing: -0.5px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 .category.active {
