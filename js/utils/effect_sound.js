@@ -31,25 +31,16 @@ class EffectSoundManager {
         this.setupEventListeners();
     }
 
-    /**
+/**
      * 이벤트 리스너 설정
      */
     setupEventListeners() {
-        const bgButtons = document.querySelectorAll('.bg-button');
-
-        bgButtons.forEach(button => {
-            const soundName = button.getAttribute('data-sound');
-
-            // 클릭 이벤트
-            button.addEventListener('click', () => {
-                this.toggleBgSound(soundName);
-            });
-        });
-
-        console.log('🔊 효과음 버튼 이벤트 설정 완료');
+        // ✅ 이벤트 리스너 설정하지 않음 (UIManager에서 이미 처리)
+        // main.js의 bgSoundToggle 이벤트를 통해 호출됨
+        console.log('🔊 EffectSoundManager - 이벤트는 UIManager에서 처리');
     }
 
-    /**
+/**
      * 효과음 토글
      */
     toggleBgSound(soundType) {
@@ -65,6 +56,10 @@ class EffectSoundManager {
                 effectAudio.currentTime = 0;
             }
             this.currentBgSound = null;
+            // ✅ audioManager에도 동기화
+            if (this.audioManager) {
+                this.audioManager.currentBgSound = null;
+            }
 
             const clickedButton = document.querySelector(`[data-sound="${soundType}"]`);
             if (clickedButton) {
@@ -85,9 +80,15 @@ class EffectSoundManager {
             // 모든 버튼 비활성화
             const buttons = document.querySelectorAll('.bg-button');
             buttons.forEach(btn => btn.classList.remove('active'));
+            
+            // ✅ 상태 초기화
+            this.currentBgSound = null;
+            if (this.audioManager) {
+                this.audioManager.currentBgSound = null;
+            }
         }
 
-        // Audio 요소가 없으면 생성
+       // Audio 요소가 없으면 생성
         if (!effectAudio) {
             effectAudio = document.createElement('audio');
             effectAudio.id = 'effect-' + soundType;
@@ -95,29 +96,9 @@ class EffectSoundManager {
             effectAudio.preload = 'auto';
             effectAudio.crossOrigin = 'anonymous';
 
-            // 루프 강제 설정
-            setTimeout(() => { effectAudio.loop = true; }, 100);
-
-            // ended 이벤트로 루프 강제
-            effectAudio.addEventListener('ended', () => {
-                if (this.currentBgSound === soundType) {
-                    effectAudio.currentTime = 0;
-                    effectAudio.play().catch(error => {
-                        console.log('🔄 효과음 루프 재시작 실패:', error);
-                    });
-                }
-            });
-
-            // 로딩 완료 후 루프 재확인
-            effectAudio.addEventListener('loadeddata', () => {
-                effectAudio.loop = true;
-                console.log('🔊 효과음 루프 설정 확인:', soundType, effectAudio.loop);
-            });
-
             // 효과음 경로
             const effectPath = 'https://melony-music-api.zepplinn25.workers.dev/file/effects/' + encodeURIComponent(actualFileName);
             effectAudio.src = effectPath;
-            console.log('🔊 효과음 경로:', effectPath);
             document.body.appendChild(effectAudio);
 
             // 오류 처리
@@ -130,36 +111,27 @@ class EffectSoundManager {
         effectAudio.volume = this.effectVolume;
         effectAudio.loop = true;
 
-        // 즉시 상태 업데이트
+        // ✅ 즉시 상태 업데이트 (audioManager에도 동기화)
         this.currentBgSound = soundType;
-        const clickedButton = document.querySelector(`[data-sound="${soundType}"]`);
+        if (this.audioManager) {
+            this.audioManager.currentBgSound = soundType;
+        }
+            const clickedButton = document.querySelector(`[data-sound="${soundType}"]`);
         if (clickedButton) {
             clickedButton.classList.add('active');
         }
 
-        // 로딩 상태 확인 후 재생
-        if (effectAudio.readyState >= 2) {
-            effectAudio.play()
-                .then(() => {
-                    console.log('✅ 효과음 재생:', soundType);
-                })
-                .catch(error => {
-                    console.warn('⚠️ 효과음 재생 실패:', error.message);
-                });
-        } else {
-            effectAudio.addEventListener('canplaythrough', () => {
-                effectAudio.play()
-                    .then(() => {
-                        console.log('✅ 효과음 재생:', soundType);
-                    })
-                    .catch(error => {
-                        console.warn('⚠️ 효과음 재생 실패:', error.message);
-                    });
-            }, { once: true });
-        }
+                // ✅ 간단하게 재생
+        effectAudio.play()
+            .then(() => {
+                console.log('✅ 효과음 재생:', soundType);
+            })
+            .catch(() => {
+                console.log('⏳ 효과음 로딩 중...', soundType);
+            });
     }
 
-    /**
+/**
      * 볼륨 설정
      */
     setVolume(volume) {
@@ -170,13 +142,9 @@ class EffectSoundManager {
             const effectAudio = document.getElementById('effect-' + this.currentBgSound);
             if (effectAudio) {
                 effectAudio.volume = this.effectVolume;
-                console.log('🔊 효과음 볼륨 적용:', Math.round(this.effectVolume * 100) + '%');
             }
         }
-
-        console.log('🔊 효과음 볼륨 설정:', Math.round(this.effectVolume * 100) + '%');
     }
-
     /**
      * 볼륨 가져오기
      */
