@@ -27,7 +27,7 @@ class CoverManager {
             'kpop': 'coverlist-pop.json',  // POP 커버 공유
             'lofi-inst': 'coverlist-lofi.json',
             '8090gayo': 'coverlist-8090.json'  // 추후 확장
-        };
+        }; 
 
         // 폴더 매핑
         this.coverFolders = {
@@ -537,3 +537,4 @@ class CoverManager {
 
 // 전역 등록
 window.CoverManager = CoverManager;
+
