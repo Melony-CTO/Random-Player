@@ -23,12 +23,72 @@ class EffectSoundManager {
             'Rain2': 'effect_Rain_Free.m4a'
         };
 
+        // ✅ 효과음 프리로드 캐시
+        this.preloadedAudio = {};
+
         this.init();
     }
 
     init() {
         console.log('🔊 EffectSoundManager 초기화');
         this.setupEventListeners();
+        // ✅ 효과음 프리로드 (백그라운드)
+        this.preloadEffectSounds();
+    }
+
+    /**
+     * ✅ 효과음 프리로드 (비동기)
+     */
+    preloadEffectSounds() {
+        console.log('⏳ 효과음 프리로드 시작...');
+
+        // 가장 자주 사용되는 효과음 우선 로드
+        const prioritySounds = ['Rain', 'Bird', 'Ocean'];
+
+        prioritySounds.forEach(soundType => {
+            setTimeout(() => {
+                this.preloadSound(soundType);
+            }, 500); // 약간의 지연으로 초기 로딩 부담 감소
+        });
+
+        // 나머지 효과음은 나중에 로드
+        const remainingSounds = Object.keys(this.soundFileMap).filter(s => !prioritySounds.includes(s));
+        remainingSounds.forEach((soundType, index) => {
+            setTimeout(() => {
+                this.preloadSound(soundType);
+            }, 2000 + (index * 500));
+        });
+    }
+
+    /**
+     * ✅ 개별 효과음 프리로드
+     */
+    preloadSound(soundType) {
+        if (this.preloadedAudio[soundType]) {
+            return; // 이미 로드됨
+        }
+
+        const actualFileName = this.soundFileMap[soundType] || (soundType + '.m4a');
+        const effectPath = 'https://melony-music-api.zepplinn25.workers.dev/file/effects/' + encodeURIComponent(actualFileName);
+
+        const audio = new Audio();
+        audio.preload = 'auto';
+        audio.crossOrigin = 'anonymous';
+        audio.src = effectPath;
+        audio.loop = true;
+        audio.volume = 0; // 무음으로 프리로드
+
+        audio.addEventListener('canplaythrough', () => {
+            console.log(`✅ 효과음 프리로드 완료: ${soundType}`);
+            this.preloadedAudio[soundType] = audio;
+        }, { once: true });
+
+        audio.addEventListener('error', (e) => {
+            console.log(`⚠️ 효과음 프리로드 실패 (무시): ${soundType}`);
+        }, { once: true });
+
+        // 메타데이터만 로드 시도
+        audio.load();
     }
 
 /**
@@ -88,23 +148,37 @@ class EffectSoundManager {
             }
         }
 
-       // Audio 요소가 없으면 생성
+       // ✅ 프리로드된 오디오 사용
         if (!effectAudio) {
-            effectAudio = document.createElement('audio');
-            effectAudio.id = 'effect-' + soundType;
-            effectAudio.loop = true;
-            effectAudio.preload = 'auto';
-            effectAudio.crossOrigin = 'anonymous';
+            // 프리로드된 오디오가 있으면 재사용
+            if (this.preloadedAudio[soundType]) {
+                effectAudio = this.preloadedAudio[soundType];
+                effectAudio.id = 'effect-' + soundType;
+                if (!effectAudio.parentElement) {
+                    document.body.appendChild(effectAudio);
+                }
+                console.log(`♻️ 프리로드된 효과음 사용: ${soundType}`);
+            } else {
+                // 프리로드되지 않았으면 즉시 생성
+                effectAudio = document.createElement('audio');
+                effectAudio.id = 'effect-' + soundType;
+                effectAudio.loop = true;
+                effectAudio.preload = 'auto';
+                effectAudio.crossOrigin = 'anonymous';
 
-            // 효과음 경로
-            const effectPath = 'https://melony-music-api.zepplinn25.workers.dev/file/effects/' + encodeURIComponent(actualFileName);
-            effectAudio.src = effectPath;
-            document.body.appendChild(effectAudio);
+                // 효과음 경로
+                const effectPath = 'https://melony-music-api.zepplinn25.workers.dev/file/effects/' + encodeURIComponent(actualFileName);
+                effectAudio.src = effectPath;
+                document.body.appendChild(effectAudio);
 
-            // 오류 처리
-            effectAudio.addEventListener('error', () => {
-                console.error('❌ 효과음 파일 로딩 실패:', effectPath);
-            });
+                // 오류 처리
+                effectAudio.addEventListener('error', () => {
+                    console.error('❌ 효과음 파일 로딩 실패:', effectPath);
+                });
+
+                // 캐시에 저장
+                this.preloadedAudio[soundType] = effectAudio;
+            }
         }
 
         // 새 효과음 재생

@@ -357,12 +357,7 @@ this.youtubeManager = new YouTubeManager();
      * ✅ 다음 곡 (디바운스 적용) - 중복 요청 방지
      */
     handleNextTrackDebounced() {
-        // 이미 처리 중이면 무시
-        if (this.isTrackSwitching) {
-            console.log('⏭️ 트랙 전환 중... 대기');
-            return;
-        }
-
+        // ✅ 플래그 체크를 디바운스 이후로 이동
         // 기존 타이머 취소
         if (this.nextTrackDebounceTimer) {
             clearTimeout(this.nextTrackDebounceTimer);
@@ -370,6 +365,11 @@ this.youtubeManager = new YouTubeManager();
 
         // 200ms 디바운스 (더 빠른 반응)
         this.nextTrackDebounceTimer = setTimeout(() => {
+            // ✅ 디바운스 후에 플래그 체크
+            if (this.isTrackSwitching) {
+                console.log('⏭️ 트랙 전환 중... 대기');
+                return;
+            }
             this.playNextTrack();
         }, 200);
     }
@@ -378,12 +378,7 @@ this.youtubeManager = new YouTubeManager();
      * ✅ 이전 곡 (디바운스 적용) - 중복 요청 방지
      */
     handlePreviousTrackDebounced() {
-        // 이미 처리 중이면 무시
-        if (this.isTrackSwitching) {
-            console.log('⏮️ 트랙 전환 중... 대기');
-            return;
-        }
-
+        // ✅ 플래그 체크를 디바운스 이후로 이동
         // 기존 타이머 취소
         if (this.prevTrackDebounceTimer) {
             clearTimeout(this.prevTrackDebounceTimer);
@@ -391,6 +386,11 @@ this.youtubeManager = new YouTubeManager();
 
         // 200ms 디바운스 (더 빠른 반응)
         this.prevTrackDebounceTimer = setTimeout(() => {
+            // ✅ 디바운스 후에 플래그 체크
+            if (this.isTrackSwitching) {
+                console.log('⏮️ 트랙 전환 중... 대기');
+                return;
+            }
             this.playPreviousTrack();
         }, 200);
     }
@@ -518,12 +518,19 @@ error: (e) => {
 
         this.isTrackSwitching = true;
 
+        // ✅ 강제 타임아웃 (5초 후 자동 해제)
+        const safetyTimeout = setTimeout(() => {
+            if (this.isTrackSwitching) {
+                console.log('⚠️ 트랙 전환 타임아웃, 강제 해제');
+                this.isTrackSwitching = false;
+            }
+        }, 5000);
+
         try {
             const nextTrack = this.playlistManager.getNextTrack();
-            
+
             if (!nextTrack) {
                 console.error('❌ 다음 트랙이 없습니다');
-                this.isTrackSwitching = false;
                 return;
             }
 
@@ -536,9 +543,7 @@ error: (e) => {
                 await this.loadTrack(nextTrack);
             }
 
-            // ✅ 로드 성공하면 즉시 플래그 해제
-            this.isTrackSwitching = false;
-            console.log('✅ 트랙 로드 완료, 플래그 해제');
+            console.log('✅ 트랙 로드 완료');
 
             // ✅ 자동 재생 (더 확실하게)
             setTimeout(() => {
@@ -549,8 +554,11 @@ error: (e) => {
 
         } catch (error) {
             console.error('❌ 다음 트랙 재생 실패:', error);
-            // 에러 시에도 플래그 해제
+        } finally {
+            // ✅ 항상 플래그 해제 + 타임아웃 취소
+            clearTimeout(safetyTimeout);
             this.isTrackSwitching = false;
+            console.log('✅ 트랙 전환 플래그 해제');
         }
     }
 
@@ -568,12 +576,19 @@ error: (e) => {
 
         this.isTrackSwitching = true;
 
+        // ✅ 강제 타임아웃 (5초 후 자동 해제)
+        const safetyTimeout = setTimeout(() => {
+            if (this.isTrackSwitching) {
+                console.log('⚠️ 트랙 전환 타임아웃, 강제 해제');
+                this.isTrackSwitching = false;
+            }
+        }, 5000);
+
         try {
             const prevTrack = this.playlistManager.getPreviousTrack();
-            
+
             if (!prevTrack) {
                 console.error('❌ 이전 트랙이 없습니다');
-                this.isTrackSwitching = false;
                 return;
             }
 
@@ -586,9 +601,7 @@ error: (e) => {
                 await this.loadTrack(prevTrack);
             }
 
-            // ✅ 로드 성공하면 즉시 플래그 해제
-            this.isTrackSwitching = false;
-            console.log('✅ 트랙 로드 완료, 플래그 해제');
+            console.log('✅ 트랙 로드 완료');
 
             // ✅ 자동 재생 (더 확실하게)
             setTimeout(() => {
@@ -599,8 +612,11 @@ error: (e) => {
 
         } catch (error) {
             console.error('❌ 이전 트랙 재생 실패:', error);
-            // 에러 시에도 플래그 해제
+        } finally {
+            // ✅ 항상 플래그 해제 + 타임아웃 취소
+            clearTimeout(safetyTimeout);
             this.isTrackSwitching = false;
+            console.log('✅ 트랙 전환 플래그 해제');
         }
     }
 
