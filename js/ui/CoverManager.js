@@ -511,6 +511,28 @@ class CoverManager {
         this.loadedCategories.clear();
         console.log('🖼️ 커버 매니저 정리 완료');
     }
+
+       /**
+     * 모든 애니메이션 정지
+     */
+    stopAnimations() {
+        const thumbnail = document.getElementById('thumbnail');
+        if (thumbnail) {
+            thumbnail.style.animation = 'none';
+        }
+        console.log('🎬 커버 애니메이션 정지');
+    }
+
+    /**
+     * 애니메이션 재시작
+     */
+    resumeAnimations() {
+        const thumbnail = document.getElementById('thumbnail');
+        if (thumbnail) {
+            thumbnail.style.animation = '';
+        }
+        console.log('🎬 커버 애니메이션 재시작');
+    }
 }
 
 // 전역 등록
