@@ -1,9 +1,8 @@
 /**
- * AudioManager - 오디오 재생 및 관리 모듈 (모듈화 대응판)
- * - 단일 <audio>만 유지
- * - 로딩 중 다른 트랙이 오면 이전 로딩 무시
- * - 이벤트 누수 방지
- * - 자동재생 조건 명확화
+ * AudioManager - 오디오 재생 및 관리 모듈 (최적화판)
+ * - ✅ 메모리 누수 방지 강화
+ * - ✅ 리소스 정리 개선
+ * - ✅ 재생 안정성 향상
  */
 class AudioManager {
   constructor(options = {}) {
@@ -36,6 +35,9 @@ class AudioManager {
 
     // 바인딩된 이벤트 목록
     this._boundListeners = null;
+
+    // ✅ 이전 audio 요소 참조 (완전한 정리를 위해)
+    this._previousAudioElements = [];
 
     this.init();
   }
@@ -80,11 +82,49 @@ _normalizeUrl(url) {
   }
 
   /**
-  /**
-   * 현재 audio에 걸린 이벤트와 src를 싹 정리하고
-   * 새 audio로 교체
+   * ✅ 이전 audio 요소 완전히 정리 (메모리 누수 방지 강화)
    */
-  _resetAudioElement() {
+  _cleanupPreviousAudio(audioElement) {
+    if (!audioElement) return;
+
+    try {
+      // 1. 재생 중지
+      audioElement.pause();
+      
+      // 2. src 제거
+      audioElement.removeAttribute('src');
+      audioElement.src = '';
+      
+      // 3. 로드 취소
+      audioElement.load();
+      
+      // 4. 모든 이벤트 리스너 제거 (가능한 모든 이벤트)
+      const events = [
+        'loadstart', 'progress', 'suspend', 'abort', 'error', 'emptied', 'stalled',
+        'loadedmetadata', 'loadeddata', 'canplay', 'canplaythrough', 'playing',
+        'waiting', 'seeking', 'seeked', 'ended', 'durationchange', 'timeupdate',
+        'play', 'pause', 'ratechange', 'resize', 'volumechange'
+      ];
+      
+      events.forEach(eventName => {
+        // 모든 리스너 제거 (클론 후 교체 방식)
+        const clone = audioElement.cloneNode(false);
+        if (audioElement.parentNode) {
+          audioElement.parentNode.replaceChild(clone, audioElement);
+        }
+      });
+      
+      console.log('🧹 이전 audio 요소 정리 완료');
+    } catch (e) {
+      console.warn('⚠️ audio 정리 중 오류:', e);
+    }
+  }
+
+  /**
+   * ✅ 현재 audio에 걸린 이벤트와 src를 싹 정리하고 새 audio로 교체 (개선)
+   */
+ _resetAudioElement() {
+    // 1. 현재 바인딩된 리스너 제거
     if (this._boundListeners && this.audio) {
       for (const [evt, handler] of this._boundListeners) {
         try {
@@ -94,20 +134,33 @@ _normalizeUrl(url) {
       this._boundListeners = null;
     }
 
+    // ✅ 현재 audio의 볼륨을 저장하고, musicVolume도 업데이트
     const prevVolume =
       this.audio && typeof this.audio.volume === 'number'
         ? this.audio.volume
         : this.musicVolume;
+    
+    // ✅ musicVolume 업데이트 (다음에도 이 볼륨 사용)
+    this.musicVolume = prevVolume;
 
-    // ✅ 이전 audio 정리 (메모리 누수 방지)
+    // 2. ✅ 이전 audio 요소를 배열에 보관하고 비동기로 정리
     if (this.audio) {
-      try {
-        this.audio.pause();
-        this.audio.src = '';
-        this.audio.load();
-      } catch (_) {}
+      const oldAudio = this.audio;
+      this._previousAudioElements.push(oldAudio);
+      
+      // 즉시 정리 시도
+      this._cleanupPreviousAudio(oldAudio);
+      
+      // ✅ 일정 시간 후 배열에서도 제거 (메모리 관리)
+      setTimeout(() => {
+        const index = this._previousAudioElements.indexOf(oldAudio);
+        if (index > -1) {
+          this._previousAudioElements.splice(index, 1);
+        }
+      }, 5000);
     }
 
+    // 3. 새 Audio 객체 생성
     const a = new Audio();
     a.crossOrigin = 'anonymous';
     a.preload = 'auto';
@@ -116,9 +169,11 @@ _normalizeUrl(url) {
 
     this.audio = a;
     
-    // ✅ source는 null로 만들되, 다음 재생 시 재연결되도록 플래그만 해제
+    // 4. ✅ source는 null로 만들되, 다음 재생 시 재연결되도록 플래그만 해제
     this.source = null;
     this.sourceConnected = false;
+
+    console.log('🔄 Audio 요소 리셋 완료');
   }
 
   /**
@@ -145,8 +200,6 @@ _normalizeUrl(url) {
 
   /**
    * 트랙 로드 (기본형)
-   * - 모듈화해서 다른 곳에서 부를 때는 이 함수를 먼저 호출하고
-   *   성공하면 play()를 부르는 식으로 사용
    */
   loadTrack(url, track) {
     return this.loadTrackEnhanced(url, track, { autoPlay: false });
@@ -171,20 +224,22 @@ _normalizeUrl(url) {
     // 상태 표시
     this.setLoadingState(true, track);
 
-    // audio 구성
+   // audio 구성
     const finalUrl = this._normalizeUrl(url);
     this.audio.src = finalUrl;
 
     this.audio.preload = 'auto';
     this.audio.crossOrigin = 'anonymous';
+    // ✅ 저장된 볼륨 적용
     this.audio.volume = this.musicVolume;
+    console.log('🔊 볼륨 설정:', Math.round(this.musicVolume * 100) + '%');
     this.audio.load();
 
-    const timeoutMs = Number(options.timeoutMs) || 15000;
+    const timeoutMs = Number(options.timeoutMs) || 10000;
     let resolved = false;
     let rejected = false;
     let retried = false;
-    let stalledCount = 0; // ✅ stalled 카운터
+    let stalledCount = 0;
     let timer = null;
 
     const onLoadStart = () => {
@@ -196,6 +251,22 @@ _normalizeUrl(url) {
         title: track.title,
         duration: this.audio.duration,
       });
+            // ✅ 메타데이터 로드되면 즉시 성공 처리 (가장 빠른 재생)
+      if (myLoadId !== this.currentLoadId) return;
+      if (resolved || rejected) return;
+      
+      console.log('✅ 메타데이터 로드 완료 - 즉시 재생 가능');
+      resolved = true;
+      cleanup();
+      this.setLoadingState(false, track);
+      
+      // 300ms 후 재생 (버퍼링 최소화)
+      setTimeout(() => {
+        if (options.autoPlay !== false && this.hasUserInteracted) {
+          this.play().catch((e) => console.log('자동재생 실패:', e?.message));
+        }
+      }, 300);
+    
     };
 
     const onCanPlay = () => {
@@ -222,19 +293,24 @@ _normalizeUrl(url) {
 
     const onProgress = () => {
       if (myLoadId !== this.currentLoadId) return;
-      const minReadyState = options.minReadyState ?? 2;
-      if (
-        this.audio.readyState >= minReadyState &&
-        !resolved &&
-        !rejected
-      ) {
-        console.log('📶 progress에서 강제 성공 (readyState=', this.audio.readyState, ')');
+      
+      // ✅ readyState 1 (HAVE_METADATA)만 있어도 즉시 성공 처리
+      const minReadyState = 1;
+      
+      if (this.audio.readyState >= minReadyState && !resolved && !rejected) {
+        console.log('📶 progress에서 성공 (readyState=' + this.audio.readyState + ', networkState=' + this.audio.networkState + ')');
         resolved = true;
         cleanup();
         this.setLoadingState(false, track);
-        if (options.autoPlay !== false && this.hasUserInteracted) {
-          this.play().catch((e) => console.log('자동재생 실패:', e?.message));
-        }
+        
+        // ✅ readyState가 1이면 조금 더 기다렸다가 재생 시도
+        const playDelay = this.audio.readyState >= 2 ? 0 : 500;
+        
+        setTimeout(() => {
+          if (options.autoPlay !== false && this.hasUserInteracted) {
+            this.play().catch((e) => console.log('자동재생 실패:', e?.message));
+          }
+        }, playDelay);
       }
     };
 
@@ -242,9 +318,11 @@ _normalizeUrl(url) {
       if (myLoadId !== this.currentLoadId) return;
       stalledCount++;
       
-      // ✅ 5번 이상 stalled면 포기 (3 → 5로 증가)
-      if (stalledCount > 5) {
-        console.error('❌ stalled 5회 초과, 로딩 중단');
+      console.warn('⏸️ stalled 감지 (' + stalledCount + '/3) - 복구 시도 중');
+      
+      // ✅ 5회 이상 stalled면 포기 (3회로 감소)
+      if (stalledCount > 3) {
+        console.error('❌ stalled 3회 초과, 로딩 중단');
         if (!resolved && !rejected) {
           rejected = true;
           cleanup();
@@ -252,12 +330,36 @@ _normalizeUrl(url) {
         return;
       }
       
-      console.warn('⏸️ stalled 감지 (' + stalledCount + '/5) - 복구 대기 중');
+      // ✅ readyState가 충분하면 강제 성공 처리
+      if (this.audio.readyState >= 2) {
+        console.log('✅ stalled이지만 readyState 충분, 강제 성공');
+        resolved = true;
+        cleanup();
+        this.setLoadingState(false, track);
+        if (options.autoPlay !== false && this.hasUserInteracted) {
+          this.play().catch((e) => console.log('자동재생 실패:', e?.message));
+        }
+        return;
+      }
+      
+      // ✅ load() 재호출하지 않고, 대기만 함 (브라우저가 자체적으로 복구 시도)
+      console.log('⏳ 네트워크 복구 대기 중...');
     };
 
     const onSuspend = () => {
       if (myLoadId !== this.currentLoadId) return;
       console.warn('⏸️ suspend 감지 - 네트워크 대기 중');
+      
+      // ✅ readyState가 충분하면 강제 성공 처리
+      if (this.audio.readyState >= 2 && !resolved && !rejected) {
+        console.log('✅ suspend이지만 readyState 충분, 강제 성공');
+        resolved = true;
+        cleanup();
+        this.setLoadingState(false, track);
+        if (options.autoPlay !== false && this.hasUserInteracted) {
+          this.play().catch((e) => console.log('자동재생 실패:', e?.message));
+        }
+      }
     };
 
     const onError = (e) => {
@@ -294,7 +396,7 @@ _normalizeUrl(url) {
       }
     };
 
-    // ✅ 타임아웃을 30초로 늘림 (네트워크가 느릴 수 있음)
+    // ✅ 타임아웃 10초
     timer = setTimeout(() => {
       if (myLoadId !== this.currentLoadId) return;
       if (resolved || rejected) return;
@@ -306,15 +408,21 @@ _normalizeUrl(url) {
       };
       console.warn('⏰ 로딩 지연:', diag);
 
-      // ✅ readyState가 2 이상이면 강제로 성공 처리
-      if (this.audio.readyState >= 2) {
-        console.log('✅ readyState 충분, 강제 성공 처리');
+      // ✅ readyState가 1 이상이면 강제로 성공 처리 (더 관대하게)
+      if (this.audio.readyState >= 1) {
+        console.log('✅ readyState 충분 (' + this.audio.readyState + '), 강제 성공 처리');
         resolved = true;
         cleanup();
         this.setLoadingState(false, track);
-        if (options.autoPlay !== false && this.hasUserInteracted) {
-          this.play().catch((e) => console.log('자동재생 실패:', e?.message));
-        }
+        
+        // readyState에 따라 재생 지연 시간 조정
+        const playDelay = this.audio.readyState >= 2 ? 0 : 1000;
+        
+        setTimeout(() => {
+          if (options.autoPlay !== false && this.hasUserInteracted) {
+            this.play().catch((e) => console.log('자동재생 실패:', e?.message));
+          }
+        }, playDelay);
         return;
       }
 
@@ -324,86 +432,61 @@ _normalizeUrl(url) {
         try {
           this.audio.load();
         } catch (_) {}
-        // 두 번째 타이머 (10초 더 대기)
-        setTimeout(() => {
-          if (myLoadId !== this.currentLoadId) return;
-          if (!resolved && !rejected) {
-            // ✅ readyState 다시 확인
-            if (this.audio.readyState >= 2) {
-              console.log('✅ 재시도 후 readyState 충분, 강제 성공');
-              resolved = true;
-              cleanup();
-              this.setLoadingState(false, track);
-              return;
-            }
-            
-            console.error('❌ 오디오 로딩 타임아웃(재시도 실패)');
-            rejected = true;
-            cleanup();
-          }
-        }, 10000);
-        return;
+      } else {
+        console.error('❌ 타임아웃 최종 실패');
+        rejected = true;
+        cleanup();
+        this.setLoadingState(false, track);
       }
+    }, timeoutMs);
 
-      console.error('❌ 오디오 로딩 타임아웃');
-      rejected = true;
-      cleanup();
-    }, 30000);
-      }
-
-      /**
-       * 재생
-       */
-      async play() {
-        if (!this.audio?.src) return;
-        try {
-          // readyState가 0이면 다시 로딩
-          if (this.audio.readyState === 0) {
-            this.audio.load();
-          }
-
-          this.hasUserInteracted = true;
-
-          // ✅ AudioContext 연결 (재생 전 - 핵심!)
-          if (!this.sourceConnected) {
-            this.connectAudioSource();
-          }
-
-          // ✅ AudioContext Resume (iOS/Safari 대응)
-          if (this.audioContext && this.audioContext.state === 'suspended') {
-            await this.audioContext.resume();
-            console.log('🎛️ AudioContext 재개됨');
-          }
-
-          // 소리 키우기 전 무음 재생 → 페이드인
-          this.audio.volume = 0;
-          await this.audio.play();
-          this.isPlaying = true;
-
-          await this.fadeInAudio(400);
-          console.log('🎵 재생 시작');
-          
-          // ✅ 비주얼라이저 시작 (전역 melonyPlayer를 통해)
-          if (window.melonyPlayer && window.melonyPlayer.visualizer) {
-            window.melonyPlayer.visualizer.start();
-            console.log('🎨 비주얼라이저 시작됨');
-          }
-          
-          // ✅ 이퀄라이저 재연결 (트랙 변경 시)
-          if (window.melonyPlayer && window.melonyPlayer.equalizer && window.melonyPlayer.equalizer.filters.length > 0) {
-            window.melonyPlayer.equalizer.setupEqualizer();
-            console.log('🎛️ 이퀄라이저 재연결됨');
-          }
-        } catch (error) {
-          if (error.name === 'NotAllowedError') {
-            console.log('🔇 자동재생 정책으로 인해 재생 차단');
-            this.hasUserInteracted = false;
-            return;
-          }
-          console.error('재생 실패:', error);
-          throw error;
+    return new Promise((resolve, reject) => {
+      const checkInterval = setInterval(() => {
+        if (resolved) {
+          clearInterval(checkInterval);
+          resolve();
+        } else if (rejected) {
+          clearInterval(checkInterval);
+          reject(new Error('오디오 로딩 실패'));
         }
+      }, 100);
+    });
+  }
+
+  /**
+   * 재생
+   */
+  async play() {
+    if (!this.audio || !this.audio.src) {
+      console.warn('⚠️ 재생할 오디오가 없습니다');
+      return;
+    }
+
+    // ✅ 이미 재생 중이면 무시
+    if (this.isPlaying && !this.audio.paused) {
+      console.log('⚠️ 이미 재생 중입니다');
+      return;
+    }
+
+    try {
+      // AudioContext resume
+      this.resumeAudioContext();
+
+      await this.audio.play();
+      this.isPlaying = true;
+      console.log('▶️ 재생 시작');
+
+      // ✅ 비주얼라이저 시작
+      if (window.melonyPlayer && window.melonyPlayer.visualizer) {
+        window.melonyPlayer.visualizer.start();
+        console.log('🎨 비주얼라이저 시작됨');
       }
+    } catch (error) {
+      console.error('재생 실패:', error);
+      this.isPlaying = false;
+      throw error;
+    }
+  }
 
   /**
    * 일시정지
@@ -564,21 +647,23 @@ _normalizeUrl(url) {
       console.log('✅ 로딩 완료:', track ? track.title : 'unknown');
     }
   }
-    /**
-     * 재생 토글 (추가!)
-     */
-    async togglePlay() {
-        if (!this.audio?.src) {
-            console.log('⚠️ 오디오 소스가 없습니다');
-            return;
-        }
 
-        if (this.isPlaying) {
-            this.pause();
-        } else {
-            await this.play();
-        }
+  /**
+   * 재생 토글
+   */
+  async togglePlay() {
+    if (!this.audio?.src) {
+      console.log('⚠️ 오디오 소스가 없습니다');
+      return;
     }
+
+    if (this.isPlaying) {
+      this.pause();
+    } else {
+      await this.play();
+    }
+  }
+
   /**
    * 현재 재생 시간 가져오기
    */
@@ -652,13 +737,27 @@ _normalizeUrl(url) {
   }
 
   /**
-   * 오디오 완전 리셋
+   * ✅ 오디오 완전 리셋 (개선)
    */
   resetAudio() {
     console.log('🔄 오디오 리셋 시작');
+    
+    // 1. 오디오 소스 해제
     this.disconnectAudioSource();
+    
+    // 2. Audio 요소 리셋
     this._resetAudioElement();
 
+    // 3. ✅ 이전 audio 요소들 모두 정리
+    if (this._previousAudioElements.length > 0) {
+      console.log('🧹 이전 audio 요소들 정리:', this._previousAudioElements.length);
+      this._previousAudioElements.forEach(audio => {
+        this._cleanupPreviousAudio(audio);
+      });
+      this._previousAudioElements = [];
+    }
+
+    // 4. AudioContext 정리
     if (this.audioContext) {
       try {
         this.audioContext.close();
@@ -710,6 +809,7 @@ _normalizeUrl(url) {
       autoPlayReason: this.autoPlayReason,
       duration: this.audio?.duration,
       currentTime: this.audio?.currentTime,
+      previousAudioCount: this._previousAudioElements.length
     });
   }
 
