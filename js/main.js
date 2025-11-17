@@ -684,11 +684,9 @@ error: (e) => {
                 this.audioManager.connectAudioSource();
             }
 
-            this.setupAudioEventListeners();
-
             // ✅ 제목 포맷 적용
-            const formattedTitle = this.titleFormatter.format(track.title || filename, { 
-                category: folder 
+            const formattedTitle = this.titleFormatter.format(track.title || filename, {
+                category: folder
             });
             this.uiManager.updateTitle(formattedTitle);
 
@@ -708,12 +706,12 @@ error: (e) => {
 
         } catch (error) {
             console.error('❌ 트랙 로드 실패:', error);
-            
+
             // ✅ 로딩 실패 시 자동으로 다음 곡 시도 (무한 루프 방지)
             if (!this._skipFailedTrack) {
                 console.log('🔄 로딩 실패, 다음 곡으로 자동 전환...');
                 this._skipFailedTrack = true;
-                
+
                 setTimeout(() => {
                     this.playNextTrack().finally(() => {
                         // 다음 트랙 로드 후 플래그 해제
@@ -726,8 +724,12 @@ error: (e) => {
                 console.error('❌ 연속 로딩 실패, 자동 전환 중단');
                 this.uiManager.showError('트랙 로드 실패: ' + track.title);
             }
-            
+
             throw error;
+        } finally {
+            // ✅ 성공/실패 여부와 관계없이 이벤트 리스너를 항상 설정
+            // 이렇게 해야 'ended' 이벤트가 항상 처리되어 자동 재생이 계속됨
+            this.setupAudioEventListeners();
         }
     }
 
@@ -800,17 +802,18 @@ error: (e) => {
                 autoPlay: false
             });
 
-            this.setupAudioEventListeners();
-        
             // ✅ 제목 포맷 적용
-            const formattedTitle = this.titleFormatter.format(track.title, { 
-                category: track.folder || 'pop' 
+            const formattedTitle = this.titleFormatter.format(track.title, {
+                category: track.folder || 'pop'
             });
             this.uiManager.updateTitle(formattedTitle);
 
         } catch (error) {
             console.error('❌ 로컬 트랙 로드 실패:', error);
             this.uiManager.showError('로컬 파일 로드 실패: ' + error.message);
+        } finally {
+            // ✅ 성공/실패 여부와 관계없이 이벤트 리스너를 항상 설정
+            this.setupAudioEventListeners();
         }
     }
 }
