@@ -317,19 +317,24 @@ _normalizeUrl(url) {
     const onStalled = () => {
       if (myLoadId !== this.currentLoadId) return;
       stalledCount++;
-      
+
       console.warn('⏸️ stalled 감지 (' + stalledCount + '/3) - 복구 시도 중');
-      
-      // ✅ 5회 이상 stalled면 포기 (3회로 감소)
+
+      // ✅ 3회 이상 stalled면 error 이벤트 강제 발생 (다음 곡으로 전환)
       if (stalledCount > 3) {
-        console.error('❌ stalled 3회 초과, 로딩 중단');
+        console.error('❌ stalled 3회 초과, 로딩 포기');
         if (!resolved && !rejected) {
           rejected = true;
           cleanup();
+          this.setLoadingState(false, track);
+
+          // ✅ error 이벤트 강제 발생 (main.js의 error 핸들러가 다음 곡 재생)
+          const errorEvent = new Event('error');
+          this.audio.dispatchEvent(errorEvent);
         }
         return;
       }
-      
+
       // ✅ readyState가 충분하면 강제 성공 처리
       if (this.audio.readyState >= 2) {
         console.log('✅ stalled이지만 readyState 충분, 강제 성공');
@@ -341,7 +346,7 @@ _normalizeUrl(url) {
         }
         return;
       }
-      
+
       // ✅ load() 재호출하지 않고, 대기만 함 (브라우저가 자체적으로 복구 시도)
       console.log('⏳ 네트워크 복구 대기 중...');
     };
@@ -649,12 +654,32 @@ _normalizeUrl(url) {
   }
 
   /**
-   * 재생 토글
+   * 재생 토글 (개선: stalled 상태 복구)
    */
   async togglePlay() {
     if (!this.audio?.src) {
       console.log('⚠️ 오디오 소스가 없습니다');
       return;
+    }
+
+    // ✅ stalled/error 상태 감지 및 복구
+    const isStalled = this.audio.networkState === 2 && this.audio.readyState === 0;
+    const hasError = this.audio.error;
+
+    if (isStalled || hasError) {
+      console.warn('⚠️ 오디오가 멈춤 상태 - 복구 시도 또는 다음 곡 전환 필요', {
+        networkState: this.audio.networkState,
+        readyState: this.audio.readyState,
+        error: hasError
+      });
+
+      // ✅ 복구 불가능한 상태면 error 이벤트 발생 (main.js에서 다음 곡 재생)
+      if (hasError || this.audio.readyState === 0) {
+        console.error('❌ 복구 불가능, 다음 곡으로 전환 필요');
+        const errorEvent = new Event('error');
+        this.audio.dispatchEvent(errorEvent);
+        return;
+      }
     }
 
     if (this.isPlaying) {

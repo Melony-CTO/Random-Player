@@ -354,9 +354,23 @@ this.youtubeManager = new YouTubeManager();
     }
 
     /**
-     * ✅ 다음 곡 (디바운스 적용) - 중복 요청 방지
+     * ✅ 다음 곡 (디바운스 적용) - 중복 요청 방지, stalled 상태 감지
      */
     handleNextTrackDebounced() {
+        // ✅ stalled 상태면 즉시 전환 (디바운스 없이)
+        const audio = this.audioManager.audio;
+        if (audio) {
+            const isStalled = audio.networkState === 2 && audio.readyState === 0;
+            const hasError = audio.error;
+
+            if (isStalled || hasError) {
+                console.warn('⚠️ stalled/error 상태 감지, 즉시 다음 곡 전환');
+                this.isTrackSwitching = false; // 플래그 해제하고 강제 전환
+                this.playNextTrack();
+                return;
+            }
+        }
+
         // 이미 처리 중이면 무시
         if (this.isTrackSwitching) {
             console.log('⏭️ 트랙 전환 중... 대기');
@@ -453,44 +467,78 @@ this.youtubeManager = new YouTubeManager();
             canplay: () => {
                 console.log('✅ 재생 가능');
                 this.uiManager.updateThumbnailState(this.audioManager.isPlaying ? 'playing' : 'paused');
+
+                // ✅ stalled 타이머 취소 (정상 재생 가능)
+                if (this._stalledTimer) {
+                    clearTimeout(this._stalledTimer);
+                    this._stalledTimer = null;
+                }
+            },
+
+            stalled: () => {
+                console.warn('⏸️ stalled 이벤트 - 10초 후 자동 복구 시도');
+
+                // ✅ 기존 타이머 취소
+                if (this._stalledTimer) {
+                    clearTimeout(this._stalledTimer);
+                }
+
+                // ✅ 10초 후에도 stalled면 다음 곡으로
+                this._stalledTimer = setTimeout(() => {
+                    const audio = this.audioManager.audio;
+                    if (!audio) return;
+
+                    const isStillStalled = audio.networkState === 2 && audio.readyState === 0;
+
+                    if (isStillStalled) {
+                        console.error('❌ 10초 경과, stalled 상태 지속 - 다음 곡으로 전환');
+                        this.playNextTrack();
+                    }
+                }, 10000);
             },
 
 error: (e) => {
                 const currentSrc = audio.currentSrc || audio.src;
                 const errorCode = audio.error?.code;
-                
+
+                // ✅ stalled 타이머 취소
+                if (this._stalledTimer) {
+                    clearTimeout(this._stalledTimer);
+                    this._stalledTimer = null;
+                }
+
                 console.log('🔍 오디오 에러 감지:', {
                     code: errorCode,
                     src: currentSrc,
                     readyState: audio.readyState,
                     isTrackSwitching: this.isTrackSwitching
                 });
-                
+
                 // ✅ src가 비어있으면 무시
                 if (!currentSrc || currentSrc === '' || currentSrc === 'about:blank') {
                     console.log('⚠️ 빈 src 에러 무시');
                     return;
                 }
-                
+
                 // ✅ 트랙 전환 중 발생하는 에러는 무시
                 if (this.isTrackSwitching) {
                     console.log('⚠️ 트랙 전환 중 에러 무시');
                     return;
                 }
-                
+
                 // ✅ PC 카테고리: blob URL + readyState >= 1이면 무시
                 if (currentSrc.startsWith('blob:') && audio.readyState >= 1) {
                     console.log('⚠️ PC 카테고리 - 메타데이터 로드 후 에러 무시 (재생 가능)');
                     return;
                 }
-                
+
                 // ✅ 실제 로딩 실패만 처리
                 console.error('❌ 실제 오디오 오류:', {
                     code: errorCode,
                     message: audio.error?.message,
                     src: currentSrc
                 });
-                
+
                 setTimeout(() => {
                     console.log('🔄 오류로 인한 다음 곡 자동 전환');
                     this.playNextTrack();
