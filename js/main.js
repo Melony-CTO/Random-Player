@@ -403,12 +403,19 @@ this.youtubeManager = new YouTubeManager();
 
         const audio = this.audioManager.audio;
 
-        // ✅ 기존 이벤트 리스너 제거 (중복 방지)
-        if (this._audioEventHandlers) {
+        // ✅ 이전 audio 요소에서 이벤트 리스너 제거 (중복 방지)
+        if (this._audioEventHandlers && this._previousAudio) {
             Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
-                audio.removeEventListener(event, handler);
+                try {
+                    this._previousAudio.removeEventListener(event, handler);
+                } catch (e) {
+                    // 이미 제거되었거나 없는 경우 무시
+                }
             });
         }
+
+        // 현재 audio 요소 참조 저장
+        this._previousAudio = audio;
 
         // 새 이벤트 핸들러 정의
         this._audioEventHandlers = {
@@ -436,7 +443,12 @@ this.youtubeManager = new YouTubeManager();
 
             ended: () => {
                 console.log('🔚 트랙 종료 - 자동으로 다음 곡 재생');
-                this.playNextTrack();
+                // ✅ 트랙 전환 중이 아닐 때만 다음 곡 재생
+                if (!this.isTrackSwitching) {
+                    this.playNextTrack();
+                } else {
+                    console.log('⚠️ 트랙 전환 중이므로 자동 재생 건너뜀');
+                }
             },
 
             timeupdate: () => {
@@ -502,6 +514,9 @@ error: (e) => {
         Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
             audio.addEventListener(event, handler);
         });
+
+        // ✅ ended 이벤트가 제대로 등록되었는지 확인
+        console.log('✅ 오디오 이벤트 리스너 등록 완료 (ended 포함)');
     }
 
     /**
@@ -1049,13 +1064,30 @@ const audioFiles = Array.from(files).filter(file => {
         // Blob URL 정리
         this.cleanupBlobUrls();
 
-        // 오디오 이벤트 리스너 제거
+        // ✅ 이전 audio 요소의 이벤트 리스너 제거
+        if (this._audioEventHandlers && this._previousAudio) {
+            Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
+                try {
+                    this._previousAudio.removeEventListener(event, handler);
+                } catch (e) {
+                    // 이미 제거되었거나 없는 경우 무시
+                }
+            });
+        }
+
+        // 현재 audio 요소의 이벤트 리스너 제거
         if (this._audioEventHandlers && this.audioManager?.audio) {
             Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
-                this.audioManager.audio.removeEventListener(event, handler);
+                try {
+                    this.audioManager.audio.removeEventListener(event, handler);
+                } catch (e) {
+                    // 이미 제거되었거나 없는 경우 무시
+                }
             });
             this._audioEventHandlers = null;
         }
+
+        this._previousAudio = null;
 
         // 각 매니저 정리
         if (this.audioManager) this.audioManager.reset();
