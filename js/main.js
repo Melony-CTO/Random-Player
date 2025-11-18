@@ -166,30 +166,38 @@ this.youtubeManager = new YouTubeManager();
 
         try {
             // ✅ 1. 커버 데이터 먼저 로딩 (트랙보다 우선)
+            let coverLoadSuccess = false;
             try {
                 console.log('🖼️ 커버 데이터 로딩 시작 (우선)');
 
-                // POP 커버 먼저 로드 (동기 - 반드시 기다림)
-                const popCoverSuccess = await this.coverManager.loadCoversByCategory('pop');
-                
+                // ✅ POP 커버 먼저 로드 (타임아웃 처리)
+                const popCoverPromise = Promise.race([
+                    this.coverManager.loadCoversByCategory('pop'),
+                    new Promise((resolve) => setTimeout(() => resolve(false), 25000)) // 25초 타임아웃
+                ]);
+
+                const popCoverSuccess = await popCoverPromise;
+
                 if (!popCoverSuccess) {
-                    console.error('❌ POP 커버 로딩 실패, 기본 커버 사용');
+                    console.warn('⚠️ POP 커버 로딩 실패 또는 타임아웃, 기본 커버 사용');
                     this.coverManager.generateDefaultCovers();
                 } else {
                     console.log('✅ POP 커버 로드 성공');
+                    coverLoadSuccess = true;
+
+                    // KPOP 커버도 로드 (POP 커버 공유)
+                    await this.coverManager.loadCoversByCategory('kpop').catch(() => {
+                        console.log('⚠️ KPOP 커버 로드 실패');
+                    });
                 }
 
-                // KPOP 커버도 로드 (POP 커버 공유)
-                await this.coverManager.loadCoversByCategory('kpop');
-
-                // LOFI 커버 백그라운드 로드 (비동기)
+                // ✅ LOFI/Ambient 커버 백그라운드 로드 (비동기, 에러 무시)
                 this.coverManager.loadCoversByCategory('lofi-inst').catch(() => {
-                    console.log('⚠️ LOFI 커버 로드 실패');
+                    console.log('⚠️ LOFI 커버 로드 실패 (무시)');
                 });
 
-                // Ambient 커버 백그라운드 로드 (비동기)
                 this.coverManager.loadCoversByCategory('ambient').catch(() => {
-                    console.log('⚠️ Ambient 커버 로드 실패');
+                    console.log('⚠️ Ambient 커버 로드 실패 (무시)');
                 });
 
                 console.log('✅ 커버 데이터 초기 로딩 완료');
@@ -199,24 +207,50 @@ this.youtubeManager = new YouTubeManager();
                 this.coverManager.generateDefaultCovers();
             }
 
-            // ✅ 2. 플레이리스트 데이터 로드
-            const popData = await this.api.get('/playlist-pop.json').catch(() => {
-                console.warn('POP 플레이리스트 로드 실패 → 기본값 사용');
+            // ✅ 2. 플레이리스트 데이터 로드 (타임아웃 처리)
+            console.log('📊 플레이리스트 데이터 로딩 시작...');
+
+            // ✅ POP 플레이리스트 (타임아웃 25초)
+            const popDataPromise = Promise.race([
+                this.api.get('/playlist-pop.json'),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 25000))
+            ]);
+
+            const popData = await popDataPromise.catch((error) => {
+                console.warn('⚠️ POP 플레이리스트 로드 실패 →', error.message);
                 return { tracks: [] };
             });
 
-            const kpopData = await this.api.get('/playlist-kpop.json').catch(() => {
-                console.warn('KPOP 플레이리스트 로드 실패 → 기본값 사용');
+            // ✅ KPOP 플레이리스트 (타임아웃 25초)
+            const kpopDataPromise = Promise.race([
+                this.api.get('/playlist-kpop.json'),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 25000))
+            ]);
+
+            const kpopData = await kpopDataPromise.catch((error) => {
+                console.warn('⚠️ KPOP 플레이리스트 로드 실패 →', error.message);
                 return { tracks: [] };
             });
 
-           const lofiData = await this.api.get('/playlist-lofi-inst.json').catch(() => {
-                console.warn('LOFI-INST 플레이리스트 로드 실패 → 기본값 사용');
+            // ✅ LOFI 플레이리스트 (백그라운드, 에러 무시)
+            const lofiDataPromise = Promise.race([
+                this.api.get('/playlist-lofi-inst.json'),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 25000))
+            ]);
+
+            const lofiData = await lofiDataPromise.catch((error) => {
+                console.warn('⚠️ LOFI-INST 플레이리스트 로드 실패 (무시) →', error.message);
                 return { tracks: [] };
             });
 
-            const ambientData = await this.api.get('/playlist-ambient.json').catch(() => {
-                console.warn('Ambient 플레이리스트 로드 실패 → 기본값 사용');
+            // ✅ Ambient 플레이리스트 (백그라운드, 에러 무시)
+            const ambientDataPromise = Promise.race([
+                this.api.get('/playlist-ambient.json'),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 25000))
+            ]);
+
+            const ambientData = await ambientDataPromise.catch((error) => {
+                console.warn('⚠️ Ambient 플레이리스트 로드 실패 (무시) →', error.message);
                 return { tracks: [] };
             });
 
@@ -281,17 +315,25 @@ this.youtubeManager = new YouTubeManager();
             const firstTrack = this.playlistManager.getTrackByIndex(0);
             if (firstTrack) {
                 console.log('🔥 즉시 첫 곡 로드:', firstTrack.title);
-                await this.loadTrack(firstTrack);
 
-                this.audioManager.hasUserInteracted = true;
+                try {
+                    await this.loadTrack(firstTrack);
 
-                setTimeout(() => {
-                    if (this.audioManager.audio.src && this.audioManager.audio.readyState >= 2) {
-                        this.audioManager.setAutoPlay('초기 로드');
-                        this.audioManager.attemptAutoPlay();
-                        console.log('✅ 첫 곡 자동재생 시도');
-                    }
-                }, 300);
+                    this.audioManager.hasUserInteracted = true;
+
+                    setTimeout(() => {
+                        if (this.audioManager.audio.src && this.audioManager.audio.readyState >= 2) {
+                            this.audioManager.setAutoPlay('초기 로드');
+                            this.audioManager.attemptAutoPlay();
+                            console.log('✅ 첫 곡 자동재생 시도');
+                        }
+                    }, 300);
+                } catch (error) {
+                    console.error('❌ 첫 곡 로드 실패:', error);
+                    console.log('⚠️ 플레이어는 준비되었습니다. PC 버튼을 눌러 로컬 파일을 재생하세요.');
+                }
+            } else {
+                console.warn('⚠️ 로드할 트랙이 없습니다. PC 버튼을 눌러 로컬 파일을 재생하세요.');
             }
 
             console.log('✅ 초기 데이터 로딩 완료');
