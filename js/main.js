@@ -127,6 +127,9 @@ class MelonyPlayer {
         // 플레이리스트 관리자
         this.playlistManager = new PlaylistManager();
 
+        // ✅ AudioManager에 PlaylistManager 참조 전달 (프리로딩용)
+        this.audioManager.playlistManager = this.playlistManager;
+
         // 비주얼라이저
         this.visualizer = new Visualizer(this.audioManager);
 
@@ -166,30 +169,38 @@ this.youtubeManager = new YouTubeManager();
 
         try {
             // ✅ 1. 커버 데이터 먼저 로딩 (트랙보다 우선)
+            let coverLoadSuccess = false;
             try {
                 console.log('🖼️ 커버 데이터 로딩 시작 (우선)');
 
-                // POP 커버 먼저 로드 (동기 - 반드시 기다림)
-                const popCoverSuccess = await this.coverManager.loadCoversByCategory('pop');
-                
+                // ✅ POP 커버 먼저 로드 (타임아웃 처리)
+                const popCoverPromise = Promise.race([
+                    this.coverManager.loadCoversByCategory('pop'),
+                    new Promise((resolve) => setTimeout(() => resolve(false), 25000)) // 25초 타임아웃
+                ]);
+
+                const popCoverSuccess = await popCoverPromise;
+
                 if (!popCoverSuccess) {
-                    console.error('❌ POP 커버 로딩 실패, 기본 커버 사용');
+                    console.warn('⚠️ POP 커버 로딩 실패 또는 타임아웃, 기본 커버 사용');
                     this.coverManager.generateDefaultCovers();
                 } else {
                     console.log('✅ POP 커버 로드 성공');
+                    coverLoadSuccess = true;
+
+                    // KPOP 커버도 로드 (POP 커버 공유)
+                    await this.coverManager.loadCoversByCategory('kpop').catch(() => {
+                        console.log('⚠️ KPOP 커버 로드 실패');
+                    });
                 }
 
-                // KPOP 커버도 로드 (POP 커버 공유)
-                await this.coverManager.loadCoversByCategory('kpop');
-
-                // LOFI 커버 백그라운드 로드 (비동기)
+                // ✅ LOFI/Ambient 커버 백그라운드 로드 (비동기, 에러 무시)
                 this.coverManager.loadCoversByCategory('lofi-inst').catch(() => {
-                    console.log('⚠️ LOFI 커버 로드 실패');
+                    console.log('⚠️ LOFI 커버 로드 실패 (무시)');
                 });
 
-                // Ambient 커버 백그라운드 로드 (비동기)
                 this.coverManager.loadCoversByCategory('ambient').catch(() => {
-                    console.log('⚠️ Ambient 커버 로드 실패');
+                    console.log('⚠️ Ambient 커버 로드 실패 (무시)');
                 });
 
                 console.log('✅ 커버 데이터 초기 로딩 완료');
@@ -199,24 +210,50 @@ this.youtubeManager = new YouTubeManager();
                 this.coverManager.generateDefaultCovers();
             }
 
-            // ✅ 2. 플레이리스트 데이터 로드
-            const popData = await this.api.get('/playlist-pop.json').catch(() => {
-                console.warn('POP 플레이리스트 로드 실패 → 기본값 사용');
+            // ✅ 2. 플레이리스트 데이터 로드 (타임아웃 처리)
+            console.log('📊 플레이리스트 데이터 로딩 시작...');
+
+            // ✅ POP 플레이리스트 (타임아웃 25초)
+            const popDataPromise = Promise.race([
+                this.api.get('/playlist-pop.json'),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 25000))
+            ]);
+
+            const popData = await popDataPromise.catch((error) => {
+                console.warn('⚠️ POP 플레이리스트 로드 실패 →', error.message);
                 return { tracks: [] };
             });
 
-            const kpopData = await this.api.get('/playlist-kpop.json').catch(() => {
-                console.warn('KPOP 플레이리스트 로드 실패 → 기본값 사용');
+            // ✅ KPOP 플레이리스트 (타임아웃 25초)
+            const kpopDataPromise = Promise.race([
+                this.api.get('/playlist-kpop.json'),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 25000))
+            ]);
+
+            const kpopData = await kpopDataPromise.catch((error) => {
+                console.warn('⚠️ KPOP 플레이리스트 로드 실패 →', error.message);
                 return { tracks: [] };
             });
 
-           const lofiData = await this.api.get('/playlist-lofi-inst.json').catch(() => {
-                console.warn('LOFI-INST 플레이리스트 로드 실패 → 기본값 사용');
+            // ✅ LOFI 플레이리스트 (백그라운드, 에러 무시)
+            const lofiDataPromise = Promise.race([
+                this.api.get('/playlist-lofi-inst.json'),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 25000))
+            ]);
+
+            const lofiData = await lofiDataPromise.catch((error) => {
+                console.warn('⚠️ LOFI-INST 플레이리스트 로드 실패 (무시) →', error.message);
                 return { tracks: [] };
             });
 
-            const ambientData = await this.api.get('/playlist-ambient.json').catch(() => {
-                console.warn('Ambient 플레이리스트 로드 실패 → 기본값 사용');
+            // ✅ Ambient 플레이리스트 (백그라운드, 에러 무시)
+            const ambientDataPromise = Promise.race([
+                this.api.get('/playlist-ambient.json'),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 25000))
+            ]);
+
+            const ambientData = await ambientDataPromise.catch((error) => {
+                console.warn('⚠️ Ambient 플레이리스트 로드 실패 (무시) →', error.message);
                 return { tracks: [] };
             });
 
@@ -281,17 +318,35 @@ this.youtubeManager = new YouTubeManager();
             const firstTrack = this.playlistManager.getTrackByIndex(0);
             if (firstTrack) {
                 console.log('🔥 즉시 첫 곡 로드:', firstTrack.title);
-                await this.loadTrack(firstTrack);
 
-                this.audioManager.hasUserInteracted = true;
+                try {
+                    await this.loadTrack(firstTrack);
 
-                setTimeout(() => {
-                    if (this.audioManager.audio.src && this.audioManager.audio.readyState >= 2) {
-                        this.audioManager.setAutoPlay('초기 로드');
-                        this.audioManager.attemptAutoPlay();
-                        console.log('✅ 첫 곡 자동재생 시도');
-                    }
-                }, 300);
+                    // ✅ 사용자 인터랙션 플래그 설정
+                    this.audioManager.hasUserInteracted = true;
+
+                    // ✅ 자동재생 시도 (강화된 재시도 로직 적용)
+                    console.log('🎵 첫 곡 자동재생 시도...');
+                    this.audioManager.setAutoPlay('초기 로드');
+
+                    // 약간의 지연 후 재시도 로직으로 자동재생
+                    setTimeout(async () => {
+                        const success = await this.audioManager.attemptAutoPlay();
+
+                        if (!success) {
+                            console.log('⚠️ 자동재생 실패 - 사용자 클릭 대기 모드');
+                            this.showAutoplayMessage();
+                        } else {
+                            console.log('✅ 첫 곡 자동재생 성공!');
+                        }
+                    }, 500);
+
+                } catch (error) {
+                    console.error('❌ 첫 곡 로드 실패:', error);
+                    console.log('⚠️ 플레이어는 준비되었습니다. PC 버튼을 눌러 로컬 파일을 재생하세요.');
+                }
+            } else {
+                console.warn('⚠️ 로드할 트랙이 없습니다. PC 버튼을 눌러 로컬 파일을 재생하세요.');
             }
 
             console.log('✅ 초기 데이터 로딩 완료');
@@ -396,112 +451,64 @@ this.youtubeManager = new YouTubeManager();
     }
 
     /**
-     * ✅ 오디오 이벤트 리스너 설정 (개선)
+     * ✅ 오디오 이벤트 리스너 설정 (Howler.js 기반)
      */
     setupAudioEventListeners() {
-        if (!this.audioManager.audio) return;
+        console.log('🎧 오디오 이벤트 리스너 설정 (Howler 기반)');
 
-        const audio = this.audioManager.audio;
+        // ✅ AudioManager의 이벤트 핸들러 등록 (Howler와 호환)
+        this.audioManager.addEventListener('play', () => {
+            console.log('▶️ 재생 시작 (main.js)');
+            this.uiManager.updatePlayButton(true);
+            this.uiManager.updateThumbnailState('playing');
+        });
 
-        // ✅ 기존 이벤트 리스너 제거 (중복 방지)
-        if (this._audioEventHandlers) {
-            Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
-                audio.removeEventListener(event, handler);
-            });
-        }
+        this.audioManager.addEventListener('pause', () => {
+            console.log('⏸️ 재생 정지 (main.js)');
+            this.uiManager.updatePlayButton(false);
+            this.uiManager.updateThumbnailState('paused');
+        });
 
-        // 새 이벤트 핸들러 정의
-        this._audioEventHandlers = {
-            play: () => {
-                console.log('▶️ 재생 시작');
-                this.audioManager.isPlaying = true;
-                this.uiManager.updatePlayButton(true);
-                this.uiManager.updateThumbnailState('playing');
-                
-                if (this.visualizer) {
-                    this.visualizer.start();
-                }
-            },
+        this.audioManager.addEventListener('ended', () => {
+            console.log('🔚 트랙 종료 - 자동으로 다음 곡 재생 (main.js)');
 
-            pause: () => {
-                console.log('⏸️ 재생 정지');
-                this.audioManager.isPlaying = false;
-                this.uiManager.updatePlayButton(false);
-                this.uiManager.updateThumbnailState('paused');
-                
-                if (this.visualizer) {
-                    this.visualizer.stop();
-                }
-            },
+            // ✅ 트랙 전환 중이 아닐 때만 다음 곡 재생
+            if (!this.isTrackSwitching) {
+                setTimeout(() => {
+                    this.playNextTrack();
+                }, 100); // 약간의 지연으로 안정성 확보
+            } else {
+                console.log('⚠️ 트랙 전환 중이므로 자동 재생 건너뜀');
+            }
+        });
 
-            ended: () => {
-                console.log('🔚 트랙 종료 - 자동으로 다음 곡 재생');
-                this.playNextTrack();
-            },
+        this.audioManager.addEventListener('timeupdate', () => {
+            const currentTime = this.audioManager.getCurrentTime();
+            const duration = this.audioManager.getDuration();
 
-            timeupdate: () => {
-                if (audio.duration) {
-                    this.uiManager.updateProgress(audio.currentTime, audio.duration);
-                }
-            },
+            if (duration) {
+                this.uiManager.updateProgress(currentTime, duration);
+            }
+        });
 
-            loadstart: () => {
-                console.log('⏳ 로딩 시작');
-                this.uiManager.updateThumbnailState('loading');
-            },
+        this.audioManager.addEventListener('canplay', () => {
+            console.log('✅ 재생 가능 (Howler)');
+            this.uiManager.updateThumbnailState(this.audioManager.isPlaying ? 'playing' : 'paused');
+        });
 
-            canplay: () => {
-                console.log('✅ 재생 가능');
-                this.uiManager.updateThumbnailState(this.audioManager.isPlaying ? 'playing' : 'paused');
-            },
+        this.audioManager.addEventListener('error', (error) => {
+            console.error('❌ 오디오 오류:', error);
 
-error: (e) => {
-                const currentSrc = audio.currentSrc || audio.src;
-                const errorCode = audio.error?.code;
-                
-                console.log('🔍 오디오 에러 감지:', {
-                    code: errorCode,
-                    src: currentSrc,
-                    readyState: audio.readyState,
-                    isTrackSwitching: this.isTrackSwitching
-                });
-                
-                // ✅ src가 비어있으면 무시
-                if (!currentSrc || currentSrc === '' || currentSrc === 'about:blank') {
-                    console.log('⚠️ 빈 src 에러 무시');
-                    return;
-                }
-                
-                // ✅ 트랙 전환 중 발생하는 에러는 무시
-                if (this.isTrackSwitching) {
-                    console.log('⚠️ 트랙 전환 중 에러 무시');
-                    return;
-                }
-                
-                // ✅ PC 카테고리: blob URL + readyState >= 1이면 무시
-                if (currentSrc.startsWith('blob:') && audio.readyState >= 1) {
-                    console.log('⚠️ PC 카테고리 - 메타데이터 로드 후 에러 무시 (재생 가능)');
-                    return;
-                }
-                
-                // ✅ 실제 로딩 실패만 처리
-                console.error('❌ 실제 오디오 오류:', {
-                    code: errorCode,
-                    message: audio.error?.message,
-                    src: currentSrc
-                });
-                
+            // ✅ 트랙 전환 중이 아니면 다음 곡으로
+            if (!this.isTrackSwitching) {
                 setTimeout(() => {
                     console.log('🔄 오류로 인한 다음 곡 자동 전환');
                     this.playNextTrack();
                 }, 1000);
             }
-        };
-
-        // 이벤트 리스너 등록
-        Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
-            audio.addEventListener(event, handler);
         });
+
+        console.log('✅ Howler 이벤트 리스너 등록 완료');
     }
 
     /**
@@ -1036,6 +1043,77 @@ const audioFiles = Array.from(files).filter(file => {
         }
     }
 
+    /**
+     * ✅ 자동재생 메시지 표시 (사용자 클릭 유도)
+     */
+    showAutoplayMessage() {
+        // 이미 표시 중이면 무시
+        if (document.getElementById('autoplayMessage')) {
+            return;
+        }
+
+        const message = document.createElement('div');
+        message.id = 'autoplayMessage';
+        message.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 10000;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            animation: fadeIn 0.3s ease-in-out;
+            backdrop-filter: blur(10px);
+        `;
+
+        message.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 15px;">🎵</div>
+            <div style="margin-bottom: 10px;">클릭하여 음악 재생</div>
+            <div style="font-size: 14px; font-weight: 400; opacity: 0.8;">브라우저 정책으로 자동재생이 제한되었습니다</div>
+        `;
+
+        // 클릭 시 재생 및 메시지 제거
+        message.onclick = async () => {
+            try {
+                await this.audioManager.play();
+                message.remove();
+                console.log('✅ 사용자 클릭으로 재생 시작');
+            } catch (e) {
+                console.warn('⚠️ 재생 실패:', e?.message);
+            }
+        };
+
+        // CSS 애니메이션 추가
+        if (!document.getElementById('autoplayMessageStyle')) {
+            const style = document.createElement('style');
+            style.id = 'autoplayMessageStyle';
+            style.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+                    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(message);
+
+        // 10초 후 자동으로 페이드아웃
+        setTimeout(() => {
+            if (message.parentNode) {
+                message.style.animation = 'fadeOut 0.3s ease-in-out';
+                setTimeout(() => message.remove(), 300);
+            }
+        }, 10000);
+    }
+
     handleInitializationError(error) {
         this.uiManager.showError('초기화 실패: ' + error.message);
     }
@@ -1049,13 +1127,7 @@ const audioFiles = Array.from(files).filter(file => {
         // Blob URL 정리
         this.cleanupBlobUrls();
 
-        // 오디오 이벤트 리스너 제거
-        if (this._audioEventHandlers && this.audioManager?.audio) {
-            Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
-                this.audioManager.audio.removeEventListener(event, handler);
-            });
-            this._audioEventHandlers = null;
-        }
+        // ✅ Howler 기반 정리 (이벤트 핸들러는 AudioManager가 자동 처리)
 
         // 각 매니저 정리
         if (this.audioManager) this.audioManager.reset();
