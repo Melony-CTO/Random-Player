@@ -136,6 +136,9 @@ class MelonyPlayer {
         // 이퀄라이저
         this.equalizer = new Equalizer(this.audioManager);
 
+        // ✅ AudioManager에 Equalizer 참조 전달 (재연결용)
+        this.audioManager.equalizer = this.equalizer;
+
 this.youtubeManager = new YouTubeManager();
 
         // ✅ 효과음 관리자 먼저 생성

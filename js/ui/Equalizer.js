@@ -161,32 +161,102 @@ setupEventListeners() {
     console.log('🎛️ 이퀄라이저 필터 생성 완료:', this.filters.length, '개');
 
     // 필터들을 체인으로 연결
-    if (this.filters.length > 0 && this.audioManager.source) {
-      try {
-        this.audioManager.source.disconnect();
+    this.connectFiltersToAudioChain();
+  }
 
-        // 필터 체인 연결
-        let input = this.audioManager.source;
-        for (let i = 0; i < this.filters.length; i++) {
-          input.connect(this.filters[i]);
-          input = this.filters[i];
-        }
+  /**
+   * ✅ 필터를 오디오 체인에 연결
+   */
+  connectFiltersToAudioChain() {
+    if (this.filters.length === 0 || !this.audioManager.source) {
+      console.log('⚠️ 필터 또는 오디오 소스가 없습니다.');
+      return;
+    }
 
-        // 마지막 필터를 analyser와 destination에 연결
-        if (this.audioManager.analyser) {
-          input.connect(this.audioManager.analyser);
-          this.audioManager.analyser.connect(this.audioManager.audioContext.destination);
-        } else {
-          input.connect(this.audioManager.audioContext.destination);
-        }
+    try {
+      // 기존 연결 해제
+      this.audioManager.source.disconnect();
 
-        console.log('🎛️ 이퀄라이저 오디오 체인 연결 완료');
-      } catch (error) {
-        console.error('이퀄라이저 연결 오류:', error);
-        console.log('⚠️ 음악을 재생한 후 다시 시도하세요');
+      // 필터 체인 연결: Source -> Filter1 -> Filter2 -> ... -> Filter6 -> Analyser -> Destination
+      let input = this.audioManager.source;
+      for (let i = 0; i < this.filters.length; i++) {
+        input.connect(this.filters[i]);
+        input = this.filters[i];
       }
-    } else {
-      console.log('⚠️ 오디오 소스가 없습니다. 음악 재생 후 이퀄라이저가 활성화됩니다.');
+
+      // 마지막 필터를 analyser와 destination에 연결
+      if (this.audioManager.analyser) {
+        input.connect(this.audioManager.analyser);
+        this.audioManager.analyser.connect(this.audioManager.audioContext.destination);
+      } else {
+        input.connect(this.audioManager.audioContext.destination);
+      }
+
+      console.log('🎛️ 이퀄라이저 오디오 체인 연결 완료');
+    } catch (error) {
+      console.error('이퀄라이저 연결 오류:', error);
+      console.log('⚠️ 음악을 재생한 후 다시 시도하세요');
+    }
+  }
+
+  /**
+   * ✅ 트랙 변경 시 필터 재연결 (설정 유지)
+   */
+  reconnectFilters() {
+    if (!this.audioManager.audioContext || !this.audioManager.source) {
+      console.log('⚠️ AudioContext 또는 Source가 없어서 재연결 불가');
+      return;
+    }
+
+    console.log('🔄 이퀄라이저 필터 재연결 시작...');
+    console.log('💾 현재 저장된 게인 값:', this.gains);
+
+    // 기존 필터가 있으면 정리
+    if (this.filters.length > 0) {
+      this.filters.forEach(filter => {
+        try {
+          filter.disconnect();
+        } catch (e) {
+          // 이미 해제됨
+        }
+      });
+    }
+
+    // 새 필터 생성 (저장된 gains 값 사용)
+    this.filters = [];
+    for (let i = 0; i < 6; i++) {
+      const filter = this.audioManager.audioContext.createBiquadFilter();
+      filter.type = i === 0 ? 'lowshelf' : i === 5 ? 'highshelf' : 'peaking';
+      filter.frequency.value = this.frequencies[i];
+      filter.Q.value = 1;
+      filter.gain.value = this.gains[i]; // ✅ 저장된 값 사용
+      this.filters.push(filter);
+    }
+
+    // 필터 체인 연결
+    this.connectFiltersToAudioChain();
+
+    // UI 업데이트
+    this.updateSlidersFromGains();
+
+    console.log('✅ 이퀄라이저 필터 재연결 완료 (설정 유지됨)');
+  }
+
+  /**
+   * ✅ 슬라이더 UI를 현재 gains 값으로 업데이트
+   */
+  updateSlidersFromGains() {
+    for (let i = 0; i < 6; i++) {
+      const slider = document.getElementById('eq' + this.frequencies[i]);
+      if (slider) {
+        slider.value = this.gains[i];
+
+        // 값 표시 업데이트
+        const valueDisplay = slider.parentElement.querySelector('.eq-value');
+        if (valueDisplay) {
+          valueDisplay.textContent = (this.gains[i] >= 0 ? '+' : '') + this.gains[i].toFixed(1) + 'dB';
+        }
+      }
     }
   }
 

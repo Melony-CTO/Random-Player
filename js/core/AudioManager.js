@@ -25,6 +25,8 @@ class AudioManager {
     this.analyser = null;
     this.dataArray = null;
     this.masterGain = null;
+    this.source = null; // MediaElementSourceNode (이퀄라이저용)
+    this.sourceConnected = false; // Source 연결 상태
 
     // 상태 플래그
     this.hasUserInteracted = false;
@@ -38,6 +40,7 @@ class AudioManager {
 
     // 외부에서 꽂아줄 수도 있는 매니저
     this.playlistManager = options.playlistManager || null;
+    this.equalizer = null; // 이퀄라이저 참조
 
     // 현재 트랙 정보
     this.currentTrack = null;
@@ -189,6 +192,13 @@ class AudioManager {
 
       // ✅ Web Audio 연결 (비주얼라이저용)
       this.connectHowlToWebAudio();
+
+      // ✅ 이퀄라이저 재연결 (설정 유지)
+      if (this.equalizer) {
+        setTimeout(() => {
+          this.equalizer.reconnectFilters();
+        }, 100);
+      }
 
       // ✅ 로드 완료 대기 (최대 15초)
       await this.waitForHowlLoad(this.currentHowl, 15000);
@@ -569,22 +579,55 @@ class AudioManager {
    * ✅ Howl을 Web Audio에 연결
    */
   connectHowlToWebAudio() {
-    if (!this.audioContext || !this.analyser || !this.currentHowl) {
+    if (!this.audioContext || !this.currentHowl) {
       return;
     }
 
     try {
-      // Howler는 내부적으로 Web Audio API를 사용하므로
-      // Howler의 masterGain에 우리 analyser를 연결
-      const howlerNode = Howler.ctx; // Howler의 AudioContext
-
-      if (howlerNode) {
-        // Howler.masterGain -> analyser -> masterGain -> destination
-        // 이미 Howler가 내부 연결을 처리하므로, analyser만 중간에 삽입
-        console.log('🎛️ Howl을 Web Audio에 연결 완료');
+      // 기존 source 연결 해제
+      if (this.source) {
+        try {
+          this.source.disconnect();
+        } catch (e) {
+          // 이미 해제됨
+        }
       }
+
+      // Howler.js는 html5: true 모드에서 HTMLAudioElement를 사용
+      // _sounds 배열에서 첫 번째 사운드의 node를 가져옴
+      if (this.currentHowl._sounds && this.currentHowl._sounds.length > 0) {
+        const sound = this.currentHowl._sounds[0];
+        const audioNode = sound._node;
+
+        if (audioNode && audioNode.tagName === 'AUDIO') {
+          // 새 트랙마다 새 MediaElementSourceNode 생성
+          try {
+            this.source = this.audioContext.createMediaElementSource(audioNode);
+            this.sourceConnected = true;
+            console.log('🎛️ MediaElementSource 생성 완료');
+
+            // Source -> Analyser -> Destination 기본 연결
+            // (이퀄라이저가 있으면 reconnectFilters()에서 체인 재구성)
+            this.source.connect(this.analyser);
+            this.analyser.connect(this.audioContext.destination);
+
+            console.log('🎛️ Howl을 Web Audio에 연결 완료');
+          } catch (error) {
+            // 이미 MediaElementSource가 생성된 경우
+            console.warn('⚠️ MediaElementSource 생성 실패 (이미 생성됨):', error.message);
+            this.sourceConnected = false;
+          }
+        }
+      } else if (Howler.ctx) {
+        // Web Audio 모드일 경우, Howler의 AudioContext 사용
+        // 이 경우 equalizer는 Howler.masterGain에 연결해야 함
+        console.log('🎛️ Howler Web Audio 모드 (Howler.masterGain 사용)');
+      }
+
     } catch (err) {
-      console.warn('⚠️ Web Audio 연결 실패 (무시):', err);
+      console.warn('⚠️ Web Audio 연결 실패:', err.message);
+      // 연결 실패 시 sourceConnected 플래그 초기화
+      this.sourceConnected = false;
     }
   }
 
