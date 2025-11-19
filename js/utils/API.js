@@ -79,22 +79,31 @@ class API {
    */
   async requestWithRetry(requestFn, retries = this.retryCount) {
     let lastError;
-    
+
     for (let i = 0; i <= retries; i++) {
       try {
-        return await requestFn();
+        const response = await requestFn();
+
+        // ✅ 재시도 후 성공하면 로그 출력
+        if (i > 0) {
+          console.log(`✅ API 요청 성공 (${i + 1}번째 시도)`);
+        }
+
+        return response;
       } catch (error) {
         lastError = error;
-        console.log(`API 요청 실패 (${i + 1}/${retries + 1}):`, error.message);
-        
+        console.warn(`⚠️ API 요청 실패 (${i + 1}/${retries + 1}):`, error.message);
+
         if (i < retries) {
-          // 지수 백오프
+          // 지수 백오프 (1초, 2초)
           const delay = Math.pow(2, i) * 1000;
+          console.log(`🔄 ${delay/1000}초 후 재시도...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
     }
-    
+
+    console.error('❌ API 요청 최종 실패:', lastError.message);
     throw lastError;
   }
 
@@ -107,15 +116,17 @@ class API {
   async get(endpoint, options = {}) {
     const url = this.buildUrl(endpoint);
     const cacheKey = `api_get_${endpoint}_${JSON.stringify(options)}`;
-    
+
     // 캐시 확인
     if (this.cacheEnabled) {
       const cached = this.cache.get(cacheKey);
       if (cached) {
-        console.log('🌐 캐시된 응답 사용:', endpoint);
+        console.log('💾 캐시된 응답 사용:', endpoint);
         return cached;
       }
     }
+
+    console.log('🌐 API 요청 시작:', endpoint, `(timeout: ${this.timeout}ms)`);
 
     const requestOptions = {
       method: 'GET',
@@ -124,7 +135,7 @@ class API {
     };
 
     const response = await this.requestWithRetry(async () => {
-      return await this.fetchWithTimeout(url, requestOptions);
+      return await this.fetchWithTimeout(url, requestOptions, this.timeout);
     });
 
     if (!response.ok) {
@@ -132,12 +143,14 @@ class API {
     }
 
     const data = await response.json();
-    
+
     // 캐시 저장
     if (this.cacheEnabled) {
       this.cache.set(cacheKey, data, this.cacheTTL);
+      console.log('💾 응답 캐시 저장:', endpoint);
     }
 
+    console.log('✅ API 요청 성공:', endpoint);
     return data;
   }
 
