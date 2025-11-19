@@ -127,6 +127,9 @@ class MelonyPlayer {
         // 플레이리스트 관리자
         this.playlistManager = new PlaylistManager();
 
+        // ✅ AudioManager에 PlaylistManager 참조 전달 (프리로딩용)
+        this.audioManager.playlistManager = this.playlistManager;
+
         // 비주얼라이저
         this.visualizer = new Visualizer(this.audioManager);
 
@@ -438,127 +441,64 @@ this.youtubeManager = new YouTubeManager();
     }
 
     /**
-     * ✅ 오디오 이벤트 리스너 설정 (개선)
+     * ✅ 오디오 이벤트 리스너 설정 (Howler.js 기반)
      */
     setupAudioEventListeners() {
-        if (!this.audioManager.audio) return;
+        console.log('🎧 오디오 이벤트 리스너 설정 (Howler 기반)');
 
-        const audio = this.audioManager.audio;
+        // ✅ AudioManager의 이벤트 핸들러 등록 (Howler와 호환)
+        this.audioManager.addEventListener('play', () => {
+            console.log('▶️ 재생 시작 (main.js)');
+            this.uiManager.updatePlayButton(true);
+            this.uiManager.updateThumbnailState('playing');
+        });
 
-        // ✅ 이전 audio 요소에서 이벤트 리스너 제거 (중복 방지)
-        if (this._audioEventHandlers && this._previousAudio) {
-            Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
-                try {
-                    this._previousAudio.removeEventListener(event, handler);
-                } catch (e) {
-                    // 이미 제거되었거나 없는 경우 무시
-                }
-            });
-        }
+        this.audioManager.addEventListener('pause', () => {
+            console.log('⏸️ 재생 정지 (main.js)');
+            this.uiManager.updatePlayButton(false);
+            this.uiManager.updateThumbnailState('paused');
+        });
 
-        // 현재 audio 요소 참조 저장
-        this._previousAudio = audio;
+        this.audioManager.addEventListener('ended', () => {
+            console.log('🔚 트랙 종료 - 자동으로 다음 곡 재생 (main.js)');
 
-        // 새 이벤트 핸들러 정의
-        this._audioEventHandlers = {
-            play: () => {
-                console.log('▶️ 재생 시작');
-                this.audioManager.isPlaying = true;
-                this.uiManager.updatePlayButton(true);
-                this.uiManager.updateThumbnailState('playing');
-                
-                if (this.visualizer) {
-                    this.visualizer.start();
-                }
-            },
-
-            pause: () => {
-                console.log('⏸️ 재생 정지');
-                this.audioManager.isPlaying = false;
-                this.uiManager.updatePlayButton(false);
-                this.uiManager.updateThumbnailState('paused');
-                
-                if (this.visualizer) {
-                    this.visualizer.stop();
-                }
-            },
-
-            ended: () => {
-                console.log('🔚 트랙 종료 - 자동으로 다음 곡 재생');
-                // ✅ 트랙 전환 중이 아닐 때만 다음 곡 재생
-                if (!this.isTrackSwitching) {
+            // ✅ 트랙 전환 중이 아닐 때만 다음 곡 재생
+            if (!this.isTrackSwitching) {
+                setTimeout(() => {
                     this.playNextTrack();
-                } else {
-                    console.log('⚠️ 트랙 전환 중이므로 자동 재생 건너뜀');
-                }
-            },
+                }, 100); // 약간의 지연으로 안정성 확보
+            } else {
+                console.log('⚠️ 트랙 전환 중이므로 자동 재생 건너뜀');
+            }
+        });
 
-            timeupdate: () => {
-                if (audio.duration) {
-                    this.uiManager.updateProgress(audio.currentTime, audio.duration);
-                }
-            },
+        this.audioManager.addEventListener('timeupdate', () => {
+            const currentTime = this.audioManager.getCurrentTime();
+            const duration = this.audioManager.getDuration();
 
-            loadstart: () => {
-                console.log('⏳ 로딩 시작');
-                this.uiManager.updateThumbnailState('loading');
-            },
+            if (duration) {
+                this.uiManager.updateProgress(currentTime, duration);
+            }
+        });
 
-            canplay: () => {
-                console.log('✅ 재생 가능');
-                this.uiManager.updateThumbnailState(this.audioManager.isPlaying ? 'playing' : 'paused');
-            },
+        this.audioManager.addEventListener('canplay', () => {
+            console.log('✅ 재생 가능 (Howler)');
+            this.uiManager.updateThumbnailState(this.audioManager.isPlaying ? 'playing' : 'paused');
+        });
 
-error: (e) => {
-                const currentSrc = audio.currentSrc || audio.src;
-                const errorCode = audio.error?.code;
-                
-                console.log('🔍 오디오 에러 감지:', {
-                    code: errorCode,
-                    src: currentSrc,
-                    readyState: audio.readyState,
-                    isTrackSwitching: this.isTrackSwitching
-                });
-                
-                // ✅ src가 비어있으면 무시
-                if (!currentSrc || currentSrc === '' || currentSrc === 'about:blank') {
-                    console.log('⚠️ 빈 src 에러 무시');
-                    return;
-                }
-                
-                // ✅ 트랙 전환 중 발생하는 에러는 무시
-                if (this.isTrackSwitching) {
-                    console.log('⚠️ 트랙 전환 중 에러 무시');
-                    return;
-                }
-                
-                // ✅ PC 카테고리: blob URL + readyState >= 1이면 무시
-                if (currentSrc.startsWith('blob:') && audio.readyState >= 1) {
-                    console.log('⚠️ PC 카테고리 - 메타데이터 로드 후 에러 무시 (재생 가능)');
-                    return;
-                }
-                
-                // ✅ 실제 로딩 실패만 처리
-                console.error('❌ 실제 오디오 오류:', {
-                    code: errorCode,
-                    message: audio.error?.message,
-                    src: currentSrc
-                });
-                
+        this.audioManager.addEventListener('error', (error) => {
+            console.error('❌ 오디오 오류:', error);
+
+            // ✅ 트랙 전환 중이 아니면 다음 곡으로
+            if (!this.isTrackSwitching) {
                 setTimeout(() => {
                     console.log('🔄 오류로 인한 다음 곡 자동 전환');
                     this.playNextTrack();
                 }, 1000);
             }
-        };
-
-        // 이벤트 리스너 등록
-        Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
-            audio.addEventListener(event, handler);
         });
 
-        // ✅ ended 이벤트가 제대로 등록되었는지 확인
-        console.log('✅ 오디오 이벤트 리스너 등록 완료 (ended 포함)');
+        console.log('✅ Howler 이벤트 리스너 등록 완료');
     }
 
     /**
@@ -1106,30 +1046,7 @@ const audioFiles = Array.from(files).filter(file => {
         // Blob URL 정리
         this.cleanupBlobUrls();
 
-        // ✅ 이전 audio 요소의 이벤트 리스너 제거
-        if (this._audioEventHandlers && this._previousAudio) {
-            Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
-                try {
-                    this._previousAudio.removeEventListener(event, handler);
-                } catch (e) {
-                    // 이미 제거되었거나 없는 경우 무시
-                }
-            });
-        }
-
-        // 현재 audio 요소의 이벤트 리스너 제거
-        if (this._audioEventHandlers && this.audioManager?.audio) {
-            Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
-                try {
-                    this.audioManager.audio.removeEventListener(event, handler);
-                } catch (e) {
-                    // 이미 제거되었거나 없는 경우 무시
-                }
-            });
-            this._audioEventHandlers = null;
-        }
-
-        this._previousAudio = null;
+        // ✅ Howler 기반 정리 (이벤트 핸들러는 AudioManager가 자동 처리)
 
         // 각 매니저 정리
         if (this.audioManager) this.audioManager.reset();
