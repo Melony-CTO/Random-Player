@@ -20,6 +20,11 @@
     <link rel="dns-prefetch" href="https://melony-music-api.zepplinn25.workers.dev">
     <link rel="preconnect" href="https://melony-music-api.zepplinn25.workers.dev" crossorigin>
 
+    <!-- ✅ Favicon 설정 -->
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/favicon.png">
+    <link rel="shortcut icon" type="image/png" href="/favicon.png">
+
     <title>Melony Random Player</title>
 
     <!-- CSS 스타일 -->
@@ -196,24 +201,25 @@
         referrerpolicy="no-referrer"></script>
 
 <!-- JavaScript 모듈 로드 (순서대로 로딩) -->
-<script src="js/utils/Utils.js"></script>
-<script src="js/utils/Config.js"></script>
-<script src="js/utils/Cache.js"></script>
-<script src="js/utils/API.js"></script>
-<script src="js/utils/effect_sound.js"></script>
+<!-- ✅ v=howler-2: Howler.js 통합 버전 (캐시 무효화) -->
+<script src="js/utils/Utils.js?v=howler-2"></script>
+<script src="js/utils/Config.js?v=howler-2"></script>
+<script src="js/utils/Cache.js?v=howler-2"></script>
+<script src="js/utils/API.js?v=howler-2"></script>
+<script src="js/utils/effect_sound.js?v=howler-2"></script>
 
-<script src="js/core/AudioManager.js"></script>
-<script src="js/core/PlaylistManager.js"></script>
-<script src="js/core/UIManager.js"></script>
+<script src="js/core/AudioManager.js?v=howler-2"></script>
+<script src="js/core/PlaylistManager.js?v=howler-2"></script>
+<script src="js/core/UIManager.js?v=howler-2"></script>
 
-<script src="js/ui/Visualizer.js"></script>
-<script src="js/ui/Equalizer.js"></script>
-<script src="js/ui/YouTubeManager.js"></script>
-<script src="js/ui/CoverManager.js"></script>
-<script src="js/ui/TouchHandler.js"></script>
-<script src="js/utils/TitleFormatter.js"></script>
-<script src="js/core/SecurityManager.js"></script>
+<script src="js/ui/Visualizer.js?v=howler-2"></script>
+<script src="js/ui/Equalizer.js?v=howler-2"></script>
+<script src="js/ui/YouTubeManager.js?v=howler-2"></script>
+<script src="js/ui/CoverManager.js?v=howler-2"></script>
+<script src="js/ui/TouchHandler.js?v=howler-2"></script>
+<script src="js/utils/TitleFormatter.js?v=howler-2"></script>
+<script src="js/core/SecurityManager.js?v=howler-2"></script>
 
-<script src="js/main.js"></script>
+<script src="js/main.js?v=howler-2"></script>
 </body>
 </html>
