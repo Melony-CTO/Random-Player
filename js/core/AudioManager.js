@@ -56,6 +56,9 @@ class AudioManager {
       onloaderror: null
     };
 
+    // ✅ 사용자 인터랙션 대기 플래그
+    this._unlockHandlerAdded = false;
+
     this.init();
   }
 
@@ -633,15 +636,79 @@ class AudioManager {
   }
 
   /**
-   * 자동재생 시도
+   * ✅ 자동재생 시도 (강화된 재시도 로직)
    */
-  attemptAutoPlay() {
-    if (this.shouldAutoPlay && !this.isPlaying && this.currentHowl) {
-      this.shouldAutoPlay = false;
-      this.play().catch((e) => console.log('자동재생 실패:', e?.message));
-      return true;
+  async attemptAutoPlay(retryCount = 0, maxRetries = 3) {
+    if (!this.shouldAutoPlay || this.isPlaying || !this.currentHowl) {
+      return false;
     }
-    return false;
+
+    try {
+      console.log(`🎵 자동재생 시도 (${retryCount + 1}/${maxRetries + 1})...`);
+
+      // AudioContext unlock 시도
+      this.resumeAudioContext();
+
+      await this.play();
+      this.shouldAutoPlay = false;
+      console.log('✅ 자동재생 성공!');
+      return true;
+
+    } catch (error) {
+      console.warn(`⚠️ 자동재생 실패 (${retryCount + 1}/${maxRetries + 1}):`, error?.message);
+
+      // 재시도
+      if (retryCount < maxRetries) {
+        const delay = 2000; // 2초 대기
+        console.log(`🔄 ${delay/1000}초 후 재시도...`);
+
+        return new Promise((resolve) => {
+          setTimeout(async () => {
+            const result = await this.attemptAutoPlay(retryCount + 1, maxRetries);
+            resolve(result);
+          }, delay);
+        });
+      } else {
+        console.error('❌ 자동재생 최종 실패 - 사용자 클릭 대기');
+        // 사용자 인터랙션 대기 모드
+        this.waitForUserInteraction();
+        return false;
+      }
+    }
+  }
+
+  /**
+   * ✅ 사용자 인터랙션 대기 (클릭/터치 시 자동 재생)
+   */
+  waitForUserInteraction() {
+    if (this._unlockHandlerAdded) return;
+
+    console.log('👆 사용자 클릭/터치를 기다리는 중...');
+
+    const unlockHandler = async () => {
+      console.log('✅ 사용자 인터랙션 감지!');
+
+      this.hasUserInteracted = true;
+
+      // 재생 시도
+      if (this.currentHowl && !this.isPlaying) {
+        try {
+          await this.play();
+          console.log('✅ 사용자 인터랙션 후 재생 성공!');
+        } catch (e) {
+          console.warn('⚠️ 재생 실패:', e?.message);
+        }
+      }
+
+      // 이벤트 리스너 제거
+      document.removeEventListener('click', unlockHandler);
+      document.removeEventListener('touchstart', unlockHandler);
+      this._unlockHandlerAdded = false;
+    };
+
+    document.addEventListener('click', unlockHandler);
+    document.addEventListener('touchstart', unlockHandler);
+    this._unlockHandlerAdded = true;
   }
 
   /**

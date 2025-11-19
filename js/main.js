@@ -322,15 +322,25 @@ this.youtubeManager = new YouTubeManager();
                 try {
                     await this.loadTrack(firstTrack);
 
+                    // ✅ 사용자 인터랙션 플래그 설정
                     this.audioManager.hasUserInteracted = true;
 
-                    setTimeout(() => {
-                        if (this.audioManager.audio.src && this.audioManager.audio.readyState >= 2) {
-                            this.audioManager.setAutoPlay('초기 로드');
-                            this.audioManager.attemptAutoPlay();
-                            console.log('✅ 첫 곡 자동재생 시도');
+                    // ✅ 자동재생 시도 (강화된 재시도 로직 적용)
+                    console.log('🎵 첫 곡 자동재생 시도...');
+                    this.audioManager.setAutoPlay('초기 로드');
+
+                    // 약간의 지연 후 재시도 로직으로 자동재생
+                    setTimeout(async () => {
+                        const success = await this.audioManager.attemptAutoPlay();
+
+                        if (!success) {
+                            console.log('⚠️ 자동재생 실패 - 사용자 클릭 대기 모드');
+                            this.showAutoplayMessage();
+                        } else {
+                            console.log('✅ 첫 곡 자동재생 성공!');
                         }
-                    }, 300);
+                    }, 500);
+
                 } catch (error) {
                     console.error('❌ 첫 곡 로드 실패:', error);
                     console.log('⚠️ 플레이어는 준비되었습니다. PC 버튼을 눌러 로컬 파일을 재생하세요.');
@@ -1031,6 +1041,77 @@ const audioFiles = Array.from(files).filter(file => {
             const timeString = now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
             visitStats.textContent = `방문: ${timeString}`;
         }
+    }
+
+    /**
+     * ✅ 자동재생 메시지 표시 (사용자 클릭 유도)
+     */
+    showAutoplayMessage() {
+        // 이미 표시 중이면 무시
+        if (document.getElementById('autoplayMessage')) {
+            return;
+        }
+
+        const message = document.createElement('div');
+        message.id = 'autoplayMessage';
+        message.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 30px 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 10000;
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            animation: fadeIn 0.3s ease-in-out;
+            backdrop-filter: blur(10px);
+        `;
+
+        message.innerHTML = `
+            <div style="font-size: 48px; margin-bottom: 15px;">🎵</div>
+            <div style="margin-bottom: 10px;">클릭하여 음악 재생</div>
+            <div style="font-size: 14px; font-weight: 400; opacity: 0.8;">브라우저 정책으로 자동재생이 제한되었습니다</div>
+        `;
+
+        // 클릭 시 재생 및 메시지 제거
+        message.onclick = async () => {
+            try {
+                await this.audioManager.play();
+                message.remove();
+                console.log('✅ 사용자 클릭으로 재생 시작');
+            } catch (e) {
+                console.warn('⚠️ 재생 실패:', e?.message);
+            }
+        };
+
+        // CSS 애니메이션 추가
+        if (!document.getElementById('autoplayMessageStyle')) {
+            const style = document.createElement('style');
+            style.id = 'autoplayMessageStyle';
+            style.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+                    to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        document.body.appendChild(message);
+
+        // 10초 후 자동으로 페이드아웃
+        setTimeout(() => {
+            if (message.parentNode) {
+                message.style.animation = 'fadeOut 0.3s ease-in-out';
+                setTimeout(() => message.remove(), 300);
+            }
+        }, 10000);
     }
 
     handleInitializationError(error) {
