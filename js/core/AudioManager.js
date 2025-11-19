@@ -190,7 +190,10 @@ class AudioManager {
       this.currentTrack = track;
       this.currentTrackId = trackId;
 
-      // ✅ Web Audio 연결 (비주얼라이저용)
+      // ✅ 로드 완료 대기 (최대 15초)
+      await this.waitForHowlLoad(this.currentHowl, 15000);
+
+      // ✅ Web Audio 연결 (로드 완료 후)
       this.connectHowlToWebAudio();
 
       // ✅ 이퀄라이저 재연결 (설정 유지)
@@ -199,9 +202,6 @@ class AudioManager {
           this.equalizer.reconnectFilters();
         }, 100);
       }
-
-      // ✅ 로드 완료 대기 (최대 15초)
-      await this.waitForHowlLoad(this.currentHowl, 15000);
 
       // ✅ 로딩 완료
       this.setLoadingState(false, track);
@@ -223,6 +223,7 @@ class AudioManager {
 
     } catch (error) {
       console.error('❌ Howler 트랙 로드 실패:', error);
+      console.error('에러 상세:', error?.message, error?.stack);
       this.setLoadingState(false, track);
       throw error;
     }
