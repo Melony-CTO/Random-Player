@@ -427,14 +427,54 @@ class CoverManager {
      */
     generateDefaultCovers() {
         console.log('⚠️ 기본 커버 생성 - 커버리스트 로딩 실패');
-        const defaultCovers = [];
+
+        // ✅ POP 카테고리에 기본 커버 추가
+        const popDefaultCovers = [];
+        for (let i = 1; i <= 5; i++) {
+            popDefaultCovers.push({
+                id: `default-pop-${i}`,
+                folder: 'pop-covers',
+                filename: `default-${i}.webp`,
+                category: 'pop'
+            });
+        }
+
+        // ✅ LOFI 카테고리에 기본 커버 추가
+        const lofiDefaultCovers = [];
         for (let i = 1; i <= 10; i++) {
             const num = String(i).padStart(5, '0');
-            defaultCovers.push(`lofi-${num}.jpeg`);
+            lofiDefaultCovers.push({
+                id: `lofi-${num}`,
+                folder: 'covers',
+                filename: `lofi-${num}.jpeg`,
+                category: 'lofi-inst'
+            });
         }
-        this.randomCovers = defaultCovers.map(filename => {
-            return `${this.getBaseUrl()}/file/covers/${filename}`;
+
+        // ✅ 카테고리별 데이터 설정
+        this.coverData['pop'].covers = popDefaultCovers;
+        this.coverData['pop'].shuffled = this.shuffleArray([...popDefaultCovers]);
+        this.coverData['pop'].index = 0;
+
+        this.coverData['kpop'].covers = popDefaultCovers; // KPOP은 POP과 공유
+        this.coverData['kpop'].shuffled = this.shuffleArray([...popDefaultCovers]);
+        this.coverData['kpop'].index = 0;
+
+        this.coverData['lofi-inst'].covers = lofiDefaultCovers;
+        this.coverData['lofi-inst'].shuffled = this.shuffleArray([...lofiDefaultCovers]);
+        this.coverData['lofi-inst'].index = 0;
+
+        // ✅ 로드 완료 표시
+        this.loadedCategories.add('pop');
+        this.loadedCategories.add('kpop');
+        this.loadedCategories.add('lofi-inst');
+
+        // ✅ 레거시 랜덤 커버 (하위 호환성)
+        this.randomCovers = lofiDefaultCovers.map(cover => {
+            return `${this.getBaseUrl()}/file/${cover.folder}/${cover.filename}`;
         });
+
+        console.log('✅ 기본 커버 설정 완료 (POP/KPOP/LOFI)');
     }
 
     /**
@@ -537,4 +577,3 @@ class CoverManager {
 
 // 전역 등록
 window.CoverManager = CoverManager;
-
