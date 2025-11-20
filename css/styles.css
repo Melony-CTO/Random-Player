@@ -904,3 +904,4 @@ footer {
   z-index: 0 !important;  /* 썸네일(기본), 터치존(z=5), 볼륨(z=10)보다 아래 */
   pointer-events: none;   /* 터치/드래그는 뒤에 있는 터치존으로 보내기 */
 }
+
