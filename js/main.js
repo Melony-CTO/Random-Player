@@ -1,8 +1,8 @@
 /**
- * Melony Player - 메인 애플리케이션 (개선판)
- * - 커버 이미지 지연 해결: 프리로드 + canplay 시 교체
- * - canplaythrough 의존 제거(느림) / 깜빡임 방지
- * - 기존 인터페이스는 그대로 유지
+ * Melony Player - 메인 애플리케이션 (최적화판)
+ * - ✅ 트랙 전환 디바운스 추가 (중복 요청 방지)
+ * - ✅ 메모리 관리 개선
+ * - ✅ 재생 안정성 향상
  */
 class MelonyPlayer {
     constructor() {
@@ -21,6 +21,17 @@ class MelonyPlayer {
 
         this.isInitialized = false;
         this.startTime = Date.now();
+
+        // ✅ 트랙 전환 제어 플래그
+        this.isTrackSwitching = false;
+        this.trackSwitchTimeout = null;
+        
+        // ✅ 디바운스 타이머
+        this.nextTrackDebounceTimer = null;
+        this.prevTrackDebounceTimer = null;
+
+        // ✅ 로딩 실패 시 자동 스킵 플래그
+        this._skipFailedTrack = false;
 
         // 내부 유틸 캐시
         this._imgCache = new Map();
@@ -101,8 +112,6 @@ class MelonyPlayer {
         }
         this.coverManager = new CoverManager(this.api);
 
-
-
         console.log('✅ UI 시스템 초기화 완료');
     }
 
@@ -124,11 +133,27 @@ class MelonyPlayer {
         // 이퀄라이저
         this.equalizer = new Equalizer(this.audioManager);
 
+this.youtubeManager = new YouTubeManager();
+
         // ✅ 효과음 관리자 먼저 생성
         this.effectSoundManager = new EffectSoundManager(this.audioManager, this.api);
 
         // ✅ 터치 핸들러 생성 (audioManager와 effectSoundManager 모두 준비된 후)
         this.touchHandler = new TouchHandler(this.uiManager, this.audioManager, this.effectSoundManager);
+
+        // 🔒 보안 관리자 초기화
+        // ⚠️ 배포 시: enabled를 true로 변경하세요!
+        this.securityManager = new SecurityManager({
+            enabled: false,               // 🔴 개발: false, 🟢 배포: true
+            blockRightClick: true,       // 우클릭 차단
+            blockF12Key: true,           // F12 키만 차단 (Ctrl+Shift+I는 사용 가능)
+            blockConsoleLog: false,      // 콘솔 로그 완전 차단 (개발 중: false)
+            obfuscateConsoleLog: true,   // 콘솔 URL 난독화 (권장: true) ✨
+            blockSelection: true,        // 텍스트 선택 차단
+            blockDragDrop: true,         // 드래그 앤 드롭 차단
+            blockScreenshot: false,      // 스크린샷 차단 (실험적, 권장: false)
+            showWarning: true            // 경고 메시지 표시
+        });
 
         console.log('✅ 오디오 시스템 초기화 완료');
     }
@@ -162,6 +187,11 @@ class MelonyPlayer {
                     console.log('⚠️ LOFI 커버 로드 실패');
                 });
 
+                // Ambient 커버 백그라운드 로드 (비동기)
+                this.coverManager.loadCoversByCategory('ambient').catch(() => {
+                    console.log('⚠️ Ambient 커버 로드 실패');
+                });
+
                 console.log('✅ 커버 데이터 초기 로딩 완료');
 
             } catch (error) {
@@ -180,8 +210,13 @@ class MelonyPlayer {
                 return { tracks: [] };
             });
 
-            const lofiData = await this.api.get('/playlist-lofi-inst.json').catch(() => {
+           const lofiData = await this.api.get('/playlist-lofi-inst.json').catch(() => {
                 console.warn('LOFI-INST 플레이리스트 로드 실패 → 기본값 사용');
+                return { tracks: [] };
+            });
+
+            const ambientData = await this.api.get('/playlist-ambient.json').catch(() => {
+                console.warn('Ambient 플레이리스트 로드 실패 → 기본값 사용');
                 return { tracks: [] };
             });
 
@@ -189,6 +224,7 @@ class MelonyPlayer {
             console.log('  - popData:', popData ? (popData.tracks || popData).length + '곡' : '없음');
             console.log('  - kpopData:', kpopData ? (kpopData.tracks || kpopData).length + '곡' : '없음');
             console.log('  - lofiData:', lofiData ? (lofiData.tracks || lofiData).length + '곡' : '없음');
+            console.log('  - ambientData:', ambientData ? (ambientData.tracks || ambientData).length + '곡' : '없음');
 
             // POP
             if (popData && (popData.tracks || popData).length > 0) {
@@ -226,6 +262,17 @@ class MelonyPlayer {
                 console.log('✅ LOFI-INST 카테고리 데이터 설정 완료:', processedTracks.length + '곡');
             }
 
+            // Ambient
+            if (ambientData && (ambientData.tracks || ambientData).length > 0) {
+                const tracks = ambientData.tracks || ambientData;
+                const processedTracks = tracks.map(track => ({
+                    ...track,
+                    folder: 'ambient'
+                }));
+                this.playlistManager.shuffledTracks['ambient'] = this.playlistManager.shuffleArray([...processedTracks]);
+                console.log('✅ Ambient 카테고리 데이터 설정 완료:', processedTracks.length + '곡');
+            }
+
             // 초기 플레이리스트 설정 (POP)
             this.playlistManager.currentCategory = 'pop';
             this.playlistManager.updateCurrentPlaylist();
@@ -242,14 +289,7 @@ class MelonyPlayer {
                     if (this.audioManager.audio.src && this.audioManager.audio.readyState >= 2) {
                         this.audioManager.setAutoPlay('초기 로드');
                         this.audioManager.attemptAutoPlay();
-                        console.log('🎵 즉시 자동 재생 시작');
-                    } else {
-                        setTimeout(() => {
-                            if (this.audioManager.audio.src && this.audioManager.audio.readyState >= 2) {
-                                this.audioManager.setAutoPlay('초기 로드 (재시도)');
-                                this.audioManager.attemptAutoPlay();
-                            }
-                        }, 500);
+                        console.log('✅ 첫 곡 자동재생 시도');
                     }
                 }, 300);
             }
@@ -257,55 +297,8 @@ class MelonyPlayer {
             console.log('✅ 초기 데이터 로딩 완료');
 
         } catch (error) {
-            console.error('❌ 초기 데이터 로딩 실패:', error);
+            console.error('❌ 데이터 로딩 실패:', error);
             throw error;
-        }
-    }
-
-    /**
-     * 특정 카테고리 데이터 로딩
-     */
-    async loadCategoryData(category) {
-        try {
-            console.log('📡 카테고리 데이터 로딩:', category);
-
-            const categoryMap = {
-                'pop': 'pop',
-                'kpop': 'kpop',
-                'lofi-inst': 'lofi-inst',
-                'pc': 'pc'
-            };
-
-            const apiCategory = categoryMap[category] || category;
-            const categoryData = await this.api.getPlaylist(apiCategory);
-
-            const categoryTracks = categoryData.tracks || categoryData;
-            this.playlistManager.shuffledTracks[category] = this.playlistManager.shuffleArray([...categoryTracks]);
-
-            console.log('✅ 카테고리 데이터 로딩 완료:', category, categoryTracks.length + '곡');
-            this.playlistManager.updateCurrentPlaylist();
-
-        } catch (error) {
-            console.error('❌ 카테고리 데이터 로딩 실패:', category, error);
-            this.playlistManager.shuffledTracks[category] = [];
-        }
-    }
-
-    /**
-     * 특정 카테고리 커버 로딩
-     */
-    async loadCategoryCovers(category) {
-        try {
-            console.log('🖼️ 카테고리 커버 로딩:', category);
-
-            // CoverManager의 통합 로딩 사용
-            await this.coverManager.loadCoversByCategory(category);
-
-            console.log('✅ 카테고리 커버 로딩 완료:', category);
-
-        } catch (error) {
-            console.error('❌ 카테고리 커버 로딩 실패:', category, error);
-            this.coverManager.generateDefaultCovers();
         }
     }
 
@@ -315,291 +308,375 @@ class MelonyPlayer {
     setupEventListeners() {
         console.log('🎧 이벤트 리스너 설정...');
 
-        // UI 이벤트
+        // ✅ 재생/일시정지 토글
         this.uiManager.on('playToggle', () => {
-            this.audioManager.hasUserInteracted = true;
-            this.handlePlayToggle();
+            console.log('🎵 재생/일시정지 토글');
+            this.audioManager.togglePlay();
         });
+
+        // ✅ 다음 곡 (디바운스 적용)
         this.uiManager.on('nextTrack', () => {
-            this.audioManager.hasUserInteracted = true;
-            this.handleNextTrack();
+            this.handleNextTrackDebounced();
         });
+
+        // ✅ 이전 곡 (디바운스 적용)
         this.uiManager.on('previousTrack', () => {
-            this.audioManager.hasUserInteracted = true;
-            this.handlePreviousTrack();
+            this.handlePreviousTrackDebounced();
         });
-        this.uiManager.on('categorySwitch', (category) => {
-            this.audioManager.hasUserInteracted = true;
-            this.handleCategorySwitch(category);
+
+        // 진행바 클릭
+        this.uiManager.on('progressBarClick', (percent) => {
+            if (this.audioManager.audio && this.audioManager.audio.duration) {
+                const newTime = percent * this.audioManager.audio.duration;
+                this.audioManager.setCurrentTime(newTime);
+                console.log('🎯 재생 위치 변경:', this.formatTime(newTime));
+            }
         });
-        this.uiManager.on('equalizerToggle', () => this.handleEqualizerToggle());
-        this.uiManager.on('progressBarClick', (percent) => this.handleProgressBarClick(percent));
+
+        // 카테고리 전환
+        this.uiManager.on('categorySwitch', (categoryName) => {
+            this.switchCategory(categoryName);
+        });
+
+        // 배경음 토글
+        this.uiManager.on('bgSoundToggle', (soundType) => {
+            if (this.effectSoundManager && this.effectSoundManager.toggleBgSound) {
+                this.effectSoundManager.toggleBgSound(soundType);
+            }
+        });
+
+        // 로컬 파일 선택
         this.uiManager.on('localFilesSelected', (files, type) => {
-    console.log('🎧 main.js에서 받은 데이터:', {files, type, filesLength: files?.length});
-    this.processLocalFiles(files, type);
-});
-        // 오디오 이벤트
-        this.audioManager.audio.addEventListener('timeupdate', () => this.handleTimeUpdate());
-        this.audioManager.audio.addEventListener('ended', () => this.handleTrackEnded());
-        this.audioManager.audio.addEventListener('loadedmetadata', () => this.handleMetadataLoaded());
-
-        // 키보드 이벤트
-        document.addEventListener('keydown', (e) => this.handleKeyboardEvent(e));
-
-        // 페이지 이벤트
-        window.addEventListener('beforeunload', () => this.handleBeforeUnload());
+            this.processLocalFiles(files, type);
+        });
 
         console.log('✅ 이벤트 리스너 설정 완료');
     }
 
     /**
-     * 재생/정지 토글
+     * ✅ 다음 곡 (디바운스 적용) - 중복 요청 방지
      */
-    async handlePlayToggle() {
-        try {
-            if (!this.audioManager.audio.src) {
-                await this.loadCurrentTrack();
-            }
-
-            await this.audioManager.togglePlay();
-            this.uiManager.updatePlayButton(this.audioManager.isPlaying);
-
-            // ✅ AudioContext 연결 (첫 재생 시)
-            if (this.audioManager.isPlaying && !this.audioManager.sourceConnected) {
-                this.audioManager.connectAudioSource();
-            }
-
-            // ✅ 비주얼라이저 시작/정지
-            if (this.audioManager.isPlaying) {
-                this.visualizer.start();
-            } else {
-                this.visualizer.stop();
-            }
-
-        } catch (error) {
-            console.error('재생 토글 오류:', error);
-            this.uiManager.showError('재생 오류: ' + error.message);
+    handleNextTrackDebounced() {
+        // 이미 처리 중이면 무시
+        if (this.isTrackSwitching) {
+            console.log('⏭️ 트랙 전환 중... 대기');
+            return;
         }
+
+        // 기존 타이머 취소
+        if (this.nextTrackDebounceTimer) {
+            clearTimeout(this.nextTrackDebounceTimer);
+        }
+
+        // 200ms 디바운스 (더 빠른 반응)
+        this.nextTrackDebounceTimer = setTimeout(() => {
+            this.playNextTrack();
+        }, 200);
     }
 
     /**
-     * 다음 트랙 처리
+     * ✅ 이전 곡 (디바운스 적용) - 중복 요청 방지
      */
-    async handleNextTrack() {
-        if (this.isProcessingNextTrack) {
-            console.log('⚠️ 다음 트랙 처리 중, 중복 호출 무시');
+    handlePreviousTrackDebounced() {
+        // 이미 처리 중이면 무시
+        if (this.isTrackSwitching) {
+            console.log('⏮️ 트랙 전환 중... 대기');
             return;
         }
-        this.isProcessingNextTrack = true;
+
+        // 기존 타이머 취소
+        if (this.prevTrackDebounceTimer) {
+            clearTimeout(this.prevTrackDebounceTimer);
+        }
+
+        // 200ms 디바운스 (더 빠른 반응)
+        this.prevTrackDebounceTimer = setTimeout(() => {
+            this.playPreviousTrack();
+        }, 200);
+    }
+
+    /**
+     * ✅ 오디오 이벤트 리스너 설정 (개선)
+     */
+    setupAudioEventListeners() {
+        if (!this.audioManager.audio) return;
+
+        const audio = this.audioManager.audio;
+
+        // ✅ 기존 이벤트 리스너 제거 (중복 방지)
+        if (this._audioEventHandlers) {
+            Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
+                audio.removeEventListener(event, handler);
+            });
+        }
+
+        // 새 이벤트 핸들러 정의
+        this._audioEventHandlers = {
+            play: () => {
+                console.log('▶️ 재생 시작');
+                this.audioManager.isPlaying = true;
+                this.uiManager.updatePlayButton(true);
+                this.uiManager.updateThumbnailState('playing');
+                
+                if (this.visualizer) {
+                    this.visualizer.start();
+                }
+            },
+
+            pause: () => {
+                console.log('⏸️ 재생 정지');
+                this.audioManager.isPlaying = false;
+                this.uiManager.updatePlayButton(false);
+                this.uiManager.updateThumbnailState('paused');
+                
+                if (this.visualizer) {
+                    this.visualizer.stop();
+                }
+            },
+
+            ended: () => {
+                console.log('🔚 트랙 종료 - 자동으로 다음 곡 재생');
+                this.playNextTrack();
+            },
+
+            timeupdate: () => {
+                if (audio.duration) {
+                    this.uiManager.updateProgress(audio.currentTime, audio.duration);
+                }
+            },
+
+            loadstart: () => {
+                console.log('⏳ 로딩 시작');
+                this.uiManager.updateThumbnailState('loading');
+            },
+
+            canplay: () => {
+                console.log('✅ 재생 가능');
+                this.uiManager.updateThumbnailState(this.audioManager.isPlaying ? 'playing' : 'paused');
+            },
+
+error: (e) => {
+                const currentSrc = audio.currentSrc || audio.src;
+                const errorCode = audio.error?.code;
+                
+                console.log('🔍 오디오 에러 감지:', {
+                    code: errorCode,
+                    src: currentSrc,
+                    readyState: audio.readyState,
+                    isTrackSwitching: this.isTrackSwitching
+                });
+                
+                // ✅ src가 비어있으면 무시
+                if (!currentSrc || currentSrc === '' || currentSrc === 'about:blank') {
+                    console.log('⚠️ 빈 src 에러 무시');
+                    return;
+                }
+                
+                // ✅ 트랙 전환 중 발생하는 에러는 무시
+                if (this.isTrackSwitching) {
+                    console.log('⚠️ 트랙 전환 중 에러 무시');
+                    return;
+                }
+                
+                // ✅ PC 카테고리: blob URL + readyState >= 1이면 무시
+                if (currentSrc.startsWith('blob:') && audio.readyState >= 1) {
+                    console.log('⚠️ PC 카테고리 - 메타데이터 로드 후 에러 무시 (재생 가능)');
+                    return;
+                }
+                
+                // ✅ 실제 로딩 실패만 처리
+                console.error('❌ 실제 오디오 오류:', {
+                    code: errorCode,
+                    message: audio.error?.message,
+                    src: currentSrc
+                });
+                
+                setTimeout(() => {
+                    console.log('🔄 오류로 인한 다음 곡 자동 전환');
+                    this.playNextTrack();
+                }, 1000);
+            }
+        };
+
+        // 이벤트 리스너 등록
+        Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
+            audio.addEventListener(event, handler);
+        });
+    }
+
+    /**
+     * 다음 트랙 재생
+     */
+    async playNextTrack() {
+        console.log('⏭️ 다음 트랙 재생');
+
+        // ✅ 트랙 전환 중 플래그 설정
+        if (this.isTrackSwitching) {
+            console.log('⚠️ 이미 트랙 전환 중입니다');
+            return;
+        }
+
+        this.isTrackSwitching = true;
 
         try {
-            const wasPlaying = this.audioManager.isPlaying;
             const nextTrack = this.playlistManager.getNextTrack();
-
+            
             if (!nextTrack) {
-                console.log('⏭️ 다음 트랙이 없습니다');
+                console.error('❌ 다음 트랙이 없습니다');
+                this.isTrackSwitching = false;
                 return;
             }
 
-            if (wasPlaying) {
-                await this.audioManager.fadeOutAudio(500);
-                this.audioManager.pause();
-                this.visualizer.stop();
-            }
+            console.log('🎵 다음 트랙:', nextTrack.title);
 
-            if (this.playlistManager.currentCategory === 'pc') {
+            // 로컬 파일인 경우
+            if (nextTrack.isLocalFile) {
                 await this.loadLocalTrack(this.playlistManager.currentTrackIndex);
             } else {
                 await this.loadTrack(nextTrack);
             }
 
+            // ✅ 로드 성공하면 즉시 플래그 해제
+            this.isTrackSwitching = false;
+            console.log('✅ 트랙 로드 완료, 플래그 해제');
+
+            // ✅ 자동 재생 (더 확실하게)
             setTimeout(() => {
-                this.audioManager.setAutoPlay('다음 트랙');
-                this.audioManager.attemptAutoPlay();
-            }, 300);
+                this.audioManager.play().catch(e => {
+                    console.log('재생 실패:', e?.message);
+                });
+            }, 100);
 
         } catch (error) {
-            console.error('다음 트랙 오류:', error);
-        } finally {
-            this.isProcessingNextTrack = false;
+            console.error('❌ 다음 트랙 재생 실패:', error);
+            // 에러 시에도 플래그 해제
+            this.isTrackSwitching = false;
         }
     }
 
     /**
-     * 이전 트랙 처리
+     * 이전 트랙 재생
      */
-    async handlePreviousTrack() {
-        if (this.isProcessingPrevTrack) {
-            console.log('⚠️ 이전 트랙 처리 중, 중복 호출 무시');
+    async playPreviousTrack() {
+        console.log('⏮️ 이전 트랙 재생');
+
+        // ✅ 트랙 전환 중 플래그 설정
+        if (this.isTrackSwitching) {
+            console.log('⚠️ 이미 트랙 전환 중입니다');
             return;
         }
-        this.isProcessingPrevTrack = true;
+
+        this.isTrackSwitching = true;
 
         try {
-            const wasPlaying = this.audioManager.isPlaying;
-            const previousTrack = this.playlistManager.getPreviousTrack();
-
-            if (!previousTrack) {
-                console.log('⏮️ 이전 트랙이 없습니다');
+            const prevTrack = this.playlistManager.getPreviousTrack();
+            
+            if (!prevTrack) {
+                console.error('❌ 이전 트랙이 없습니다');
+                this.isTrackSwitching = false;
                 return;
             }
 
-            if (wasPlaying) {
-                await this.audioManager.fadeOutAudio(500);
-                this.audioManager.pause();
-                this.visualizer.stop();
-            }
+            console.log('🎵 이전 트랙:', prevTrack.title);
 
-            if (this.playlistManager.currentCategory === 'pc') {
+            // 로컬 파일인 경우
+            if (prevTrack.isLocalFile) {
                 await this.loadLocalTrack(this.playlistManager.currentTrackIndex);
             } else {
-                await this.loadTrack(previousTrack);
+                await this.loadTrack(prevTrack);
             }
 
+            // ✅ 로드 성공하면 즉시 플래그 해제
+            this.isTrackSwitching = false;
+            console.log('✅ 트랙 로드 완료, 플래그 해제');
+
+            // ✅ 자동 재생 (더 확실하게)
             setTimeout(() => {
-                this.audioManager.setAutoPlay('이전 트랙');
-                this.audioManager.attemptAutoPlay();
-            }, 300);
+                this.audioManager.play().catch(e => {
+                    console.log('재생 실패:', e?.message);
+                });
+            }, 100);
 
         } catch (error) {
-            console.error('이전 트랙 오류:', error);
-        } finally {
-            this.isProcessingPrevTrack = false;
+            console.error('❌ 이전 트랙 재생 실패:', error);
+            // 에러 시에도 플래그 해제
+            this.isTrackSwitching = false;
         }
     }
 
     /**
-     * 카테고리 전환 처리
+     * 카테고리 전환
      */
-    async handleCategorySwitch(event) {
-    try {
-        let categoryName = typeof event === 'string' ? event : event.detail || event;
-        
-        // 배열로 전달된 경우 첫 번째 요소 추출
-        if (Array.isArray(categoryName)) {
-            categoryName = categoryName[0];
-        }
-        
+    async switchCategory(categoryName) {
         console.log('🔄 카테고리 전환:', categoryName);
 
+        try {
+            // PC 카테고리인 경우 파일 선택 다이얼로그 표시
             if (categoryName === 'pc') {
-                this.playlistManager.switchCategory(categoryName);
-                await this.loadCategoryCovers('pop'); // PC는 POP 커버 사용
                 this.showFileSelector();
                 return;
             }
 
-            if (this.audioManager.isPlaying) {
-                this.audioManager.pause();
-                this.visualizer.stop();
+            // ✅ PC에서 다른 카테고리로 전환 시 유튜브 숨기기
+            if (this.playlistManager.currentCategory === 'pc' && this.youtubeManager) {
+                this.youtubeManager.hide();
+                console.log('📺 PC → 다른 카테고리: 유튜브 숨김');
             }
 
+            // 플레이리스트 매니저 카테고리 전환
             this.playlistManager.switchCategory(categoryName);
+
+            // UI 업데이트
             this.uiManager.updateCategoryButtons(categoryName);
 
-            // 커버 먼저 로드
-            await this.loadCategoryCovers(categoryName);
-
-            // 트랙 데이터 확인
-            if (!this.playlistManager.shuffledTracks[categoryName] ||
-                this.playlistManager.shuffledTracks[categoryName].length === 0) {
-                await this.loadCategoryData(categoryName);
-            }
-
-            // 첫 곡 로드
+            // 첫 번째 트랙 로드
             const firstTrack = this.playlistManager.getTrackByIndex(0);
             if (firstTrack) {
                 await this.loadTrack(firstTrack);
-
-                setTimeout(() => {
-                    this.audioManager.setAutoPlay('카테고리 전환: ' + categoryName);
-                    this.audioManager.attemptAutoPlay();
-                }, 500);
+                this.audioManager.setAutoPlay('카테고리 전환');
+                this.audioManager.attemptAutoPlay();
             }
 
         } catch (error) {
-            console.error('카테고리 전환 오류:', error);
-            this.uiManager.showError('카테고리 전환 오류: ' + error.message);
+            console.error('❌ 카테고리 전환 실패:', error);
         }
-    }
-
-    handleEqualizerToggle() {
-        this.equalizer.toggle();
-    }
-
-    setupAudioEventListeners() {
-        this.audioManager.audio.addEventListener('timeupdate', () => this.handleTimeUpdate());
-        this.audioManager.audio.addEventListener('ended', () => this.handleTrackEnded());
-        this.audioManager.audio.addEventListener('loadedmetadata', () => this.handleMetadataLoaded());
-    }
-
-    handleProgressBarClick(percent) {
-        if (this.audioManager.audio && this.audioManager.audio.duration) {
-            const validPercent = Math.max(0, Math.min(1, percent));
-            const newTime = validPercent * this.audioManager.audio.duration;
-            this.audioManager.setCurrentTime(newTime);
-        }
-    }
-
-    handleTimeUpdate() {
-        const currentTime = this.audioManager.getCurrentTime();
-        const duration = this.audioManager.getDuration();
-        this.uiManager.updateProgress(currentTime, duration);
-    }
-
-    handleTrackEnded() {
-        this.handleNextTrack();
-    }
-
-    handleMetadataLoaded() {
-        const duration = this.audioManager.getDuration();
-        this.uiManager.updateProgress(0, duration);
-    }
-
-    handleKeyboardEvent(e) {
-        // 필요 시 추가
-    }
-
-    handleBeforeUnload() {
-        this.cleanup();
-    }
-
-    async loadCurrentTrack() {
-        const currentTrack = this.playlistManager.getCurrentTrack();
-        if (currentTrack) await this.loadTrack(currentTrack);
     }
 
     /**
      * 트랙 로드
      */
     async loadTrack(track) {
+        if (!track || !track.audio) {
+            console.error('❌ 유효하지 않은 트랙:', track);
+            return;
+        }
+
         try {
             console.log('🎵 트랙 로드:', track.title);
 
-            // 오디오 URL 생성
-            const directR2Base = 'https://pub-4ecc0eaab30e42b999c67761f4c6f549.r2.dev';
             const folder = track.folder || 'pop';
-            const filename = track.audio.split('/').pop();
-            const audioUrl = `${directR2Base}/${folder}/${encodeURIComponent(filename)}`;
+            const filename = track.audio;
 
-            // 커버 URL 생성
+            // 오디오 URL 생성
+            const baseUrl = this.config.get('api.baseUrl');
+            let audioUrl = Utils.generateAudioUrl(baseUrl, filename, folder);
+
+            console.log('🎵 오디오 URL:', audioUrl);
+
+            // 커버 URL 설정
             if (!track.coverUrl) {
                 track.coverUrl = this.generateCoverUrl(track);
-                console.log('🖼️ 커버 URL 생성:', track.coverUrl);
             }
 
-            // ✅ 즉시 커버 설정 (핵심!)
+            // ✅ 커버 먼저 설정 (깜빡임 방지)
             if (track.coverUrl) {
-                console.log('🖼️ 커버 이미지 즉시 설정:', track.coverUrl);
                 this.coverManager.setCover(track.coverUrl);
-
-                // body 배경도 설정
                 document.body.style.backgroundImage = `url('${track.coverUrl}')`;
             }
 
-            // 오디오 로드
+            // ✅ 오디오 로드
             await this.audioManager.loadTrackEnhanced(audioUrl, track, {
-                autoPlay: true
+                autoPlay: false
             });
 
             // ✅ AudioContext 연결 (오디오 로드 후)
@@ -615,6 +692,13 @@ class MelonyPlayer {
             });
             this.uiManager.updateTitle(formattedTitle);
 
+            // ✅ PC가 아닌 카테고리에서는 비주얼라이저 보이기
+            const visualizerElement = document.getElementById('audioVisualizer');
+            if (visualizerElement && folder !== 'pc') {
+                visualizerElement.style.opacity = '1';
+                visualizerElement.style.pointerEvents = 'auto';
+            }
+
             // ✅ 재생 중이면 비주얼라이저 시작
             if (this.audioManager.isPlaying) {
                 this.visualizer.start();
@@ -624,6 +708,25 @@ class MelonyPlayer {
 
         } catch (error) {
             console.error('❌ 트랙 로드 실패:', error);
+            
+            // ✅ 로딩 실패 시 자동으로 다음 곡 시도 (무한 루프 방지)
+            if (!this._skipFailedTrack) {
+                console.log('🔄 로딩 실패, 다음 곡으로 자동 전환...');
+                this._skipFailedTrack = true;
+                
+                setTimeout(() => {
+                    this.playNextTrack().finally(() => {
+                        // 다음 트랙 로드 후 플래그 해제
+                        setTimeout(() => {
+                            this._skipFailedTrack = false;
+                        }, 2000);
+                    });
+                }, 1000);
+            } else {
+                console.error('❌ 연속 로딩 실패, 자동 전환 중단');
+                this.uiManager.showError('트랙 로드 실패: ' + track.title);
+            }
+            
             throw error;
         }
     }
@@ -651,48 +754,202 @@ class MelonyPlayer {
                 // Blob URL 생성
                 track.blobUrl = URL.createObjectURL(track.fileReference);
 
-                // 커버 생성 (POP 커버 사용)
+ // 🔽 PC 모드에서는 커버/배경/비주얼라이저 숨기고 유튜브 표시
+            if (this.playlistManager.currentCategory === 'pc') {
+                const thumb = document.getElementById('thumbnail');
+                if (thumb) thumb.style.backgroundImage = 'none';
+                document.body.style.backgroundImage = 'none';
+                
+                // 비주얼라이저 숨김
+                const visualizerElement = document.getElementById('audioVisualizer');
+                if (visualizerElement) {
+                    visualizerElement.style.opacity = '0';
+                    visualizerElement.style.pointerEvents = 'none';
+                }
+                
+                // ✅ PC 카테고리에서 유튜브 영상 표시
+                if (this.youtubeManager) {
+                    this.youtubeManager.show();
+                    console.log('📺 PC 카테고리 - 유튜브 영상 표시');
+                }
+            } else {
+                // PC가 아닐 때는 커버 표시 + 유튜브 숨김
                 if (!track.coverUrl) {
                     track.coverUrl = this.generateCoverUrl(track);
                 }
-
-                // 커버 설정
                 if (track.coverUrl) {
                     this.coverManager.setCover(track.coverUrl);
                     document.body.style.backgroundImage = `url('${track.coverUrl}')`;
                 }
-
-                // 오디오 로드
-                await this.audioManager.loadTrackEnhanced(track.blobUrl, track, {
-                    autoPlay: false
-                });
-
-                this.setupAudioEventListeners();
                 
-                // ✅ 제목 포맷 적용
-                const formattedTitle = this.titleFormatter.format(track.title, { 
-                    category: track.folder || 'pop' 
-                });
-                this.uiManager.updateTitle(formattedTitle);
-
-            } catch (error) {
-                console.error('❌ 로컬 트랙 로드 실패:', error);
-                this.uiManager.showError('로컬 파일 로드 실패: ' + error.message);
+                // 비주얼라이저 보이기
+                const visualizerElement = document.getElementById('audioVisualizer');
+                if (visualizerElement) {
+                    visualizerElement.style.opacity = '1';
+                    visualizerElement.style.pointerEvents = 'auto';
+                }
+                
+                // ✅ 유튜브 숨김
+                if (this.youtubeManager) {
+                    this.youtubeManager.hide();
+                }
             }
+
+            // 오디오 로드
+            await this.audioManager.loadTrackEnhanced(track.blobUrl, track, {
+                autoPlay: false
+            });
+
+            this.setupAudioEventListeners();
+        
+            // ✅ 제목 포맷 적용
+            const formattedTitle = this.titleFormatter.format(track.title, { 
+                category: track.folder || 'pop' 
+            });
+            this.uiManager.updateTitle(formattedTitle);
+
+        } catch (error) {
+            console.error('❌ 로컬 트랙 로드 실패:', error);
+            this.uiManager.showError('로컬 파일 로드 실패: ' + error.message);
         }
     }
+}
 
     showFileSelector() {
         const fileInput = document.getElementById('fileInput');
         const folderInput = document.getElementById('folderInput');
 
-        const userChoice = confirm('파일을 선택하시겠습니까?\n\n확인: 개별 음악 파일 선택\n취소: 폴더 전체 선택');
-
-        if (userChoice) {
-            fileInput.click();
-        } else {
+        // ✅ localStorage에서 저장된 설정 확인
+        const savedChoice = localStorage.getItem('pcFileChoice');
+        if (savedChoice === 'folder') {
             folderInput.click();
+            return;
+        } else if (savedChoice === 'files') {
+            fileInput.click();
+            return;
         }
+
+        // ✅ 커스텀 다이얼로그 생성
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+        `;
+
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            z-index: 10000;
+            text-align: center;
+            min-width: 320px;
+        `;
+
+        dialog.innerHTML = `
+            <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #333;">
+                음악 파일 선택
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;">
+                <button id="selectFolder" style="
+                    padding: 12px 24px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 12px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                ">📁 폴더</button>
+                <button id="selectFiles" style="
+                    padding: 12px 24px;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 12px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                ">🎵 개별파일</button>
+                <button id="cancelSelect" style="
+                    padding: 12px 24px;
+                    background: #e0e0e0;
+                    color: #666;
+                    border: none;
+                    border-radius: 12px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                ">취소</button>
+            </div>
+            <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; color: #666;">
+                <input type="checkbox" id="rememberChoice" style="width: 18px; height: 18px; cursor: pointer;">
+                <label for="rememberChoice" style="cursor: pointer; user-select: none;">다음부터 자동으로 열기</label>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+        document.body.appendChild(dialog);
+
+        const checkbox = document.getElementById('rememberChoice');
+
+        // 버튼 이벤트
+        document.getElementById('selectFolder').onclick = () => {
+            if (checkbox.checked) {
+                localStorage.setItem('pcFileChoice', 'folder');
+            }
+            document.body.removeChild(overlay);
+            document.body.removeChild(dialog);
+            folderInput.click();
+        };
+
+        document.getElementById('selectFiles').onclick = () => {
+            if (checkbox.checked) {
+                localStorage.setItem('pcFileChoice', 'files');
+            }
+            document.body.removeChild(overlay);
+            document.body.removeChild(dialog);
+            fileInput.click();
+        };
+
+        document.getElementById('cancelSelect').onclick = () => {
+            document.body.removeChild(overlay);
+            document.body.removeChild(dialog);
+        };
+
+        // 오버레이 클릭 시 닫기
+        overlay.onclick = () => {
+            document.body.removeChild(overlay);
+            document.body.removeChild(dialog);
+        };
+
+        // 호버 효과
+        const buttons = dialog.querySelectorAll('button');
+        buttons.forEach(btn => {
+            if (btn.id !== 'cancelSelect') {
+                btn.onmouseenter = () => {
+                    btn.style.transform = 'translateY(-2px)';
+                    btn.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.4)';
+                };
+                btn.onmouseleave = () => {
+                    btn.style.transform = 'translateY(0)';
+                    btn.style.boxShadow = 'none';
+                };
+            }
+        });
     }
 
 processLocalFiles(files, type) {
@@ -718,7 +975,7 @@ const audioFiles = Array.from(files).filter(file => {
     console.log('🔍 파일 체크:', file.name, 'type:', file.type);
     const isAudio = file.type.startsWith('audio/') || 
                    /\.(mp3|m4a|wav|ogg|flac|aac)$/i.test(file.name);
-    console.log('  → 오디오 파일?', isAudio);
+
     return isAudio;
 });
 
@@ -752,12 +1009,19 @@ const audioFiles = Array.from(files).filter(file => {
             });
     }
 
+    /**
+     * ✅ Blob URL 정리 (메모리 누수 방지)
+     */
     cleanupBlobUrls() {
         if (this.playlistManager && this.playlistManager.currentPlaylist) {
             this.playlistManager.currentPlaylist.forEach(track => {
                 if (track.blobUrl) {
-                    URL.revokeObjectURL(track.blobUrl);
-                    track.blobUrl = null;
+                    try {
+                        URL.revokeObjectURL(track.blobUrl);
+                        track.blobUrl = null;
+                    } catch (e) {
+                        console.warn('⚠️ Blob URL 정리 실패:', e);
+                    }
                 }
             });
         }
@@ -776,19 +1040,52 @@ const audioFiles = Array.from(files).filter(file => {
         this.uiManager.showError('초기화 실패: ' + error.message);
     }
 
+    /**
+     * ✅ 완전한 정리 함수
+     */
     cleanup() {
+        console.log('🧹 리소스 정리 시작...');
+
+        // Blob URL 정리
         this.cleanupBlobUrls();
+
+        // 오디오 이벤트 리스너 제거
+        if (this._audioEventHandlers && this.audioManager?.audio) {
+            Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
+                this.audioManager.audio.removeEventListener(event, handler);
+            });
+            this._audioEventHandlers = null;
+        }
+
+        // 각 매니저 정리
         if (this.audioManager) this.audioManager.reset();
         if (this.visualizer) this.visualizer.stop();
         if (this.equalizer) this.equalizer.cleanup?.();
         if (this.coverManager) this.coverManager.cleanup?.();
         if (this.touchHandler) this.touchHandler.cleanup?.();
         if (this.effectSoundManager) this.effectSoundManager.cleanup?.();
+
+        // 타이머 정리
+        if (this.nextTrackDebounceTimer) {
+            clearTimeout(this.nextTrackDebounceTimer);
+            this.nextTrackDebounceTimer = null;
+        }
+        if (this.prevTrackDebounceTimer) {
+            clearTimeout(this.prevTrackDebounceTimer);
+            this.prevTrackDebounceTimer = null;
+        }
+        if (this.trackSwitchTimeout) {
+            clearTimeout(this.trackSwitchTimeout);
+            this.trackSwitchTimeout = null;
+        }
+
+        console.log('✅ 리소스 정리 완료');
     }
 
     getStatus() {
         return {
             isInitialized: this.isInitialized,
+            isTrackSwitching: this.isTrackSwitching,
             audioManager: this.audioManager?.getStatus?.() || null,
             playlistManager: this.playlistManager?.getStatus?.() || null,
             coverManager: this.coverManager?.getStatus?.() || null,
@@ -802,14 +1099,7 @@ const audioFiles = Array.from(files).filter(file => {
         const s = Math.floor(sec % 60).toString().padStart(2, '0');
         return `${m}:${s}`;
     }
-
-  /**
-
-   */
-
 }
-
-
 
 // 페이지 로드 시 초기화
 window.addEventListener('load', async () => {
@@ -821,7 +1111,9 @@ window.addEventListener('load', async () => {
     }
 });
 
-// 페이지 종료 시 정리
+// ✅ 페이지 종료 시 정리 (메모리 누수 방지)
 window.addEventListener('beforeunload', () => {
-    if (melonyPlayer) melonyPlayer.cleanup();
+    if (melonyPlayer) {
+        melonyPlayer.cleanup();
+    }
 });
