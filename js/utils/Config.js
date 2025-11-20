@@ -64,8 +64,8 @@ class Config {
       // API 설정
       api: {
         baseUrl: this.getBaseUrl(),
-        timeout: 20000, // 20초로 증가 (느린 네트워크 대응)
-        retryCount: 2, // 재시도 2회로 감소 (빠른 fallback)
+        timeout: 8000,
+        retryCount: 3,
         cacheEnabled: true,
         cacheTTL: 24 * 60 * 60 * 1000 // 24시간
       },
@@ -200,8 +200,8 @@ class Config {
       },
       api: {
         baseUrl: this.getBaseUrl(),
-        timeout: 20000, // 20초로 증가 (느린 네트워크 대응)
-        retryCount: 2, // 재시도 2회로 감소 (빠른 fallback)
+        timeout: 8000,
+        retryCount: 3,
         cacheEnabled: true,
         cacheTTL: 24 * 60 * 60 * 1000
       },
