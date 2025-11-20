@@ -112,8 +112,13 @@ class UIManager {
     this.elements.categories.forEach(category => {
       category.addEventListener('click', () => {
         const buttonText = category.textContent.trim();
-        const categoryName = category.dataset.folder; // ✅ data-folder 속성을 읽음!
+        const categoryName = category.dataset.folder;
         console.log('🎯 카테고리 클릭:', buttonText, '->', categoryName);
+        
+        // ✅ 즉시 active 클래스 업데이트
+        this.elements.categories.forEach(cat => cat.classList.remove('active'));
+        category.classList.add('active');
+        
         this.emit('categorySwitch', categoryName);
       });
     });
@@ -366,18 +371,22 @@ class UIManager {
    * @param {string} activeCategory - 활성 카테고리
    */
   updateCategoryButtons(activeCategory) {
-  console.log('🎯 카테고리 버튼 상태 업데이트:', activeCategory);
-  this.elements.categories.forEach(category => {
-    const categoryName = category.dataset.folder; // ✅ data-folder 사용!
-    console.log('  - 버튼:', category.textContent.trim(), '→ 카테고리:', categoryName);
-    if (categoryName === activeCategory) {
-      console.log('  ✅', category.textContent.trim(), '버튼 활성화');
-      category.classList.add('active');
-    } else {
+    console.log('🎯 카테고리 버튼 상태 업데이트:', activeCategory);
+    
+    this.elements.categories.forEach(category => {
       category.classList.remove('active');
-    }
-  });
-}
+      
+      const buttonText = category.textContent.trim();
+      const mappedCategory = this.mapCategoryName(buttonText);
+      
+      console.log(`  - 버튼: "${buttonText}" → 카테고리: "${mappedCategory}"`);
+      
+      if (mappedCategory === activeCategory) {
+        category.classList.add('active');
+        console.log(`  ✅ "${buttonText}" 버튼 활성화`);
+      }
+    });
+  }
 
   /**
    * 효과음 버튼 상태 업데이트
