@@ -13,7 +13,7 @@
  *    window.melonyPlayer.securityManager.disableAllSecurity();
  * 
  * 4. 콘솔 로그만 토글:
- *    window.melonyPlayer.securityManager.toggleConsoleLog(); 
+ *    window.melonyPlayer.securityManager.toggleConsoleLog();
  * 
  * 5. 전체 보안 켜기:
  *    window.melonyPlayer.securityManager.enableAllSecurity();
