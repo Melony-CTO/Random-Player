@@ -39,31 +39,36 @@ class AudioManager {
     // ✅ 이전 audio 요소 참조 (완전한 정리를 위해)
     this._previousAudioElements = [];
 
+    
+
     this.init();
   }
 
-  // ✅ R2 퍼블릭 URL을 워커로 우회시키는 함수
+/**
+ * AudioManager.js의 _normalizeUrl 함수 (최종 권장안)
+ * 
+ * 현재 상황:
+ * - 플레이리스트에 R2 Direct URL이 이미 들어가 있음
+ * - Utils.generateAudioUrl이 전체 URL은 그대로 반환
+ * - 따라서 _normalizeUrl도 변환 없이 그대로 반환하면 됨
+ */
+
 _normalizeUrl(url) {
   if (!url) return url;
-
-  // 이미 우리 워커면 그대로 둔다
-  if (url.startsWith('https://melony-music-api.zepplinn25.workers.dev')) {
+  
+  // ✅ R2 Direct URL은 그대로 반환 (가장 빠름!)
+  if (url.startsWith('https://pub-4ecc0eaab30e42b999c67761f4c6f549.r2.dev/')) {
+    console.log('✅ R2 Direct URL 사용:', url.substring(0, 80) + '...');
     return url;
   }
 
-  // r2.dev로 바로 가는 건 CORS가 안 되니까 워커로 프록시
-  if (url.includes('.r2.dev/')) {
-    try {
-      const u = new URL(url);
-      const path = u.pathname.startsWith('/') ? u.pathname : '/' + u.pathname;
-      // 👉 워커의 /file/ 밑으로 붙여서 요청
-      return 'https://melony-music-api.zepplinn25.workers.dev/file' + path;
-    } catch (e) {
-      console.warn('URL 파싱 실패, 원본 사용:', url);
-      return url;
-    }
+  // ✅ Worker URL도 그대로 반환
+  if (url.startsWith('https://melony-music-api.zepplinn25.workers.dev')) {
+    console.log('⚠️ Worker URL 사용 (느림):', url.substring(0, 80) + '...');
+    return url;
   }
 
+  // ✅ 그 외 URL도 그대로 반환
   return url;
 }
 
@@ -389,8 +394,20 @@ _normalizeUrl(url) {
     this._bindListeners(listeners);
 
     const cleanup = () => {
+      console.log('🧹 cleanup 호출 - loadId:', myLoadId);
       clearTimeout(timer);
-      this._cleanupListeners(listeners);
+      
+      // ✅ _boundListeners를 정리 (listeners 말고!)
+      if (this._boundListeners && this.audio) {
+        for (const [evt, handler] of this._boundListeners) {
+          this.audio.removeEventListener(evt, handler);
+        }
+        this._boundListeners = null;
+      }
+      
+      if (this.isLoading && this.currentLoadingTrack === track) {
+        this.setLoadingState(false, track);
+      }
       if (this.isLoading && this.currentLoadingTrack === track) {
         this.setLoadingState(false, track);
       }
