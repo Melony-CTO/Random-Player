@@ -16,10 +16,9 @@
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <!-- CoverManager 우선순위 최대 강화 -->
-    <link rel="preload" href="js/ui/CoverManager.js" as="script" fetchpriority="high">
-    <link rel="dns-prefetch" href="https://melony-music-api.zepplinn25.workers.dev">
-    <link rel="preconnect" href="https://melony-music-api.zepplinn25.workers.dev" crossorigin>
+    <!-- API 서버 연결 최적화 -->
+    <link rel="dns-prefetch" href="https://pub-4ecc0eaab30e42b999c67761f4c6f549.r2.dev/">
+    <link rel="preconnect" href="https://pub-4ecc0eaab30e42b999c67761f4c6f549.r2.dev/" crossorigin>
 
     <title>Melony Random Player</title>
 
@@ -97,8 +96,22 @@
     </div>
 
     <!-- 썸네일 컨테이너 -->
-    <div class="thumbnail-container">
-        <div class="thumbnail" id="thumbnail">
+<div class="thumbnail-container">
+    <!-- YouTube 비디오 (PC 카테고리 전용) -->
+    <div id="youtubeContainer"
+     style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none;">
+
+        <iframe id="youtubePlayer" 
+                width="100%" 
+                height="100%" 
+                frameborder="0" 
+                allow="autoplay; encrypted-media"
+                style="pointer-events: none;">
+        </iframe>
+    </div>
+    
+    <div class="thumbnail" id="thumbnail">
+
             <div class="touch-zones">
                 <div class="touch-zone left" id="leftTouchZone">
                     <span>🔊 효과음</span>
@@ -149,7 +162,8 @@
         <div class="category" data-folder="pc">PC</div>
         <div class="category" data-folder="kpop">KPOP</div>
         <div class="category active" data-folder="pop">POP</div>
-        <div class="category" data-folder="lofi-inst">LOFI-INST</div>
+        <div class="category" data-folder="lofi-inst">LOFI</div>
+        <div class="category" data-folder="ambient">Ambient</div>
     </div>
 
     <!-- 배경음 섹션 -->
@@ -188,9 +202,11 @@
 
 <script src="js/ui/Visualizer.js"></script>
 <script src="js/ui/Equalizer.js"></script>
+<script src="js/ui/YouTubeManager.js"></script>
 <script src="js/ui/CoverManager.js"></script>
 <script src="js/ui/TouchHandler.js"></script>
 <script src="js/utils/TitleFormatter.js"></script>
+<script src="js/core/SecurityManager.js"></script>
 
 <script src="js/main.js"></script>
 </body>
