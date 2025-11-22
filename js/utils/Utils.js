@@ -67,25 +67,24 @@ class Utils {
    * @returns {string} 완전한 오디오 URL
    */
   static generateAudioUrl(baseUrl, audioPath, folder) {
-    // ✅ 1. 이미 완전한 URL이면 그대로 반환 (플레이리스트에 전체 URL이 있는 경우)
-    if (audioPath.startsWith('http://') || audioPath.startsWith('https://')) {
-      return audioPath;
-    }
-    
-    // ✅ 2. 상대 경로 처리
-    let fullPath;
-    if (audioPath.includes('/')) {
-      // "pop/filename.m4a" 형태
-      fullPath = audioPath;
-    } else {
-      // "filename.m4a" 형태 - 폴더 추가
-      fullPath = folder + '/' + audioPath;
-    }
-    
-    // ✅ 3. R2 Direct URL 생성 (Workers보다 빠름!)
-    // 인코딩 없이 그대로 반환 - 브라우저가 audio.src 할당 시 자동으로 1회만 인코딩
-    return 'https://pub-4ecc0eaab30e42b999c67761f4c6f549.r2.dev/' + fullPath;
+  // ✅ 1. 이미 완전한 URL이면 그대로 반환 (플레이리스트에 전체 URL이 있는 경우)
+  if (audioPath.startsWith('http://') || audioPath.startsWith('https://')) {
+    return audioPath;
   }
+  
+  // ✅ 2. 상대 경로 처리
+  let fullPath;
+  if (audioPath.includes('/')) {
+    // "pop/filename.m4a" 형태
+    fullPath = audioPath;
+  } else {
+    // "filename.m4a" 형태 - 폴더 추가
+    fullPath = folder + '/' + audioPath;
+  }
+  
+  // 🔥 Workers 프록시 사용 (CORS 안전)
+  return 'https://melony-music-api.zepplinn25.workers.dev/file/' + fullPath;
+}
 
   /**
    * 제목 정제
