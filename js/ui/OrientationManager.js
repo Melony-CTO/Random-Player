@@ -294,13 +294,35 @@ class OrientationManager {
     const rightTouchZone = document.getElementById('rightTouchZone');
 
     // 터치 영역은 그대로 유지 (볼륨 조절 기능 보존)
-    // 필요시 크기나 위치만 미세 조정
     if (leftTouchZone) {
       leftTouchZone.style.display = 'flex';
     }
 
     if (rightTouchZone) {
       rightTouchZone.style.display = 'flex';
+    }
+
+    // 비주얼라이저 위치 조정
+    const visualizer = document.getElementById('audioVisualizer');
+    if (visualizer) {
+      // 하단에서 5% 위로 이동
+      visualizer.style.bottom = '5%';  // ← 이 값을 조정 (0%~20%)
+      
+      // 비주얼라이저 바 간격 조정
+      const bars = visualizer.querySelectorAll('.visualizer-bar');
+      bars.forEach(bar => {
+        bar.style.margin = '0 1px';  // ← 간격 조정 (1px~10px)
+        bar.style.width = '4px';     // ← 바 두께 조정 (2px~10px)
+        bar.style.maxHeight = '150px';   // ← 최대 높이 (중요!)
+        bar.style.minHeight = '2px';     // ← 최소 높이
+      });
+
+      bars.forEach(bar => {
+  bar.style.margin = '0 4px';
+  bar.style.width = '5px';
+  bar.style.maxHeight = '200px';      // 최대 높이 제한
+  bar.style.borderRadius = '6px';     // 둥근 모서리
+});
     }
 
     console.log('✅ 가로 모드 터치 영역 조정');
@@ -319,6 +341,21 @@ class OrientationManager {
 
     if (rightTouchZone) {
       rightTouchZone.style.display = '';
+    }
+
+    // 비주얼라이저 원래대로 복원
+    const visualizer = document.getElementById('audioVisualizer');
+    if (visualizer) {
+      visualizer.style.bottom = '';
+      visualizer.style.top = '';
+      visualizer.style.height = '';
+      
+      // 바 스타일도 복원
+      const bars = visualizer.querySelectorAll('.visualizer-bar');
+      bars.forEach(bar => {
+        bar.style.margin = '';
+        bar.style.width = '';
+      });
     }
 
     console.log('✅ 터치 영역 복원');
@@ -416,9 +453,9 @@ class OrientationManager {
       right: 20px;
       width: 50px;
       height: 50px;
-      background: rgba(0, 0, 0, 0.1);
+      background: rgba(0, 0, 0, 0.2);
       color: white;
-      border: 2px solid rgba(255, 255, 255, 0.4);
+      border: 2px solid rgba(255, 255, 255, 0.2);
       border-radius: 50%;
       font-size: 24px;
       cursor: pointer;
@@ -428,7 +465,7 @@ class OrientationManager {
       justify-content: center;
       transition: all 0.3s ease;
       backdrop-filter: blur(10px);
-      opacity: 0.2;
+      opacity: 0.6;
     `;
 
     // 호버/터치 효과
