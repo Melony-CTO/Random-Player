@@ -1,6 +1,6 @@
 /**
  * OrientationManager - 화면 방향 관리 모듈
- * 가로/세로 모드 전환 및 레이아웃 조정을 담당  
+ * 가로/세로 모드 전환 및 레이아웃 조정을 담당
  */
 class OrientationManager {
   constructor(uiManager) {
@@ -81,6 +81,10 @@ class OrientationManager {
   applyLandscapeMode() {
     console.log('📱 가로 모드 전환');
     
+    // body 스타일 조정
+    document.body.style.backgroundColor = '#000';
+    document.body.style.overflow = 'hidden';
+    
     // body에 landscape 클래스 추가
     document.body.classList.add('landscape-mode');
     document.body.classList.remove('portrait-mode');
@@ -93,6 +97,12 @@ class OrientationManager {
 
     // 터치 영역은 유지 (볼륨 조절 기능 보존)
     this.adjustTouchZonesForLandscape();
+
+    // 전체화면 모드 진입
+    this.requestFullscreen();
+
+    // 세로 전환 버튼 표시
+    this.showOrientationToggleButton();
   }
 
   /**
@@ -100,6 +110,10 @@ class OrientationManager {
    */
   applyPortraitMode() {
     console.log('📱 세로 모드 전환');
+    
+    // body 스타일 복원
+    document.body.style.backgroundColor = '';
+    document.body.style.overflow = '';
     
     // body에 portrait 클래스 추가
     document.body.classList.remove('landscape-mode');
@@ -113,6 +127,12 @@ class OrientationManager {
 
     // 터치 영역 원래대로 복원
     this.restoreTouchZones();
+
+    // 전체화면 모드 종료
+    this.exitFullscreen();
+
+    // 세로 전환 버튼 숨김
+    this.hideOrientationToggleButton();
   }
 
   /**
@@ -142,6 +162,24 @@ class OrientationManager {
     if (playerHeader) {
       playerHeader.style.display = 'none';
     }
+
+    // 방문 통계 숨김
+    const visitStats = document.getElementById('visitStats');
+    if (visitStats) {
+      visitStats.style.display = 'none';
+    }
+
+    // 에러/로딩 메시지 숨김
+    const errorMessages = document.querySelectorAll('.error-message, .loading-message, [class*="error"], [class*="loading"]');
+    errorMessages.forEach(msg => {
+      msg.style.display = 'none';
+    });
+
+    // 곡 정보, 진행바 숨김
+    const songInfo = document.querySelector('.song-info');
+    const progressContainer = document.querySelector('.progress-container');
+    if (songInfo) songInfo.style.display = 'none';
+    if (progressContainer) progressContainer.style.display = 'none';
 
     console.log('✅ 세로 모드 UI 요소 숨김');
   }
@@ -174,6 +212,18 @@ class OrientationManager {
       playerHeader.style.display = '';
     }
 
+    // 방문 통계 표시
+    const visitStats = document.getElementById('visitStats');
+    if (visitStats) {
+      visitStats.style.display = '';
+    }
+
+    // 곡 정보, 진행바 표시
+    const songInfo = document.querySelector('.song-info');
+    const progressContainer = document.querySelector('.progress-container');
+    if (songInfo) songInfo.style.display = '';
+    if (progressContainer) progressContainer.style.display = '';
+
     console.log('✅ 세로 모드 UI 요소 표시');
   }
 
@@ -191,12 +241,21 @@ class OrientationManager {
       thumbnailContainer.style.top = '0';
       thumbnailContainer.style.left = '0';
       thumbnailContainer.style.zIndex = '1000';
+      thumbnailContainer.style.backgroundColor = '#000';
     }
 
     if (thumbnail) {
       thumbnail.style.width = '100%';
       thumbnail.style.height = '100%';
       thumbnail.style.borderRadius = '0';
+      
+      // 커버 이미지 요소 찾기
+      const coverImg = thumbnail.querySelector('img') || thumbnail.querySelector('.cover-image');
+      if (coverImg) {
+        coverImg.style.objectFit = 'cover';
+        coverImg.style.width = '100%';
+        coverImg.style.height = '100%';
+      }
     }
 
     console.log('✅ 가로 모드 커버 스타일 적용');
@@ -286,15 +345,170 @@ class OrientationManager {
    * 전체화면 모드 종료 (선택사항)
    */
   exitFullscreen() {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.webkitExitFullscreen) { // Safari
-      document.webkitExitFullscreen();
-    } else if (document.msExitFullscreen) { // IE11
-      document.msExitFullscreen();
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      console.log('🖥️ 전체화면 모드 아님');
+      return;
+    }
+
+    try {
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) { // Safari
+        document.webkitExitFullscreen();
+      } else if (document.mozCancelFullScreen) { // Firefox
+        document.mozCancelFullScreen();
+      } else if (document.msExitFullscreen) { // IE11
+        document.msExitFullscreen();
+      }
+      
+      console.log('🖥️ 전체화면 모드 종료');
+    } catch (error) {
+      console.warn('⚠️ 전체화면 종료 실패:', error);
+    }
+  }
+
+  /**
+   * 전체화면 모드 요청
+   */
+  requestFullscreen() {
+    const elem = document.documentElement;
+    
+    // 이미 전체화면이면 실행 안 함
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      console.log('🖥️ 이미 전체화면 모드');
+      return;
     }
     
-    console.log('🖥️ 전체화면 모드 종료');
+    try {
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) { // Safari, iOS
+        elem.webkitRequestFullscreen();
+      } else if (elem.mozRequestFullScreen) { // Firefox
+        elem.mozRequestFullScreen();
+      } else if (elem.msRequestFullscreen) { // IE11
+        elem.msRequestFullscreen();
+      }
+      
+      console.log('🖥️ 전체화면 모드 요청');
+    } catch (error) {
+      console.warn('⚠️ 전체화면 모드 실패:', error);
+    }
+  }
+
+  /**
+   * 세로 전환 버튼 표시
+   */
+  showOrientationToggleButton() {
+    // 기존 버튼이 있으면 제거
+    const existingBtn = document.getElementById('orientationToggleBtn');
+    if (existingBtn) {
+      existingBtn.remove();
+    }
+
+    // 버튼 생성
+    const button = document.createElement('button');
+    button.id = 'orientationToggleBtn';
+    button.innerHTML = '🔄';
+    button.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 50px;
+      height: 50px;
+      background: rgba(0, 0, 0, 0.1);
+      color: white;
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
+      font-size: 24px;
+      cursor: pointer;
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+      opacity: 0.2;
+    `;
+
+    // 호버/터치 효과
+    button.addEventListener('mouseenter', () => {
+      button.style.opacity = '1';
+      button.style.background = 'rgba(0, 0, 0, 0.5)';
+      button.style.transform = 'scale(1.1)';
+    });
+
+    button.addEventListener('mouseleave', () => {
+      button.style.opacity = '0.6';
+      button.style.background = 'rgba(0, 0, 0, 0.2)';
+      button.style.transform = 'scale(1)';
+    });
+
+    // 터치 이벤트 (모바일)
+    button.addEventListener('touchstart', () => {
+      button.style.opacity = '1';
+      button.style.background = 'rgba(0, 0, 0, 0.5)';
+    });
+
+    button.addEventListener('touchend', () => {
+      setTimeout(() => {
+        button.style.opacity = '0.6';
+        button.style.background = 'rgba(0, 0, 0, 0.2)';
+      }, 200);
+    });
+
+    // 클릭 이벤트 - 강제로 세로모드 전환
+    button.addEventListener('click', () => {
+      console.log('🔄 수동으로 세로 모드 전환');
+      this.forcePortraitMode();
+    });
+
+    document.body.appendChild(button);
+    console.log('✅ 세로 전환 버튼 표시');
+  }
+
+  /**
+   * 세로 전환 버튼 숨김
+   */
+  hideOrientationToggleButton() {
+    const button = document.getElementById('orientationToggleBtn');
+    if (button) {
+      button.remove();
+      console.log('✅ 세로 전환 버튼 숨김');
+    }
+  }
+
+  /**
+   * 강제로 세로 모드 전환 (버튼 클릭 시)
+   */
+  forcePortraitMode() {
+    // 전체화면 종료
+    this.exitFullscreen();
+    
+    // 세로 모드 UI 적용
+    this.applyPortraitMode();
+    
+    // 사용자에게 기기를 세로로 돌리라는 메시지 표시 (선택사항)
+    const message = document.createElement('div');
+    message.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 20px 40px;
+      border-radius: 12px;
+      font-size: 18px;
+      z-index: 10001;
+      text-align: center;
+    `;
+    message.textContent = '📱 기기를 세로로 돌려주세요';
+    document.body.appendChild(message);
+    
+    setTimeout(() => {
+      message.remove();
+    }, 2000);
   }
 
   /**
@@ -326,5 +540,4 @@ class OrientationManager {
 }
 
 // 전역으로 내보내기
-
 window.OrientationManager = OrientationManager;
