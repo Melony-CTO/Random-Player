@@ -18,6 +18,7 @@ class MelonyPlayer {
         this.coverManager = null;
         this.effectSoundManager = null;
         this.titleFormatter = null;
+        this.orientationManager = null;
 
         this.isInitialized = false;
         this.startTime = Date.now();
@@ -140,6 +141,8 @@ this.youtubeManager = new YouTubeManager();
 
         // ✅ 터치 핸들러 생성 (audioManager와 effectSoundManager 모두 준비된 후)
         this.touchHandler = new TouchHandler(this.uiManager, this.audioManager, this.effectSoundManager);
+        // ✅ 화면 방향 관리자 생성
+        this.orientationManager = new OrientationManager(this.uiManager);
 
         // 🔒 보안 관리자 초기화
         // ⚠️ 배포 시: enabled를 true로 변경하세요!
@@ -1064,6 +1067,7 @@ const audioFiles = Array.from(files).filter(file => {
         if (this.coverManager) this.coverManager.cleanup?.();
         if (this.touchHandler) this.touchHandler.cleanup?.();
         if (this.effectSoundManager) this.effectSoundManager.cleanup?.();
+        if (this.orientationManager) this.orientationManager.cleanup?.();
 
         // 타이머 정리
         if (this.nextTrackDebounceTimer) {
