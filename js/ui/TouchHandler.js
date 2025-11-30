@@ -12,6 +12,11 @@ class TouchHandler {
     this.currentZone = null;
     this.sensitivity = 0.005; // 터치 감도
     this.mouseSensitivity = 0.01; // 마우스 감도
+
+      // 더블탭 관련 변수
+    this.lastTapTime = 0;
+    this.doubleTapDelay = 300; // 300ms 이내 두 번 탭
+    this.touchMoved = false;
     
     this.init();
   }
@@ -52,10 +57,30 @@ class TouchHandler {
     document.addEventListener('touchend', (e) => {
       this.handleTouchEnd(e);
     }, { passive: false, capture: true });
+    
+    // 가운데 썸네일 영역 더블탭 추가
+    const thumbnail = this.uiManager.getElement('thumbnail');
+  if (thumbnail) {
+    let lastThumbnailTap = 0;
+    thumbnail.addEventListener('touchend', (e) => {
+      const currentTime = Date.now();
+      const timeSinceLastTap = currentTime - lastThumbnailTap;
+      
+      if (timeSinceLastTap < this.doubleTapDelay && timeSinceLastTap > 0) {
+        e.preventDefault();
+        this.togglePlayPause();
+        console.log('👆 더블탭 감지 (center) - 재생/정지');
+        lastThumbnailTap = 0;
+      } else {
+        lastThumbnailTap = currentTime;
+      }
+    }, { passive: false });
+  }
 
     console.log('👆 터치 제스처 설정 완료');
   }
 
+    
   /**
    * 마우스 제스처 설정
    */
@@ -78,6 +103,29 @@ class TouchHandler {
       e.preventDefault();
       this.handleMouseStart(e, 'right');
     });
+
+    // 더블클릭 이벤트 추가
+  leftTouchZone.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    this.togglePlayPause();
+    console.log('👆 더블클릭 감지 (left) - 재생/정지');
+  });
+
+  rightTouchZone.addEventListener('dblclick', (e) => {
+    e.preventDefault();
+    this.togglePlayPause();
+    console.log('👆 더블클릭 감지 (right) - 재생/정지');
+  });
+
+    // 가운데 썸네일 영역 더블클릭 추가
+  const thumbnail = this.uiManager.getElement('thumbnail');
+  if (thumbnail) {
+    thumbnail.addEventListener('dblclick', (e) => {
+      e.preventDefault();
+      this.togglePlayPause();
+      console.log('👆 더블클릭 감지 (center) - 재생/정지');
+    });
+  }
 
     // ✅ 마우스가 터치 영역을 벗어나면 중단
     leftTouchZone.addEventListener('mouseleave', (e) => {
@@ -121,6 +169,7 @@ class TouchHandler {
     this.isAdjustingVolume = true;
     this.initialY = e.touches[0].clientY;
     this.currentZone = zone;
+    this.touchMoved = false; // 터치 이동 플래그 초기화
 
     const touchZone = this.uiManager.getElement(zone + 'TouchZone');
     if (touchZone) {
@@ -138,6 +187,7 @@ class TouchHandler {
         if (!this.isAdjustingVolume || !this.currentZone) return;
 
         e.preventDefault();
+        this.touchMoved = true; // 터치가 이동했음을 표시
         const currentY = e.touches[0].clientY;
         const deltaY = this.initialY - currentY;
 
@@ -153,17 +203,34 @@ class TouchHandler {
    * @param {TouchEvent} e - 터치 이벤트
    */
   handleTouchEnd(e) {
-    this.isAdjustingVolume = false;
-    this.currentZone = null;
-
-    const leftTouchZone = this.uiManager.getElement('leftTouchZone');
-    const rightTouchZone = this.uiManager.getElement('rightTouchZone');
-
-    if (leftTouchZone) leftTouchZone.classList.remove('active');
-    if (rightTouchZone) rightTouchZone.classList.remove('active');
-
-    console.log('👆 터치 종료');
+  // 더블탭 감지 (드래그 안 했을 때만)
+  if (!this.touchMoved) {
+    const currentTime = Date.now();
+    const timeSinceLastTap = currentTime - this.lastTapTime;
+    
+    if (timeSinceLastTap < this.doubleTapDelay && timeSinceLastTap > 0) {
+      // 더블탭 감지됨 - 재생/정지 토글
+      this.togglePlayPause();
+      console.log('👆 더블탭 감지 - 재생/정지');
+      this.lastTapTime = 0; // 다음 더블탭을 위해 리셋
+    } else {
+      // 첫 번째 탭
+      this.lastTapTime = currentTime;
+    }
   }
+  
+  this.isAdjustingVolume = false;
+  this.currentZone = null;
+  this.touchMoved = false;
+
+  const leftTouchZone = this.uiManager.getElement('leftTouchZone');
+  const rightTouchZone = this.uiManager.getElement('rightTouchZone');
+
+  if (leftTouchZone) leftTouchZone.classList.remove('active');
+  if (rightTouchZone) rightTouchZone.classList.remove('active');
+
+  console.log('👆 터치 종료');
+}
 
   /**
    * 마우스 시작 처리
@@ -402,6 +469,23 @@ adjustVolume(deltaY, sensitivity) {
     this.currentZone = null;
     this.deactivateAllZones();
     console.log('👆 터치 핸들러 정리 완료');
+  }
+  /**
+   * 재생/정지 토글 (더블탭용)
+   */
+  togglePlayPause() {
+    if (!this.audioManager || !this.audioManager.audio) {
+      console.warn('⚠️ AudioManager가 초기화되지 않음');
+      return;
+    }
+    
+    if (this.audioManager.audio.paused) {
+      this.audioManager.play();
+      console.log('▶️ 더블탭으로 재생');
+    } else {
+      this.audioManager.pause();
+      console.log('⏸️ 더블탭으로 일시정지');
+    }
   }
 }
 
