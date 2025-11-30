@@ -100,9 +100,6 @@ class OrientationManager {
 
     // 전체화면 모드 진입
     this.requestFullscreen();
-
-    // 세로 전환 버튼 표시
-    this.showOrientationToggleButton();
   }
 
   /**
@@ -130,9 +127,6 @@ class OrientationManager {
 
     // 전체화면 모드 종료
     this.exitFullscreen();
-
-    // 세로 전환 버튼 숨김
-    this.hideOrientationToggleButton();
   }
 
   /**
@@ -222,6 +216,10 @@ class OrientationManager {
     const thumbnailContainer = document.querySelector('.thumbnail-container');
     const thumbnail = document.querySelector('.thumbnail');
 
+    // 화면 비율 계산
+    const screenRatio = window.innerWidth / window.innerHeight;
+    const imageRatio = 16 / 9; // 일반적인 이미지 비율
+
     if (thumbnailContainer) {
       thumbnailContainer.style.width = '100vw';
       thumbnailContainer.style.height = '100vh';
@@ -240,13 +238,25 @@ class OrientationManager {
       // 커버 이미지 요소 찾기
       const coverImg = thumbnail.querySelector('img') || thumbnail.querySelector('.cover-image');
       if (coverImg) {
-        coverImg.style.objectFit = 'cover';
+        // 화면 비율에 따라 objectFit 조정
+        if (screenRatio > 2) {
+          // 매우 넓은 화면 (21:9, 32:9 등)
+          coverImg.style.objectFit = 'contain';
+          coverImg.style.objectPosition = 'center';
+        } else if (screenRatio > 1.8) {
+          // 넓은 화면 (16:9)
+          coverImg.style.objectFit = 'cover';
+        } else {
+          // 일반 화면 (16:10, 4:3)
+          coverImg.style.objectFit = 'cover';
+        }
+        
         coverImg.style.width = '100%';
         coverImg.style.height = '100%';
       }
     }
 
-    console.log('✅ 가로 모드 커버 스타일 적용');
+    console.log('✅ 가로 모드 커버 스타일 적용 (화면 비율:', screenRatio.toFixed(2), ')');
   }
 
   /**
@@ -281,45 +291,62 @@ class OrientationManager {
     const leftTouchZone = document.getElementById('leftTouchZone');
     const rightTouchZone = document.getElementById('rightTouchZone');
 
-    // 터치 영역 크기 축소 (좌우 15%씩만 차지)
+    // 화면 비율 계산
+    const screenRatio = window.innerWidth / window.innerHeight;
+    
+    // 화면 비율에 따라 터치 영역 크기 조정
+    let touchZoneWidth = '15%';
+    if (screenRatio > 2) {
+      // 매우 넓은 화면 (21:9, 32:9)
+      touchZoneWidth = '10%';
+    } else if (screenRatio > 1.8) {
+      // 넓은 화면 (16:9)
+      touchZoneWidth = '15%';
+    } else {
+      // 일반 화면
+      touchZoneWidth = '20%';
+    }
+
+    // 터치 영역 크기 축소
     if (leftTouchZone) {
       leftTouchZone.style.display = 'flex';
-      leftTouchZone.style.width = '15%';
+      leftTouchZone.style.width = touchZoneWidth;
       leftTouchZone.style.zIndex = '1001';
     }
 
     if (rightTouchZone) {
       rightTouchZone.style.display = 'flex';
-      rightTouchZone.style.width = '15%';
+      rightTouchZone.style.width = touchZoneWidth;
       rightTouchZone.style.zIndex = '1001';
     }
 
     // 비주얼라이저 위치 조정
     const visualizer = document.getElementById('audioVisualizer');
     if (visualizer) {
-      // 하단에서 5% 위로 이동
-      visualizer.style.bottom = '5%';  // ← 이 값을 조정 (0%~20%)
+      visualizer.style.bottom = '5%';
       
-      // 비주얼라이저 바 간격 및 크기 조정
       const bars = visualizer.querySelectorAll('.visualizer-bar');
       bars.forEach(bar => {
-        bar.style.margin = '0 3px';      // ← 간격 조정 (1px~10px)
-        bar.style.width = '4px';         // ← 바 두께 조정 (2px~10px)
-        bar.style.maxHeight = '150px';   // ← 최대 높이 조정 (50px~200px)
-        bar.style.minHeight = '2px';     // ← 최소 높이 (소리 없을 때)
+        bar.style.margin = '0 3px';
+        bar.style.width = '4px';
+        bar.style.maxHeight = '150px';
+        bar.style.minHeight = '2px';
       });
     }
 
     // 좌측에 효과음 버튼 배치
-    this.createLandscapeAmbientButtons();
+    this.createLandscapeAmbientButtons(screenRatio);
 
     // 중앙 상단에 카테고리 버튼 배치
-    this.createLandscapeCategoryButtons();
+    this.createLandscapeCategoryButtons(screenRatio);
 
     // 우측에 재생 컨트롤 버튼 배치
-    this.createLandscapePlaybackControls();
+    this.createLandscapePlaybackControls(screenRatio);
 
-    console.log('✅ 가로 모드 터치 영역 조정');
+    // 중앙 클릭 영역 설정 (투명도 토글)
+    this.setupCenterClickArea(touchZoneWidth);
+
+    console.log('✅ 가로 모드 터치 영역 조정 (화면 비율:', screenRatio.toFixed(2), ', 터치 영역:', touchZoneWidth, ')');
   }
 
   /**
@@ -367,22 +394,31 @@ class OrientationManager {
   /**
    * 가로모드 전용 효과음 버튼 생성 (좌측)
    */
-  createLandscapeAmbientButtons() {
+  createLandscapeAmbientButtons(screenRatio = 1.78) {
     // 기존 버튼이 있으면 제거
     const existing = document.getElementById('landscapeAmbientContainer');
     if (existing) existing.remove();
 
+    // 화면 비율에 따라 여백 조정
+    let leftMargin = '20px';
+    if (screenRatio > 2) {
+      leftMargin = '40px'; // 매우 넓은 화면
+    }
+
     const container = document.createElement('div');
     container.id = 'landscapeAmbientContainer';
+    container.className = 'landscape-ui-element';
     container.style.cssText = `
       position: fixed;
-      left: 20px;
+      left: ${leftMargin};
       top: 50%;
       transform: translateY(-50%);
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       gap: 8px;
       z-index: 10002;
+      opacity: 0.3;
+      transition: opacity 0.3s ease;
     `;
 
     const ambientSounds = ['Rain', 'Bird', 'Forest', 'Neighbor', 'Amazon', 'Ocean', 'Crackle', 'Rain2'];
@@ -405,16 +441,18 @@ class OrientationManager {
       `;
 
       // 원본 버튼 찾아서 클릭 이벤트 복사
-      const originalBtn = document.querySelector(`[data-sound="${sound}"]`);
+      const originalBtn = document.querySelector(`.bg-button[data-sound="${sound}"]`);
       if (originalBtn) {
         btn.addEventListener('click', () => {
           originalBtn.click();
           // 활성화 상태 표시
-          if (originalBtn.classList.contains('active')) {
-            btn.style.background = 'rgba(102, 126, 234, 0.8)';
-          } else {
-            btn.style.background = 'rgba(0, 0, 0, 0.5)';
-          }
+          setTimeout(() => {
+            if (originalBtn.classList.contains('active')) {
+              btn.style.background = 'rgba(102, 126, 234, 0.8)';
+            } else {
+              btn.style.background = 'rgba(0, 0, 0, 0.5)';
+            }
+          }, 100);
         });
       }
 
@@ -427,13 +465,14 @@ class OrientationManager {
   /**
    * 가로모드 전용 카테고리 버튼 생성 (중앙 상단)
    */
-  createLandscapeCategoryButtons() {
+  createLandscapeCategoryButtons(screenRatio = 1.78) {
     // 기존 버튼이 있으면 제거
     const existing = document.getElementById('landscapeCategoryContainer');
     if (existing) existing.remove();
 
     const container = document.createElement('div');
     container.id = 'landscapeCategoryContainer';
+    container.className = 'landscape-ui-element';
     container.style.cssText = `
       position: fixed;
       top: 20px;
@@ -442,6 +481,8 @@ class OrientationManager {
       display: flex;
       gap: 10px;
       z-index: 10002;
+      opacity: 0.3;
+      transition: opacity 0.3s ease;
     `;
 
     const categories = [
@@ -481,11 +522,13 @@ class OrientationManager {
         btn.addEventListener('click', () => {
           originalBtn.click();
           // 모든 카테고리 버튼 스타일 초기화
-          document.querySelectorAll('.landscape-category-btn').forEach(b => {
-            b.style.background = 'rgba(0, 0, 0, 0.5)';
-          });
-          // 클릭된 버튼 활성화
-          btn.style.background = 'rgba(102, 126, 234, 0.8)';
+          setTimeout(() => {
+            document.querySelectorAll('.landscape-category-btn').forEach(b => {
+              b.style.background = 'rgba(0, 0, 0, 0.5)';
+            });
+            // 클릭된 버튼 활성화
+            btn.style.background = 'rgba(102, 126, 234, 0.8)';
+          }, 100);
         });
       }
 
@@ -498,28 +541,39 @@ class OrientationManager {
   /**
    * 가로모드 전용 재생 컨트롤 버튼 생성 (우측 세로)
    */
-  createLandscapePlaybackControls() {
+  createLandscapePlaybackControls(screenRatio = 1.78) {
     // 기존 버튼이 있으면 제거
     const existing = document.getElementById('landscapeControlsContainer');
     if (existing) existing.remove();
 
+    // 화면 비율에 따라 여백 조정
+    let rightMargin = '20px';
+    if (screenRatio > 2) {
+      rightMargin = '40px'; // 매우 넓은 화면
+    }
+
     const container = document.createElement('div');
     container.id = 'landscapeControlsContainer';
+    container.className = 'landscape-ui-element';
     container.style.cssText = `
       position: fixed;
-      right: 20px;
+      right: ${rightMargin};
       top: 50%;
       transform: translateY(-50%);
       display: flex;
       flex-direction: column;
       gap: 15px;
       z-index: 10002;
+      opacity: 0.3;
+      transition: opacity 0.3s ease;
     `;
 
     const controls = [
+      { id: 'orientationToggle', icon: '🔄', label: '세로전환', isSpecial: true },
       { id: 'previousButton', icon: '⏮', label: '이전곡' },
       { id: 'playButton', icon: '▶', label: '재생' },
-      { id: 'nextButton', icon: '⏭', label: '다음곡' }
+      { id: 'nextButton', icon: '⏭', label: '다음곡' },
+      { id: 'equalizerToggle', icon: '🎛️', label: '이퀄라이저', isSpecial: true }
     ];
 
     controls.forEach(ctrl => {
@@ -533,7 +587,7 @@ class OrientationManager {
         color: white;
         border: 2px solid rgba(255, 255, 255, 0.3);
         border-radius: 50%;
-        font-size: 20px;
+        font-size: ${ctrl.isSpecial ? '24px' : '20px'};
         cursor: pointer;
         display: flex;
         align-items: center;
@@ -542,27 +596,72 @@ class OrientationManager {
         transition: all 0.2s;
       `;
 
-      // 원본 버튼 찾아서 클릭 이벤트 복사
-      const originalBtn = document.getElementById(ctrl.id);
-      if (originalBtn) {
+      // 특수 버튼 처리
+      if (ctrl.id === 'orientationToggle') {
+        // 세로 전환 버튼
         btn.addEventListener('click', () => {
-          originalBtn.click();
+          console.log('🔄 가로모드에서 세로 모드로 전환');
+          this.forcePortraitMode();
         });
-
-        // Play 버튼은 상태에 따라 아이콘 변경
-        if (ctrl.id === 'playButton') {
-          btn.id = 'landscapePlayButton';
-          // 음악 재생 상태 감지하여 아이콘 변경
-          const updatePlayIcon = () => {
-            const audio = document.getElementById('player');
-            if (audio && !audio.paused) {
-              btn.innerHTML = '⏸';
-            } else {
-              btn.innerHTML = '▶';
+      } else if (ctrl.id === 'equalizerToggle') {
+        // 이퀄라이저 버튼
+        btn.addEventListener('click', () => {
+          const eqPanel = document.getElementById('equalizerPanel');
+          const eqButton = document.getElementById('titleEqualizerButton');
+          if (eqButton) {
+            eqButton.click();
+          } else if (eqPanel) {
+            eqPanel.classList.toggle('active');
+          }
+        });
+      } else {
+        // 일반 재생 컨트롤 버튼
+        const originalBtn = document.getElementById(ctrl.id);
+        if (originalBtn) {
+          btn.addEventListener('click', () => {
+            originalBtn.click();
+            
+            // Play 버튼 클릭 시 즉시 아이콘 업데이트
+            if (ctrl.id === 'playButton') {
+              setTimeout(() => {
+                const audio = document.getElementById('player');
+                if (audio) {
+                  btn.innerHTML = audio.paused ? '▶' : '⏸';
+                }
+              }, 100);
             }
-          };
-          updatePlayIcon();
-          setInterval(updatePlayIcon, 500);
+          });
+
+          // Play 버튼은 상태에 따라 아이콘 변경
+          if (ctrl.id === 'playButton') {
+            btn.id = 'landscapePlayButton';
+            
+            // 오디오 요소 찾기
+            const audio = document.getElementById('player');
+            
+            if (audio) {
+              // 초기 상태 설정
+              btn.innerHTML = audio.paused ? '▶' : '⏸';
+              
+              // 재생 상태 변경 이벤트 리스너
+              const updatePlayIcon = () => {
+                btn.innerHTML = audio.paused ? '▶' : '⏸';
+              };
+              
+              audio.addEventListener('play', updatePlayIcon);
+              audio.addEventListener('pause', updatePlayIcon);
+              audio.addEventListener('ended', updatePlayIcon);
+              
+              // 주기적 업데이트 (백업용)
+              const iconInterval = setInterval(() => {
+                if (!document.getElementById('landscapePlayButton')) {
+                  clearInterval(iconInterval);
+                  return;
+                }
+                updatePlayIcon();
+              }, 300);
+            }
+          }
         }
       }
 
@@ -573,16 +672,65 @@ class OrientationManager {
   }
 
   /**
+   * 중앙 클릭 영역 설정 (투명도 토글)
+   */
+  setupCenterClickArea(touchZoneWidth = '15%') {
+    // 기존 영역이 있으면 제거
+    const existing = document.getElementById('landscapeCenterClickArea');
+    if (existing) existing.remove();
+
+    const clickArea = document.createElement('div');
+    clickArea.id = 'landscapeCenterClickArea';
+    clickArea.style.cssText = `
+      position: fixed;
+      left: ${touchZoneWidth};
+      right: ${touchZoneWidth};
+      top: 0;
+      bottom: 0;
+      z-index: 1000;
+      cursor: pointer;
+    `;
+
+    let hideTimeout = null;
+
+    clickArea.addEventListener('click', (e) => {
+      // 모든 가로모드 UI 요소 찾기
+      const uiElements = document.querySelectorAll('.landscape-ui-element');
+
+      // 투명도 토글
+      uiElements.forEach(el => {
+        el.style.opacity = '1';
+      });
+
+      // 기존 타이머 클리어
+      if (hideTimeout) {
+        clearTimeout(hideTimeout);
+      }
+
+      // 5초 후 다시 투명하게
+      hideTimeout = setTimeout(() => {
+        uiElements.forEach(el => {
+          el.style.opacity = '0.00';
+        });
+      }, 5000);
+    });
+
+    document.body.appendChild(clickArea);
+  }
+
+  /**
    * 가로모드 UI 요소 제거
    */
   removeLandscapeUI() {
     const ambient = document.getElementById('landscapeAmbientContainer');
     const category = document.getElementById('landscapeCategoryContainer');
     const controls = document.getElementById('landscapeControlsContainer');
+    const clickArea = document.getElementById('landscapeCenterClickArea');
 
     if (ambient) ambient.remove();
     if (category) category.remove();
     if (controls) controls.remove();
+    if (clickArea) clickArea.remove();
   }
 
   /**
@@ -640,21 +788,26 @@ class OrientationManager {
       return;
     }
     
-    try {
-      if (elem.requestFullscreen) {
-        elem.requestFullscreen();
-      } else if (elem.webkitRequestFullscreen) { // Safari, iOS
-        elem.webkitRequestFullscreen();
-      } else if (elem.mozRequestFullScreen) { // Firefox
-        elem.mozRequestFullScreen();
-      } else if (elem.msRequestFullscreen) { // IE11
-        elem.msRequestFullscreen();
+    // 약간의 지연 후 전체화면 요청 (모바일 호환성 향상)
+    setTimeout(() => {
+      try {
+        if (elem.requestFullscreen) {
+          elem.requestFullscreen().catch(err => {
+            console.warn('⚠️ 전체화면 실패:', err);
+          });
+        } else if (elem.webkitRequestFullscreen) { // Safari, iOS
+          elem.webkitRequestFullscreen();
+        } else if (elem.mozRequestFullScreen) { // Firefox
+          elem.mozRequestFullScreen();
+        } else if (elem.msRequestFullscreen) { // IE11
+          elem.msRequestFullscreen();
+        }
+        
+        console.log('🖥️ 전체화면 모드 요청');
+      } catch (error) {
+        console.warn('⚠️ 전체화면 모드 실패:', error);
       }
-      
-      console.log('🖥️ 전체화면 모드 요청');
-    } catch (error) {
-      console.warn('⚠️ 전체화면 모드 실패:', error);
-    }
+    }, 100);
   }
 
   /**
