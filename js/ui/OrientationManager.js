@@ -748,7 +748,7 @@ class OrientationManager {
 
       // 투명도 토글
       uiElements.forEach(el => {
-        el.style.opacity = '1';
+        el.style.opacity = '0.8';
       });
 
       // 기존 타이머 클리어
@@ -759,7 +759,7 @@ class OrientationManager {
       // 5초 후 다시 투명하게
       hideTimeout = setTimeout(() => {
         uiElements.forEach(el => {
-          el.style.opacity = '0.3';
+          el.style.opacity = '0.05';
         });
       }, 5000);
     });
@@ -896,13 +896,13 @@ class OrientationManager {
 
     // 호버/터치 효과
     button.addEventListener('mouseenter', () => {
-      button.style.opacity = '1';
+      button.style.opacity = '0.8';
       button.style.background = 'rgba(0, 0, 0, 0.5)';
       button.style.transform = 'scale(1.1)';
     });
 
     button.addEventListener('mouseleave', () => {
-      button.style.opacity = '0.6';
+      button.style.opacity = '0.4';
       button.style.background = 'rgba(0, 0, 0, 0.2)';
       button.style.transform = 'scale(1)';
     });
@@ -915,7 +915,7 @@ class OrientationManager {
 
     button.addEventListener('touchend', () => {
       setTimeout(() => {
-        button.style.opacity = '0.6';
+        button.style.opacity = '0.4';
         button.style.background = 'rgba(0, 0, 0, 0.2)';
       }, 200);
     });
