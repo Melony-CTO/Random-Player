@@ -8,6 +8,7 @@ class OrientationManager {
     this.isLandscape = false;
     this.orientationChangeDelay = 100; // 방향 전환 딜레이 (ms)
     this.orientationTimeout = null;
+    this.fullscreenTouchHandler = null; // 전체화면 터치 핸들러
     
     this.init();
   }
@@ -98,8 +99,13 @@ class OrientationManager {
     // 터치 영역은 유지 (볼륨 조절 기능 보존)
     this.adjustTouchZonesForLandscape();
 
-    // 전체화면 모드 진입
+    // 전체화면 모드 시도
     this.requestFullscreen();
+
+    // 전체화면 진입 확인 및 터치 리스너 설정
+    setTimeout(() => {
+      this.setupFullscreenTouchTrigger();
+    }, 500);
   }
 
   /**
@@ -127,6 +133,14 @@ class OrientationManager {
 
     // 전체화면 모드 종료
     this.exitFullscreen();
+
+    // 전체화면 터치 핸들러 제거
+    if (this.fullscreenTouchHandler) {
+      document.removeEventListener('click', this.fullscreenTouchHandler);
+      document.removeEventListener('touchend', this.fullscreenTouchHandler);
+      this.fullscreenTouchHandler = null;
+      console.log('🖥️ 전체화면 터치 핸들러 제거');
+    }
   }
 
   /**
@@ -625,10 +639,21 @@ class OrientationManager {
             if (ctrl.id === 'playButton') {
               setTimeout(() => {
                 const audio = document.getElementById('player');
-                if (audio) {
-                  btn.innerHTML = audio.paused ? '▶' : '⏸';
+                const currentBtn = document.getElementById('landscapePlayButton');
+                if (audio && currentBtn) {
+                  currentBtn.innerHTML = audio.paused ? '▶' : '⏸';
+                  console.log('🎵 클릭 후 아이콘 업데이트:', audio.paused ? '▶' : '⏸');
                 }
               }, 100);
+              
+              // 추가 확인 (200ms 후)
+              setTimeout(() => {
+                const audio = document.getElementById('player');
+                const currentBtn = document.getElementById('landscapePlayButton');
+                if (audio && currentBtn) {
+                  currentBtn.innerHTML = audio.paused ? '▶' : '⏸';
+                }
+              }, 200);
             }
           });
 
@@ -641,25 +666,40 @@ class OrientationManager {
             
             if (audio) {
               // 초기 상태 설정
-              btn.innerHTML = audio.paused ? '▶' : '⏸';
-              
-              // 재생 상태 변경 이벤트 리스너
-              const updatePlayIcon = () => {
-                btn.innerHTML = audio.paused ? '▶' : '⏸';
+              const setIcon = () => {
+                const currentBtn = document.getElementById('landscapePlayButton');
+                if (currentBtn && audio) {
+                  currentBtn.innerHTML = audio.paused ? '▶' : '⏸';
+                  console.log('🎵 Play 버튼 아이콘 업데이트:', audio.paused ? '▶' : '⏸');
+                }
               };
               
-              audio.addEventListener('play', updatePlayIcon);
-              audio.addEventListener('pause', updatePlayIcon);
-              audio.addEventListener('ended', updatePlayIcon);
+              setIcon();
               
-              // 주기적 업데이트 (백업용)
+              // 재생 상태 변경 이벤트 리스너 (여러 이벤트 등록)
+              audio.addEventListener('play', setIcon);
+              audio.addEventListener('pause', setIcon);
+              audio.addEventListener('ended', setIcon);
+              audio.addEventListener('loadeddata', setIcon);
+              audio.addEventListener('canplay', setIcon);
+              
+              // MutationObserver로 DOM 변화 감지
+              const observer = new MutationObserver(() => {
+                setIcon();
+              });
+              
+              // 주기적 업데이트 (더 짧은 간격)
               const iconInterval = setInterval(() => {
-                if (!document.getElementById('landscapePlayButton')) {
+                const currentBtn = document.getElementById('landscapePlayButton');
+                if (!currentBtn) {
                   clearInterval(iconInterval);
+                  observer.disconnect();
                   return;
                 }
-                updatePlayIcon();
-              }, 300);
+                setIcon();
+              }, 100);
+            } else {
+              console.warn('⚠️ Audio 요소를 찾을 수 없음');
             }
           }
         }
@@ -710,7 +750,7 @@ class OrientationManager {
       // 5초 후 다시 투명하게
       hideTimeout = setTimeout(() => {
         uiElements.forEach(el => {
-          el.style.opacity = '0.00';
+          el.style.opacity = '0.3';
         });
       }, 5000);
     });
@@ -942,12 +982,82 @@ class OrientationManager {
   }
 
   /**
+   * 전체화면 터치 트리거 설정
+   * 가로모드인데 전체화면이 아니면, 아무 곳이나 터치 시 전체화면 진입
+   */
+  setupFullscreenTouchTrigger() {
+    // 이미 전체화면이면 설정 불필요
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      console.log('🖥️ 이미 전체화면 - 터치 트리거 불필요');
+      return;
+    }
+
+    console.log('🖥️ 전체화면 아님 - 터치 트리거 설정');
+
+    // 기존 리스너가 있으면 제거
+    if (this.fullscreenTouchHandler) {
+      document.removeEventListener('click', this.fullscreenTouchHandler);
+      document.removeEventListener('touchend', this.fullscreenTouchHandler);
+    }
+
+    // 전체화면 진입 핸들러
+    this.fullscreenTouchHandler = (e) => {
+      // 전체화면 확인
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        console.log('🖥️ 전체화면 진입 완료 - 리스너 제거');
+        document.removeEventListener('click', this.fullscreenTouchHandler);
+        document.removeEventListener('touchend', this.fullscreenTouchHandler);
+        this.fullscreenTouchHandler = null;
+        return;
+      }
+
+      // 가로모드인지 확인
+      if (!this.isLandscape) {
+        console.log('🖥️ 세로모드로 전환됨 - 리스너 제거');
+        document.removeEventListener('click', this.fullscreenTouchHandler);
+        document.removeEventListener('touchend', this.fullscreenTouchHandler);
+        this.fullscreenTouchHandler = null;
+        return;
+      }
+
+      console.log('🖥️ 터치 감지 - 전체화면 진입 시도');
+      this.requestFullscreen();
+
+      // 진입 성공 여부 확인
+      setTimeout(() => {
+        if (document.fullscreenElement || document.webkitFullscreenElement) {
+          console.log('🖥️ 전체화면 진입 성공 - 리스너 제거');
+          document.removeEventListener('click', this.fullscreenTouchHandler);
+          document.removeEventListener('touchend', this.fullscreenTouchHandler);
+          this.fullscreenTouchHandler = null;
+        } else {
+          console.log('🖥️ 전체화면 진입 실패 - 리스너 유지');
+        }
+      }, 500);
+    };
+
+    // 클릭 및 터치 이벤트 등록
+    document.addEventListener('click', this.fullscreenTouchHandler, { passive: true });
+    document.addEventListener('touchend', this.fullscreenTouchHandler, { passive: true });
+
+    console.log('✅ 전체화면 터치 트리거 설정 완료');
+  }
+
+  /**
    * OrientationManager 정리
    */
   cleanup() {
     if (this.orientationTimeout) {
       clearTimeout(this.orientationTimeout);
     }
+
+    // 전체화면 터치 핸들러 제거
+    if (this.fullscreenTouchHandler) {
+      document.removeEventListener('click', this.fullscreenTouchHandler);
+      document.removeEventListener('touchend', this.fullscreenTouchHandler);
+      this.fullscreenTouchHandler = null;
+    }
+
     this.applyPortraitMode();
     console.log('🔄 OrientationManager 정리 완료');
   }
