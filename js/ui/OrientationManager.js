@@ -750,7 +750,7 @@ class OrientationManager {
       // 5초 후 다시 투명하게
       hideTimeout = setTimeout(() => {
         uiElements.forEach(el => {
-          el.style.opacity = '0.3';
+          el.style.opacity = '0.05';
         });
       }, 5000);
     });
