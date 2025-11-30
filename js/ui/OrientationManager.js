@@ -253,7 +253,12 @@ class OrientationManager {
       const coverImg = thumbnail.querySelector('img') || thumbnail.querySelector('.cover-image');
       if (coverImg) {
         // 화면 비율에 따라 objectFit 조정
-        if (screenRatio > 2) {
+        if (screenRatio < 1.3) {
+          // 정사각형에 가까운 화면 (갤럭시 폴드 등)
+          coverImg.style.objectFit = 'cover';
+          coverImg.style.objectPosition = 'center top'; // 상단 중심
+          console.log('📱 폴드형 디스플레이 감지 - 상단 정렬');
+        } else if (screenRatio > 2) {
           // 매우 넓은 화면 (21:9, 32:9 등)
           coverImg.style.objectFit = 'contain';
           coverImg.style.objectPosition = 'center';
@@ -310,7 +315,11 @@ class OrientationManager {
     
     // 화면 비율에 따라 터치 영역 크기 조정
     let touchZoneWidth = '15%';
-    if (screenRatio > 2) {
+    if (screenRatio < 1.3) {
+      // 정사각형에 가까운 화면 (갤럭시 폴드 등)
+      touchZoneWidth = '12%';
+      console.log('📱 폴드형 디스플레이 - 터치 영역 축소');
+    } else if (screenRatio > 2) {
       // 매우 넓은 화면 (21:9, 32:9)
       touchZoneWidth = '10%';
     } else if (screenRatio > 1.8) {
@@ -750,7 +759,7 @@ class OrientationManager {
       // 5초 후 다시 투명하게
       hideTimeout = setTimeout(() => {
         uiElements.forEach(el => {
-          el.style.opacity = '0.05';
+          el.style.opacity = '0.3';
         });
       }, 5000);
     });
