@@ -1,6 +1,6 @@
 /**
  * OrientationManager - 화면 방향 관리 모듈
- * 가로/세로 모드 전환 및 레이아웃 조정을 담당
+ * 가로/세로 모드 전환 및 레이아웃 조정을 담당  
  */
 class OrientationManager {
   constructor(uiManager) {
@@ -326,4 +326,5 @@ class OrientationManager {
 }
 
 // 전역으로 내보내기
+
 window.OrientationManager = OrientationManager;
