@@ -26,7 +26,10 @@ class YouTubeManager {
 'RVFhFq9ZNJI',
 '1tyFpd2i-ig',
 'nwCOOlFvGWY',
-'NBcrwhA03OU'
+'NBcrwhA03OU',
+'vsKjy9pR5gk',
+'jtxHK3Du24o'
+
         ];
 
         // 셔플 관련 상태
@@ -120,4 +123,5 @@ class YouTubeManager {
 }
 
 window.YouTubeManager = YouTubeManager;
+
 
