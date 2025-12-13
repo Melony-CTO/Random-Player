@@ -17,7 +17,16 @@ class YouTubeManager {
             'Iri6dhnzzb8',
             '-u58otR9o3o',
             'TxcGu25vzjw',
-            'CaEtbvNUxYI'
+            'CaEtbvNUxYI',
+            //여기서부터는 Melony_Library
+
+'aVQijucnlO4',
+'PYdAmdYqTAU',
+'whHNA2SWVD4',
+'RVFhFq9ZNJI',
+'1tyFpd2i-ig',
+'nwCOOlFvGWY',
+'NBcrwhA03OU'
         ];
 
         // 셔플 관련 상태
@@ -111,3 +120,4 @@ class YouTubeManager {
 }
 
 window.YouTubeManager = YouTubeManager;
+
