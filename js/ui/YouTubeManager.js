@@ -38,7 +38,9 @@ class YouTubeManager {
             '5Oo7tMyofu4',
             'SC-6Z-P-uAg',
             'yfhBDT-7f3g',
-            '0Tnh94IgF2o'
+            '0Tnh94IgF2o',
+            'ijOgowzwG_Q', //Oh My Pooky Bear
+            'QvsLshWGnhw'  //너의 봄
             
             
 
@@ -135,6 +137,7 @@ class YouTubeManager {
 }
 
 window.YouTubeManager = YouTubeManager;
+
 
 
 
