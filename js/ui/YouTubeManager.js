@@ -5,19 +5,19 @@ class YouTubeManager {
     constructor() {
         // 1. 재생할 유튜브 영상 목록
         this.videoIds = [
-            'gFeqvZQkRCw',
-            '3VyOuCtcnCI',
-            '-e_AhQ3m7U8',
-            '415VKYjJaZ4',
-            'lZraRbkxY_A',
-            'ops7dOC8byk',
-            'BD_DeonFdLk',
-            'vKuB3qh-bAU',
-            'qgMeZfcIYto',
-            'Iri6dhnzzb8',
-            '-u58otR9o3o',
-            'TxcGu25vzjw',
-            'CaEtbvNUxYI',
+           // 'gFeqvZQkRCw',
+          //  '3VyOuCtcnCI',
+         //   '-e_AhQ3m7U8',
+          //    '415VKYjJaZ4',
+         //     'lZraRbkxY_A',
+          //    'ops7dOC8byk',
+          //    'BD_DeonFdLk',
+          //    'vKuB3qh-bAU',
+           //   'qgMeZfcIYto',
+           //   'Iri6dhnzzb8',
+          //    '-u58otR9o3o',
+          //    'TxcGu25vzjw',
+          //    'CaEtbvNUxYI',
             //여기서부터는 Melony_Library
 
             'aVQijucnlO4',
@@ -30,7 +30,12 @@ class YouTubeManager {
             'vsKjy9pR5gk',
             'jtxHK3Du24o',
             'E9BAvTfj4T8',
-            'Ko6YbSqDJrI'
+            'Ko6YbSqDJrI',
+            'qQGtIKYLf5w',
+            'kBGalXqcLps',
+            'KI78hJQ9ebw',
+            'H0i3wPhxSkw'
+            
             
 
         ];
@@ -126,6 +131,7 @@ class YouTubeManager {
 }
 
 window.YouTubeManager = YouTubeManager;
+
 
 
 
