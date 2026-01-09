@@ -452,6 +452,15 @@ body::after {
   border-radius: 15px;
 }
 
+/* ✅ LOFI-INST 버튼 글자 크기 축소 (한 줄 표시) */
+.category[data-folder="lofi-inst"] {
+  font-size: 13px !important;
+  letter-spacing: -0.5px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
 .category.active {
   background: rgba(92, 109, 224, 0.15);
   color: #5c6de0;

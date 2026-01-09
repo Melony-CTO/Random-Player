@@ -145,20 +145,35 @@ setupEventListeners() {
       this.audioManager.connectAudioSource();
     }
 
-    // 기존 필터들 초기화
+    // ✅ localStorage에서 저장된 설정 로드
+    this.loadSettings();
+
+    // ✅ 필터가 이미 존재하면 gain 값만 업데이트 (재연결하지 않음)
+    if (this.filters.length === 6) {
+      console.log('♻️ 기존 이퀄라이저 필터 재사용 - gain 값만 업데이트');
+      for (let i = 0; i < 6; i++) {
+        if (this.filters[i]) {
+          this.filters[i].gain.value = this.gains[i];
+        }
+      }
+      this.updateUISliders();
+      return; // ✅ 재연결하지 않고 종료
+    }
+
+    // ✅ 필터가 없을 때만 새로 생성
     this.filters = [];
 
-    // 6개 밴드 필터 생성
+    // 6개 밴드 필터 생성 (저장된 gains 값 사용)
     for (let i = 0; i < 6; i++) {
       const filter = this.audioManager.audioContext.createBiquadFilter();
       filter.type = i === 0 ? 'lowshelf' : i === 5 ? 'highshelf' : 'peaking';
       filter.frequency.value = this.frequencies[i];
       filter.Q.value = 1;
-      filter.gain.value = this.gains[i];
+      filter.gain.value = this.gains[i]; // ✅ 저장된 값 사용
       this.filters.push(filter);
     }
 
-    console.log('🎛️ 이퀄라이저 필터 생성 완료:', this.filters.length, '개');
+    console.log('🎛️ 이퀄라이저 필터 생성 완료:', this.filters.length, '개', this.gains);
 
     // 필터들을 체인으로 연결
     if (this.filters.length > 0 && this.audioManager.source) {
@@ -188,6 +203,9 @@ setupEventListeners() {
     } else {
       console.log('⚠️ 오디오 소스가 없습니다. 음악 재생 후 이퀄라이저가 활성화됩니다.');
     }
+
+    // ✅ UI 슬라이더 값도 복원
+    this.updateUISliders();
   }
 
   /**
@@ -209,7 +227,28 @@ setupEventListeners() {
       }
     }
 
+    // ✅ 설정 저장
+    this.saveSettings();
+
     console.log('🎛️ 이퀄라이저 업데이트:', this.gains);
+  }
+
+  /**
+   * ✅ UI 슬라이더 값 업데이트
+   */
+  updateUISliders() {
+    for (let i = 0; i < 6; i++) {
+      const slider = document.getElementById('eq' + this.frequencies[i]);
+      if (slider) {
+        slider.value = this.gains[i];
+
+        // 값 표시 업데이트
+        const valueDisplay = slider.parentElement.querySelector('.eq-value');
+        if (valueDisplay) {
+          valueDisplay.textContent = (this.gains[i] >= 0 ? '+' : '') + this.gains[i].toFixed(1) + 'dB';
+        }
+      }
+    }
   }
 
   /**
@@ -253,7 +292,56 @@ setupEventListeners() {
       }
     });
 
+    // ✅ 설정 저장
+    this.saveSettings();
+
     console.log('🎛️ 프리셋 적용:', presetName, preset);
+  }
+
+  /**
+   * ✅ 설정 저장 (localStorage)
+   */
+  saveSettings() {
+    try {
+      const settings = {
+        gains: this.gains,
+        currentPreset: this.currentPreset
+      };
+      localStorage.setItem('melony-equalizer-settings', JSON.stringify(settings));
+      console.log('💾 이퀄라이저 설정 저장:', settings);
+    } catch (error) {
+      console.error('❌ 이퀄라이저 설정 저장 실패:', error);
+    }
+  }
+
+  /**
+   * ✅ 설정 로드 (localStorage)
+   */
+  loadSettings() {
+    try {
+      const saved = localStorage.getItem('melony-equalizer-settings');
+      if (saved) {
+        const settings = JSON.parse(saved);
+        if (settings.gains && Array.isArray(settings.gains) && settings.gains.length === 6) {
+          this.gains = settings.gains;
+          this.currentPreset = settings.currentPreset || 'flat';
+          console.log('📂 이퀄라이저 설정 로드:', settings);
+
+          // 프리셋 버튼 활성화 상태 업데이트
+          setTimeout(() => {
+            const presetButtons = document.querySelectorAll('.preset-btn');
+            presetButtons.forEach(btn => {
+              btn.classList.remove('active');
+              if (btn.getAttribute('data-preset') === this.currentPreset) {
+                btn.classList.add('active');
+              }
+            });
+          }, 100);
+        }
+      }
+    } catch (error) {
+      console.error('❌ 이퀄라이저 설정 로드 실패:', error);
+    }
   }
 
   /**
