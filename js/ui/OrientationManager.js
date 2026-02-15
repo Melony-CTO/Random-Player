@@ -643,27 +643,7 @@ class OrientationManager {
         if (originalBtn) {
           btn.addEventListener('click', () => {
             originalBtn.click();
-            
-            // Play 버튼 클릭 시 즉시 아이콘 업데이트
-            if (ctrl.id === 'playButton') {
-              setTimeout(() => {
-                const audio = document.getElementById('player');
-                const currentBtn = document.getElementById('landscapePlayButton');
-                if (audio && currentBtn) {
-                  currentBtn.innerHTML = audio.paused ? '▶' : '⏸';
-                  console.log('🎵 클릭 후 아이콘 업데이트:', audio.paused ? '▶' : '⏸');
-                }
-              }, 100);
-              
-              // 추가 확인 (200ms 후)
-              setTimeout(() => {
-                const audio = document.getElementById('player');
-                const currentBtn = document.getElementById('landscapePlayButton');
-                if (audio && currentBtn) {
-                  currentBtn.innerHTML = audio.paused ? '▶' : '⏸';
-                }
-              }, 200);
-            }
+            // ✅ main.js의 audio 이벤트 핸들러에서 버튼 업데이트를 처리하므로 여기서는 제거
           });
 
           // Play 버튼은 상태에 따라 아이콘 변경

@@ -406,13 +406,17 @@ this.youtubeManager = new YouTubeManager();
 
         const audio = this.audioManager.audio;
 
-        // ✅ 기존 이벤트 리스너 제거 (중복 방지)
-        if (this._audioEventHandlers) {
+        // ✅ 기존 이벤트 리스너 제거 (중복 방지) - 이전 audio 요소에서 제거
+        if (this._audioEventHandlers && this._previousAudio) {
             Object.entries(this._audioEventHandlers).forEach(([event, handler]) => {
-                audio.removeEventListener(event, handler);
+                this._previousAudio.removeEventListener(event, handler);
             });
             this._audioEventHandlers = null;
+            this._previousAudio = null;
         }
+
+        // ✅ 현재 audio 요소 참조 저장
+        this._previousAudio = audio;
 
         // 새 이벤트 핸들러 정의
         this._audioEventHandlers = {
