@@ -466,7 +466,11 @@ class OrientationManager {
       // 원본 버튼 찾아서 클릭 이벤트 복사
       const originalBtn = document.querySelector(`.bg-button[data-sound="${sound}"]`);
       if (originalBtn) {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+          // ✅ 이벤트 전파 중지
+          e.stopPropagation();
+          e.preventDefault();
+
           originalBtn.click();
           // 활성화 상태 표시
           setTimeout(() => {
@@ -542,7 +546,11 @@ class OrientationManager {
           btn.style.background = 'rgba(102, 126, 234, 0.8)';
         }
 
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+          // ✅ 이벤트 전파 중지
+          e.stopPropagation();
+          e.preventDefault();
+
           originalBtn.click();
           // 모든 카테고리 버튼 스타일 초기화
           setTimeout(() => {
@@ -622,13 +630,21 @@ class OrientationManager {
       // 특수 버튼 처리
       if (ctrl.id === 'orientationToggle') {
         // 세로 전환 버튼
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+          // ✅ 이벤트 전파 중지
+          e.stopPropagation();
+          e.preventDefault();
+
           console.log('🔄 가로모드에서 세로 모드로 전환');
           this.forcePortraitMode();
         });
       } else if (ctrl.id === 'equalizerToggle') {
         // 이퀄라이저 버튼
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', (e) => {
+          // ✅ 이벤트 전파 중지
+          e.stopPropagation();
+          e.preventDefault();
+
           const eqPanel = document.getElementById('equalizerPanel');
           const eqButton = document.getElementById('titleEqualizerButton');
           if (eqButton) {
@@ -641,7 +657,11 @@ class OrientationManager {
         // 일반 재생 컨트롤 버튼
         const originalBtn = document.getElementById(ctrl.id);
         if (originalBtn) {
-          btn.addEventListener('click', () => {
+          btn.addEventListener('click', (e) => {
+            // ✅ 이벤트 전파 중지 (중앙 클릭 영역과 충돌 방지)
+            e.stopPropagation();
+            e.preventDefault();
+
             originalBtn.click();
             // ✅ main.js의 audio 이벤트 핸들러에서 버튼 업데이트를 처리하므로 여기서는 제거
           });
