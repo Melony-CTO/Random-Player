@@ -106,6 +106,11 @@ class OrientationManager {
     setTimeout(() => {
       this.setupFullscreenTouchTrigger();
     }, 500);
+
+    // ✅ 가로모드 버튼 상태 업데이트 (재생 상태 동기화)
+    setTimeout(() => {
+      this.updateLandscapePlayButtonState();
+    }, 200);
   }
 
   /**
@@ -673,16 +678,25 @@ class OrientationManager {
           if (ctrl.id === 'playButton') {
             btn.id = 'landscapePlayButton';
 
-            // 오디오 요소 찾기
-            const audio = document.getElementById('player');
+            // ✅ audioManager와 audio 요소 모두 확인 (더 정확함)
+            let isPlaying = false;
 
-            if (audio) {
-              // 초기 상태 설정
-              btn.innerHTML = audio.paused ? '▶' : '⏸';
-              console.log('🎵 가로모드 플레이 버튼 초기 상태:', audio.paused ? '▶' : '⏸');
-            } else {
-              console.warn('⚠️ Audio 요소를 찾을 수 없음');
+            // 1순위: audioManager의 isPlaying 플래그 (가장 정확)
+            if (window.melonyPlayer && window.melonyPlayer.audioManager) {
+              isPlaying = window.melonyPlayer.audioManager.isPlaying;
+              console.log('🎵 audioManager.isPlaying:', isPlaying);
             }
+
+            // 2순위: audio 요소의 paused 상태
+            const audio = document.getElementById('player');
+            if (audio && !isPlaying) {
+              isPlaying = !audio.paused;
+              console.log('🎵 audio.paused:', audio.paused);
+            }
+
+            // 초기 상태 설정
+            btn.innerHTML = isPlaying ? '⏸' : '▶';
+            console.log('🎵 가로모드 플레이 버튼 초기 상태:', btn.innerHTML, '(isPlaying:', isPlaying, ')');
           }
         }
       }
@@ -1035,6 +1049,39 @@ class OrientationManager {
     document.addEventListener('touchend', this.fullscreenTouchHandler, { passive: true });
 
     console.log('✅ 전체화면 터치 트리거 설정 완료');
+  }
+
+  /**
+   * ✅ 가로모드 플레이 버튼 상태 업데이트 (재생 상태 동기화)
+   */
+  updateLandscapePlayButtonState() {
+    const landscapeBtn = document.getElementById('landscapePlayButton');
+    if (!landscapeBtn) {
+      console.log('⚠️ 가로모드 플레이 버튼을 찾을 수 없음');
+      return;
+    }
+
+    let isPlaying = false;
+
+    // 1순위: audioManager의 isPlaying 플래그 (가장 정확)
+    if (window.melonyPlayer && window.melonyPlayer.audioManager) {
+      isPlaying = window.melonyPlayer.audioManager.isPlaying;
+    }
+
+    // 2순위: audio 요소의 paused 상태
+    if (!isPlaying) {
+      const audio = document.getElementById('player');
+      if (audio) {
+        isPlaying = !audio.paused;
+      }
+    }
+
+    // 버튼 상태 업데이트
+    const newIcon = isPlaying ? '⏸' : '▶';
+    if (landscapeBtn.innerHTML !== newIcon) {
+      landscapeBtn.innerHTML = newIcon;
+      console.log('🎵 가로모드 플레이 버튼 상태 동기화:', newIcon, '(isPlaying:', isPlaying, ')');
+    }
   }
 
   /**
