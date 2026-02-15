@@ -35,6 +35,9 @@ class MelonyPlayer {
         // ✅ 로딩 실패 시 자동 스킵 플래그
         this._skipFailedTrack = false;
 
+        // ✅ 이벤트 핸들러 저장 (cleanup용)
+        this._visibilityChangeHandler = null;
+
         // 내부 유틸 캐시
         this._imgCache = new Map();
 
@@ -358,9 +361,10 @@ this.youtubeManager = new YouTubeManager();
         });
 
         // ✅ Page Visibility API - 백그라운드 재생 최적화
-        document.addEventListener('visibilitychange', () => {
+        this._visibilityChangeHandler = () => {
             this.handleVisibilityChange();
-        });
+        };
+        document.addEventListener('visibilitychange', this._visibilityChangeHandler);
 
         console.log('✅ 이벤트 리스너 설정 완료');
     }
@@ -495,6 +499,11 @@ this.youtubeManager = new YouTubeManager();
                     this.mediaSessionManager.onPlay();
                 }
 
+                // ✅ 커버 애니메이션 재개
+                if (this.coverManager) {
+                    this.coverManager.resumeAnimations();
+                }
+
                 if (this.visualizer) {
                     this.visualizer.start();
                 }
@@ -512,6 +521,11 @@ this.youtubeManager = new YouTubeManager();
                 // ✅ Media Session 업데이트 (백그라운드 재생)
                 if (this.mediaSessionManager) {
                     this.mediaSessionManager.onPause();
+                }
+
+                // ✅ 커버 애니메이션 일시정지 (현재 상태에서 멈춤)
+                if (this.coverManager) {
+                    this.coverManager.stopAnimations();
                 }
 
                 if (this.visualizer) {
@@ -1191,6 +1205,12 @@ const audioFiles = Array.from(files).filter(file => {
             this._audioEventHandlers = null;
         }
 
+        // ✅ Page Visibility 이벤트 리스너 제거
+        if (this._visibilityChangeHandler) {
+            document.removeEventListener('visibilitychange', this._visibilityChangeHandler);
+            this._visibilityChangeHandler = null;
+        }
+
         // 각 매니저 정리
         if (this.audioManager) this.audioManager.reset();
         if (this.visualizer) this.visualizer.stop();
@@ -1199,6 +1219,7 @@ const audioFiles = Array.from(files).filter(file => {
         if (this.touchHandler) this.touchHandler.cleanup?.();
         if (this.effectSoundManager) this.effectSoundManager.cleanup?.();
         if (this.orientationManager) this.orientationManager.cleanup?.();
+        if (this.mediaSessionManager) this.mediaSessionManager.cleanup?.();
 
         // ✅ 모든 타이머 정리 (개선)
         if (this.nextTrackDebounceTimer) {

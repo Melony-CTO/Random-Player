@@ -317,18 +317,23 @@ class UIManager {
   updateThumbnailState(state) {
     if (!this.elements.thumbnail) return;
 
-    // 기존 클래스 제거
-    this.elements.thumbnail.classList.remove('playing', 'slow-zoom', 'blur-start', 'blur-hidden');
-
     switch (state) {
       case 'playing':
+        // ✅ 클래스 추가 (없으면)
         this.elements.thumbnail.classList.add('playing', 'slow-zoom');
+        this.elements.thumbnail.classList.remove('blur-hidden');
+        // ✅ 애니메이션 재생
+        this.elements.thumbnail.style.animationPlayState = 'running';
         break;
       case 'paused':
-        // 기본 상태
+        // ✅ 클래스는 유지하되 애니메이션만 현재 상태에서 일시정지
+        this.elements.thumbnail.style.animationPlayState = 'paused';
         break;
       case 'loading':
+        // 로딩 상태 - 클래스 초기화
+        this.elements.thumbnail.classList.remove('playing', 'slow-zoom', 'blur-start');
         this.elements.thumbnail.classList.add('blur-hidden');
+        this.elements.thumbnail.style.animationPlayState = '';
         break;
     }
   }

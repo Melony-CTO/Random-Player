@@ -323,10 +323,13 @@ class CoverManager {
 
         this.currentCoverUrl = src;
 
-        thumbnail.style.transition = 'background-image 0.3s ease-in-out';
+        // ✅ transition 제거: animation-play-state와 충돌 방지
+        thumbnail.style.transition = '';
         thumbnail.style.backgroundImage = `url('${src}')`;
-        thumbnail.style.backgroundSize = '100%';
-        thumbnail.style.backgroundPosition = 'center 10%';
+        // ✅ backgroundSize와 backgroundPosition은 CSS로 관리 (인라인 스타일 제거)
+        // 인라인 스타일은 CSS 애니메이션보다 우선순위가 높아서 애니메이션이 작동하지 않음
+        thumbnail.style.backgroundSize = '';
+        thumbnail.style.backgroundPosition = '';
 
         if (container) container.classList.add('cover-ready');
 
@@ -336,6 +339,12 @@ class CoverManager {
 
             thumbnail.classList.remove('blur-hidden');
             thumbnail.classList.add('blur-start', 'playing');
+
+            // ✅ blurStart 애니메이션 종료 후 blur-start 클래스 제거 (1.5초 애니메이션)
+            // 이후 재생/일시정지 시 blurStart가 다시 실행되지 않도록
+            setTimeout(() => {
+                thumbnail.classList.remove('blur-start');
+            }, 1600);
         }, 100);
 
         console.log('✅ 커버 이미지 적용 완료:', src);
@@ -531,14 +540,15 @@ class CoverManager {
     }
 
        /**
-     * 모든 애니메이션 정지
+     * 모든 애니메이션 정지 (현재 상태에서 일시정지)
      */
     stopAnimations() {
         const thumbnail = document.getElementById('thumbnail');
         if (thumbnail) {
-            thumbnail.style.animation = 'none';
+            // ✅ 애니메이션을 현재 상태에서 멈춤 (초기화 방지)
+            thumbnail.style.animationPlayState = 'paused';
         }
-        console.log('🎬 커버 애니메이션 정지');
+        console.log('🎬 커버 애니메이션 일시정지 (현재 상태 유지)');
     }
 
     /**
@@ -547,9 +557,10 @@ class CoverManager {
     resumeAnimations() {
         const thumbnail = document.getElementById('thumbnail');
         if (thumbnail) {
-            thumbnail.style.animation = '';
+            // ✅ 애니메이션을 멈춘 위치에서 계속 재생
+            thumbnail.style.animationPlayState = 'running';
         }
-        console.log('🎬 커버 애니메이션 재시작');
+        console.log('🎬 커버 애니메이션 재개');
     }
 
     /**

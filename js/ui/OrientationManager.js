@@ -9,7 +9,13 @@ class OrientationManager {
     this.orientationChangeDelay = 100; // 방향 전환 딜레이 (ms)
     this.orientationTimeout = null;
     this.fullscreenTouchHandler = null; // 전체화면 터치 핸들러
-    
+
+    // ✅ 이벤트 리스너 핸들러 저장 (cleanup용)
+    this.orientationChangeHandler = null;
+    this.resizeHandler = null;
+    this.landscapeQuery = null;
+    this.landscapeQueryHandler = null;
+
     this.init();
   }
 
@@ -42,21 +48,28 @@ class OrientationManager {
    * 화면 방향 변경 리스너 설정
    */
   setupOrientationListener() {
-    // orientationchange 이벤트 (모바일)
-    window.addEventListener('orientationchange', () => {
+    // ✅ 핸들러 저장 (cleanup에서 제거하기 위해)
+    this.orientationChangeHandler = () => {
       this.handleOrientationChange();
-    });
+    };
+
+    this.resizeHandler = () => {
+      this.handleOrientationChange();
+    };
+
+    this.landscapeQueryHandler = () => {
+      this.handleOrientationChange();
+    };
+
+    // orientationchange 이벤트 (모바일)
+    window.addEventListener('orientationchange', this.orientationChangeHandler);
 
     // resize 이벤트 (PC 및 모바일 보완)
-    window.addEventListener('resize', () => {
-      this.handleOrientationChange();
-    });
+    window.addEventListener('resize', this.resizeHandler);
 
     // matchMedia 사용 (더 정확한 감지)
-    const landscapeQuery = window.matchMedia('(orientation: landscape)');
-    landscapeQuery.addEventListener('change', (e) => {
-      this.handleOrientationChange();
-    });
+    this.landscapeQuery = window.matchMedia('(orientation: landscape)');
+    this.landscapeQuery.addEventListener('change', this.landscapeQueryHandler);
 
     console.log('🔄 화면 방향 리스너 설정 완료');
   }
@@ -1090,6 +1103,23 @@ class OrientationManager {
   cleanup() {
     if (this.orientationTimeout) {
       clearTimeout(this.orientationTimeout);
+    }
+
+    // ✅ 방향 변경 이벤트 리스너 제거
+    if (this.orientationChangeHandler) {
+      window.removeEventListener('orientationchange', this.orientationChangeHandler);
+      this.orientationChangeHandler = null;
+    }
+
+    if (this.resizeHandler) {
+      window.removeEventListener('resize', this.resizeHandler);
+      this.resizeHandler = null;
+    }
+
+    if (this.landscapeQuery && this.landscapeQueryHandler) {
+      this.landscapeQuery.removeEventListener('change', this.landscapeQueryHandler);
+      this.landscapeQuery = null;
+      this.landscapeQueryHandler = null;
     }
 
     // 전체화면 터치 핸들러 제거
