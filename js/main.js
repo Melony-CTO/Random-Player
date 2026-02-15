@@ -745,32 +745,44 @@ error: (e) => {
 
             console.log('✅ 트랙 로드 완료:', track.title);
 
+            // ✅ 성공 시 실패 카운터 리셋
+            this._failedTrackCount = 0;
+
         } catch (error) {
             console.error('❌ 트랙 로드 실패:', error);
 
-            // ✅ 로딩 실패 시 자동으로 다음 곡 시도 (무한 루프 방지 개선)
-            if (!this._skipFailedTrack) {
-                console.log('🔄 로딩 실패, 다음 곡으로 자동 전환...');
-                this._skipFailedTrack = true;
+            // ✅ 로딩 실패 시 자동으로 다음 곡 시도 (최대 5곡까지 시도)
+            if (!this._failedTrackCount) {
+                this._failedTrackCount = 0;
+            }
 
-                // ✅ 1초 후 다음 곡 시도 (빠른 복구)
+            this._failedTrackCount++;
+            console.log('🔄 로딩 실패 횟수:', this._failedTrackCount + '/5');
+
+            // ✅ 5곡 연속 실패 전까지는 계속 다음 곡 시도
+            if (this._failedTrackCount < 5) {
+                console.log('🔄 로딩 실패, 다음 곡으로 자동 전환...');
+
+                // ✅ 1.5초 후 다음 곡 시도 (네트워크 안정화 대기)
                 setTimeout(() => {
                     this.playNextTrack().finally(() => {
-                        // ✅ 3초 후 플래그 해제 (충분한 여유)
+                        // ✅ 5초 후 카운터 리셋 (성공/실패 상관없이)
                         setTimeout(() => {
-                            this._skipFailedTrack = false;
-                            console.log('✅ 스킵 플래그 해제');
-                        }, 3000);
+                            this._failedTrackCount = 0;
+                            console.log('✅ 실패 카운터 리셋');
+                        }, 5000);
                     });
-                }, 1000);
+                }, 1500);
             } else {
-                console.error('❌ 연속 로딩 실패, 자동 전환 중단');
-                this.uiManager.showError('트랙 로드 실패: ' + track.title);
-                // ✅ 5초 후 플래그 강제 해제 (재시도 가능하도록)
+                // ✅ 5곡 연속 실패 시 에러 표시하고 멈춤
+                console.error('❌ 5곡 연속 로딩 실패, 자동 전환 중단');
+                this.uiManager.showError('트랙 로드 실패 (5회): ' + track.title);
+
+                // ✅ 10초 후 카운터 강제 리셋 (사용자가 수동으로 재시도 가능하도록)
                 setTimeout(() => {
-                    this._skipFailedTrack = false;
-                    console.log('✅ 스킵 플래그 강제 해제 (5초 경과)');
-                }, 5000);
+                    this._failedTrackCount = 0;
+                    console.log('✅ 실패 카운터 강제 리셋 (10초 경과)');
+                }, 10000);
             }
 
             throw error;

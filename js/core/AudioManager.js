@@ -225,8 +225,8 @@ _normalizeUrl(url) {
     console.log('🔊 볼륨 설정:', Math.round(this.musicVolume * 100) + '%');
     this.audio.load();
 
-    // ✅ 타임아웃을 15초로 증가 (네트워크 지연 대응)
-    const timeoutMs = Number(options.timeoutMs) || 15000;
+    // ✅ 타임아웃을 20초로 증가 (네트워크 지연 대응)
+    const timeoutMs = Number(options.timeoutMs) || 20000;
     let resolved = false;
     let rejected = false;
     let retried = false;
@@ -328,9 +328,17 @@ _normalizeUrl(url) {
         return;
       }
 
-      // ✅ 5회 이상 stalled면 포기 (3회 → 5회로 완화)
-      if (stalledCount > 5) {
-        console.error('❌ stalled 5회 초과, 로딩 중단');
+      // ✅ 3회마다 재로드 시도 (1회, 4회, 7회에 재로드)
+      if (stalledCount % 3 === 1 && stalledCount > 1) {
+        console.log('🔄 stalled ' + stalledCount + '회 - 재로드 시도');
+        try {
+          this.audio.load();
+        } catch (_) {}
+      }
+
+      // ✅ 10회 이상 stalled면 포기 (5회 → 10회로 완화)
+      if (stalledCount > 10) {
+        console.error('❌ stalled 10회 초과, 로딩 중단');
         if (!resolved && !rejected) {
           rejected = true;
           cleanup();
@@ -358,19 +366,37 @@ _normalizeUrl(url) {
       }
     };
 
+    let errorCount = 0;
     const onError = (e) => {
       if (myLoadId !== this.currentLoadId) return;
       if (rejected || resolved) return;
-      rejected = true;
-      cleanup();
-      this.setLoadingState(false, track);
-      console.error('❌ 오디오 로딩 실패:', {
+
+      errorCount++;
+      console.error('❌ 오디오 로딩 에러 (' + errorCount + '회):', {
         code: this.audio?.error?.code,
         networkState: this.audio?.networkState,
         readyState: this.audio?.readyState,
         src: this.audio?.src,
         detail: e,
       });
+
+      // ✅ 첫 번째 에러는 재로드 시도
+      if (errorCount === 1) {
+        console.log('🔄 에러 발생, 재로드 시도 중...');
+        setTimeout(() => {
+          if (myLoadId === this.currentLoadId && !resolved && !rejected) {
+            try {
+              this.audio.load();
+            } catch (_) {}
+          }
+        }, 1000);
+        return;
+      }
+
+      // ✅ 2회 이상 에러면 포기
+      rejected = true;
+      cleanup();
+      this.setLoadingState(false, track);
     };
 
     const listeners = [
@@ -404,7 +430,7 @@ _normalizeUrl(url) {
       }
     };
 
-    // ✅ 타임아웃 10초
+    // ✅ 타임아웃 20초
     timer = setTimeout(() => {
       if (myLoadId !== this.currentLoadId) return;
       if (resolved || rejected) return;
