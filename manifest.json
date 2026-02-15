@@ -1,0 +1,13 @@
+{
+  "name": "Melony 랜덤 음악 플레이어",
+  "short_name": "Melony Player", 
+  "description": "Random Music Player with Background Sounds",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4effb",
+  "theme_color": "#5c6de0",
+  "orientation": "portrait",
+  "categories": ["music", "entertainment"],
+  "scope": "./",
+  "prefer_related_applications": false
+}
