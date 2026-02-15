@@ -19,6 +19,7 @@ class MelonyPlayer {
         this.effectSoundManager = null;
         this.titleFormatter = null;
         this.orientationManager = null;
+        this.mediaSessionManager = null;
 
         this.isInitialized = false;
         this.startTime = Date.now();
@@ -127,6 +128,9 @@ class MelonyPlayer {
 
         // 플레이리스트 관리자
         this.playlistManager = new PlaylistManager();
+
+        // ✅ Media Session 관리자 (백그라운드 재생 지원)
+        this.mediaSessionManager = new MediaSessionManager(this.audioManager, this.playlistManager);
 
         // 비주얼라이저
         this.visualizer = new Visualizer(this.audioManager);
@@ -429,6 +433,11 @@ this.youtubeManager = new YouTubeManager();
                 // ✅ 가로모드 버튼도 업데이트
                 this.updateLandscapePlayButton(true);
 
+                // ✅ Media Session 업데이트 (백그라운드 재생)
+                if (this.mediaSessionManager) {
+                    this.mediaSessionManager.onPlay();
+                }
+
                 if (this.visualizer) {
                     this.visualizer.start();
                 }
@@ -442,6 +451,11 @@ this.youtubeManager = new YouTubeManager();
 
                 // ✅ 가로모드 버튼도 업데이트
                 this.updateLandscapePlayButton(false);
+
+                // ✅ Media Session 업데이트 (백그라운드 재생)
+                if (this.mediaSessionManager) {
+                    this.mediaSessionManager.onPause();
+                }
 
                 if (this.visualizer) {
                     this.visualizer.stop();
@@ -744,6 +758,11 @@ error: (e) => {
             }
 
             console.log('✅ 트랙 로드 완료:', track.title);
+
+            // ✅ Media Session 메타데이터 업데이트 (백그라운드 재생)
+            if (this.mediaSessionManager) {
+                this.mediaSessionManager.onTrackChange(track);
+            }
 
             // ✅ 성공 시 실패 카운터 리셋
             this._failedTrackCount = 0;
