@@ -440,7 +440,7 @@ class OrientationManager {
       grid-template-columns: repeat(2, 1fr);
       gap: 8px;
       z-index: 10002;
-      opacity: 0.3;
+      opacity: 0;
       transition: opacity 0.3s ease;
     `;
 
@@ -504,7 +504,7 @@ class OrientationManager {
       display: flex;
       gap: 10px;
       z-index: 10002;
-      opacity: 0.3;
+      opacity: 0;
       transition: opacity 0.3s ease;
     `;
 
@@ -587,7 +587,7 @@ class OrientationManager {
       flex-direction: column;
       gap: 15px;
       z-index: 10002;
-      opacity: 0.3;
+      opacity: 0;
       transition: opacity 0.3s ease;
     `;
 
@@ -706,10 +706,10 @@ class OrientationManager {
         clearTimeout(hideTimeout);
       }
 
-      // 5초 후 다시 투명하게
+      // 5초 후 완전히 숨김
       hideTimeout = setTimeout(() => {
         uiElements.forEach(el => {
-          el.style.opacity = '0.05';
+          el.style.opacity = '0';
         });
       }, 5000);
     });
