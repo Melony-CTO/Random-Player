@@ -357,7 +357,64 @@ this.youtubeManager = new YouTubeManager();
             this.processLocalFiles(files, type);
         });
 
+        // ✅ Page Visibility API - 백그라운드 재생 최적화
+        document.addEventListener('visibilitychange', () => {
+            this.handleVisibilityChange();
+        });
+
         console.log('✅ 이벤트 리스너 설정 완료');
+    }
+
+    /**
+     * ✅ Page Visibility 변경 처리 - 백그라운드 재생 최적화
+     */
+    handleVisibilityChange() {
+        if (document.hidden) {
+            // 백그라운드로 전환
+            console.log('🌙 백그라운드 재생 모드 진입');
+
+            // 1. 커버 이미지 변경 및 애니메이션 중지
+            if (this.coverManager) {
+                this.coverManager.pause();
+            }
+
+            // 2. 비주얼라이저 중지
+            if (this.visualizer && this.visualizer.isRunning) {
+                this.visualizer.stop();
+                console.log('🎨 비주얼라이저 중지 (백그라운드)');
+            }
+
+            // 3. YouTube 영상 일시정지 (PC 카테고리)
+            if (this.youtubeManager && this.youtubeManager.isVisible) {
+                this.youtubeManager.pause();
+            }
+
+            console.log('💾 자원 절약 모드 활성화');
+        } else {
+            // 포그라운드로 복귀
+            console.log('☀️ 포그라운드 복귀');
+
+            // 1. 커버 이미지 재개
+            if (this.coverManager) {
+                this.coverManager.resume();
+            }
+
+            // 2. 비주얼라이저 재시작 (음악이 재생 중이고 PC 카테고리가 아닌 경우)
+            if (this.visualizer && this.audioManager.isPlaying) {
+                const isPcCategory = this.playlistManager && this.playlistManager.currentCategory === 'pc';
+                if (!isPcCategory) {
+                    this.visualizer.start();
+                    console.log('🎨 비주얼라이저 재시작 (포그라운드)');
+                }
+            }
+
+            // 3. YouTube는 자동 재개하지 않음 (사용자가 수동으로 재생)
+            if (this.youtubeManager) {
+                this.youtubeManager.resume();
+            }
+
+            console.log('🔋 정상 모드 복귀');
+        }
     }
 
     /**

@@ -136,6 +136,29 @@ class YouTubeManager {
 
         console.log('📺 YouTube 비디오 숨김');
     }
+
+    /**
+     * 백그라운드 재생 시 YouTube 일시정지
+     */
+    pause() {
+        if (!this.iframe || !this.isVisible) return;
+
+        try {
+            // YouTube iframe API를 사용하여 일시정지
+            this.iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+            console.log('⏸️ YouTube 비디오 일시정지 (백그라운드)');
+        } catch (error) {
+            console.warn('⚠️ YouTube 일시정지 실패:', error);
+        }
+    }
+
+    /**
+     * 포그라운드 복귀 시 YouTube 재개 (선택적)
+     */
+    resume() {
+        // YouTube는 사용자가 명시적으로 재생해야 하므로 자동 재개하지 않음
+        console.log('▶️ YouTube 준비 (수동 재생 필요)');
+    }
 }
 
 window.YouTubeManager = YouTubeManager;

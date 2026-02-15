@@ -10,6 +10,9 @@ class CoverManager {
         this.isSettingCover = false;
         this.currentCoverUrl = null;
 
+        // ✅ 백그라운드 재생 시 일시정지 플래그
+        this.isPaused = false;
+
         // 카테고리별 커버 데이터
         this.coverData = {
             'pop': { covers: [], shuffled: [], index: 0 },
@@ -209,6 +212,12 @@ class CoverManager {
      * 커버 이미지 설정 (즉시 표시 모드)
      */
     setCover(urlOrUrls, options = {}) {
+        // ✅ 백그라운드 재생 중이면 커버 변경 건너뛰기
+        if (this.isPaused) {
+            console.log('🖼️ 백그라운드 재생 중 - 커버 변경 건너뛰기');
+            return;
+        }
+
         const thumbnail = document.getElementById('thumbnail');
         if (!thumbnail) {
             this.isSettingCover = false;
@@ -303,6 +312,12 @@ class CoverManager {
             return;
         }
 
+        // ✅ 백그라운드 재생 중이면 애니메이션 건너뛰기
+        if (this.isPaused) {
+            console.log('🖼️ 백그라운드 재생 중 - 커버 애니메이션 건너뛰기');
+            return;
+        }
+
         if (!thumbnail) thumbnail = document.getElementById('thumbnail');
         if (!container) container = document.querySelector('.thumbnail-container');
 
@@ -316,6 +331,9 @@ class CoverManager {
         if (container) container.classList.add('cover-ready');
 
         setTimeout(() => {
+            // ✅ 백그라운드로 전환되었으면 애니메이션 취소
+            if (this.isPaused) return;
+
             thumbnail.classList.remove('blur-hidden');
             thumbnail.classList.add('blur-start', 'playing');
         }, 100);
@@ -532,6 +550,24 @@ class CoverManager {
             thumbnail.style.animation = '';
         }
         console.log('🎬 커버 애니메이션 재시작');
+    }
+
+    /**
+     * 백그라운드 재생 시 커버 변경 일시정지
+     */
+    pause() {
+        this.isPaused = true;
+        this.stopAnimations();
+        console.log('⏸️ CoverManager 일시정지 (백그라운드 재생)');
+    }
+
+    /**
+     * 포그라운드 복귀 시 커버 변경 재개
+     */
+    resume() {
+        this.isPaused = false;
+        this.resumeAnimations();
+        console.log('▶️ CoverManager 재개 (포그라운드 복귀)');
     }
 }
 
