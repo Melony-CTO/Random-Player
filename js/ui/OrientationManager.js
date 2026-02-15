@@ -442,6 +442,7 @@ class OrientationManager {
       z-index: 10002;
       opacity: 0;
       transition: opacity 0.3s ease;
+      pointer-events: none;
     `;
 
     const ambientSounds = ['Rain', 'Bird', 'Forest', 'Neighbor', 'Amazon', 'Ocean', 'Crackle', 'Rain2'];
@@ -510,6 +511,7 @@ class OrientationManager {
       z-index: 10002;
       opacity: 0;
       transition: opacity 0.3s ease;
+      pointer-events: none;
     `;
 
     const categories = [
@@ -597,6 +599,7 @@ class OrientationManager {
       z-index: 10002;
       opacity: 0;
       transition: opacity 0.3s ease;
+      pointer-events: none;
     `;
 
     const controls = [
@@ -713,12 +716,23 @@ class OrientationManager {
     let hideTimeout = null;
 
     clickArea.addEventListener('click', (e) => {
+      // ✅ 버튼 클릭인 경우 무시 (버튼 자체 이벤트로 처리)
+      if (e.target.closest('.landscape-control-btn') ||
+          e.target.closest('.landscape-category-btn') ||
+          e.target.closest('.landscape-ambient-btn')) {
+        console.log('🎯 버튼 클릭 감지 - 중앙 클릭 영역 무시');
+        return;
+      }
+
+      console.log('📱 중앙 영역 클릭 - UI 표시');
+
       // 모든 가로모드 UI 요소 찾기
       const uiElements = document.querySelectorAll('.landscape-ui-element');
 
-      // 투명도 토글
+      // 투명도 토글 및 pointer-events 활성화
       uiElements.forEach(el => {
         el.style.opacity = '0.8';
+        el.style.pointerEvents = 'auto';
       });
 
       // 기존 타이머 클리어
@@ -726,10 +740,11 @@ class OrientationManager {
         clearTimeout(hideTimeout);
       }
 
-      // 5초 후 완전히 숨김
+      // 5초 후 완전히 숨김 및 pointer-events 비활성화
       hideTimeout = setTimeout(() => {
         uiElements.forEach(el => {
           el.style.opacity = '0';
+          el.style.pointerEvents = 'none';
         });
       }, 5000);
     });
